@@ -7,9 +7,8 @@
 -- Isso impede que alguém, só por ver a chave pública no código do site, liste
 -- todos os seus romaneios/clientes.
 --
--- Freteiros e estoquistas agora fazem LOGIN (Supabase Auth), igual ao gerente.
--- O e-mail cadastrado em "freteiros"/"estoquistas" precisa bater com um usuário
--- criado em Authentication -> Users no Supabase (mesmo processo do seu próprio login).
+-- Freteiros e estoquistas fazem login por TELEFONE + PIN (não é Supabase Auth,
+-- é uma sessão própria guardada em "sessoes_equipe"). Só o gerente usa Supabase Auth.
 
 create extension if not exists "pgcrypto";
 
@@ -22,7 +21,8 @@ create table if not exists public.freteiros (
   criado_em timestamptz default now()
 );
 alter table public.freteiros add column if not exists criado_em timestamptz default now();
-alter table public.freteiros add column if not exists email text default '';
+alter table public.freteiros add column if not exists email text default ''; -- não usado mais pro login, deixado por segurança
+alter table public.freteiros add column if not exists pin text default '';
 
 -- Estoquistas fazem login igual ao freteiro, mas não pertencem a um romaneio
 -- específico: quem loga aqui vê todas as rotas (pra separar o que precisar).
@@ -33,6 +33,19 @@ create table if not exists public.estoquistas (
   criado_em timestamptz default now()
 );
 alter table public.estoquistas enable row level security;
+alter table public.estoquistas add column if not exists telefone text default '';
+alter table public.estoquistas add column if not exists pin text default '';
+
+-- Sessão criada no login por telefone+PIN (token opaco, sem relação com Supabase Auth).
+create table if not exists public.sessoes_equipe (
+  token text primary key,
+  tipo text not null, -- 'freteiro' | 'estoquista'
+  pessoa_id uuid not null,
+  nome text default '',
+  criado_em timestamptz default now(),
+  expira_em timestamptz not null
+);
+alter table public.sessoes_equipe enable row level security;
 
 create sequence if not exists public.romaneio_seq;
 
@@ -91,6 +104,12 @@ alter table public.paradas add column if not exists problema_obs text default ''
 -- 'pendente' | 'entregue' | 'falhou'. conferido = você revisou depois que o
 -- freteiro confirmou (pagamento/reclamação ficam fora do app de propósito).
 alter table public.paradas add column if not exists conferido boolean default false;
+
+-- Separação por volume: o estoquista confirma volume a volume (ex: 2 módulos de sofá =
+-- 2 confirmações) até bater com "volumes"; aí a parada fica "separado" e o app avança.
+alter table public.paradas add column if not exists volumes_confirmados int default 0;
+alter table public.paradas add column if not exists separado boolean default false;
+alter table public.paradas add column if not exists separado_em timestamptz;
 
 create index if not exists paradas_romaneio_idx on public.paradas(romaneio_id);
 

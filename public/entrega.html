@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Entregas — Romaneio</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:#f4f5f7;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#15181d;padding-bottom:30px}
@@ -42,8 +41,8 @@ button{flex:1;padding:11px;border:0;border-radius:9px;font:inherit;font-weight:6
 <div id="tela-login" class="loginbox" hidden>
   <h3 style="margin-top:0">Entrar</h3>
   <div id="erroLogin"></div>
-  <input id="lEmail" type="email" placeholder="seu e-mail" autocomplete="username">
-  <input id="lSenha" type="password" placeholder="sua senha" autocomplete="current-password">
+  <input id="lTel" type="tel" placeholder="seu telefone" autocomplete="username">
+  <input id="lPin" type="tel" inputmode="numeric" placeholder="seu PIN" autocomplete="current-password">
   <button id="btnLogin" style="width:100%">Entrar</button>
 </div>
 
@@ -52,25 +51,22 @@ button{flex:1;padding:11px;border:0;border-radius:9px;font:inherit;font-weight:6
   <h1 id="titulo">Carregando…</h1>
   <p id="sub"></p>
   <div class="prog"><i id="bar"></i></div>
+  <button id="btnSair" style="position:absolute;top:12px;right:14px;width:auto;flex:none;padding:6px 10px;font-size:12px;background:#ffffff30;color:#fff">Sair</button>
 </header>
 <div id="rotaCompleta"></div>
 <main id="lista"></main>
 </div>
 
 <script>
-const SUPABASE_URL = 'https://teaymabvqynopsbnnuwp.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_rE-fSECVdd8sThPSQReZAg_GDjilRcu';
 const LOJA = { nome: 'Loja — Outlet dos Móveis DB', endereco: 'Rua Presidente Venceslau Braz, 1013' };
 const ESTOQUE = { nome: 'Estoque', endereco: 'R. Márcia Travassos, 660 - Jardim Jerico, Cabedelo - PB, 58103-718' };
 
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const id = location.pathname.replace(/^\/entrega\/?/, '').trim() || null;
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let rom = null;
 
 async function api(url, opt){
-  const { data } = await sb.auth.getSession();
-  const token = data.session ? data.session.access_token : null;
+  const token = localStorage.getItem('equipeToken');
   opt = opt || {};
   opt.headers = Object.assign({}, opt.headers, token ? { Authorization: 'Bearer ' + token } : {});
   const r = await fetch(url, opt);
@@ -79,18 +75,21 @@ async function api(url, opt){
   return j;
 }
 
-async function checarSessao(){
-  const { data } = await sb.auth.getSession();
-  if(data.session){ document.getElementById('tela-login').hidden = true; document.getElementById('tela-app').hidden = false; iniciar(); }
+function checarSessao(){
+  if(localStorage.getItem('equipeToken')){ document.getElementById('tela-login').hidden = true; document.getElementById('tela-app').hidden = false; iniciar(); }
   else { document.getElementById('tela-login').hidden = false; document.getElementById('tela-app').hidden = true; }
 }
 document.getElementById('btnLogin').onclick = async () => {
-  const email = document.getElementById('lEmail').value.trim(), senha = document.getElementById('lSenha').value;
+  const telefone = document.getElementById('lTel').value.trim(), pin = document.getElementById('lPin').value.trim();
   document.getElementById('erroLogin').innerHTML = '';
-  const { error } = await sb.auth.signInWithPassword({ email, password: senha });
-  if(error){ document.getElementById('erroLogin').innerHTML = '<div class="err">'+esc(error.message)+'</div>'; return; }
-  checarSessao();
+  try{
+    const r = await api('/.netlify/functions/equipe-login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ telefone, pin }) });
+    localStorage.setItem('equipeToken', r.token);
+    checarSessao();
+  }catch(e){ document.getElementById('erroLogin').innerHTML = '<div class="err">'+esc(e.message)+'</div>'; }
 };
+
+document.getElementById('btnSair').onclick = () => { localStorage.removeItem('equipeToken'); checarSessao(); };
 
 async function iniciar(){
   if(id){ await carregar(); }

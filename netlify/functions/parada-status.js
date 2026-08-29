@@ -5,9 +5,20 @@ const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 
 exports.handler = async event => {
-  if (event.httpMethod !== 'POST') return json(405, { erro: 'método não permitido' });
   const quem = await identificar(event);
   if (!quem) return json(401, { erro: 'não autenticado' });
+
+  if (event.httpMethod === 'DELETE') {
+    if (quem.role !== 'admin') return json(403, { erro: 'só o gerente remove uma parada' });
+    const id = (event.queryStringParameters || {}).id;
+    if (!id) return json(400, { erro: 'informe id' });
+    const sb = admin();
+    const { error } = await sb.from('paradas').delete().eq('id', id);
+    if (error) return json(500, { erro: error.message });
+    return json(200, { ok: true });
+  }
+
+  if (event.httpMethod !== 'POST') return json(405, { erro: 'método não permitido' });
   if (quem.role === 'estoquista') return json(403, { erro: 'estoquista não altera status de entrega' });
 
   let b;
