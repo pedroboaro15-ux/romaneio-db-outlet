@@ -108,6 +108,15 @@ A Omie devolve nomes de campo um pouco diferentes conforme a conta/versão. Use 
   - **Ordenar pela melhor rota** — sugere uma ordem mais eficiente; só grava se você clicar em "Confirmar".
   - O ponto de partida usado pra calcular a rota é uma constante `LOJA_LAT`/`LOJA_LNG` no topo do `<script>` de `public/index.html` (hoje aponta pro centro de João Pessoa) — troque pelas coordenadas reais do seu depósito quando souber.
 
+## Mais novidades
+
+- **Assistência técnica**: na aba Buscar pedido → "Assistência técnica", dá pra adicionar uma parada que não vem da Omie — você digita nome, endereço e o que vai ser feito. Entra no romaneio junto com os pedidos normais.
+- **Pedidos de hoje**: botão na busca por período que já preenche a data de hoje e busca na hora — você só marca quais quer levar.
+- **Registrar problema**: em Romaneios → "Ver paradas", cada linha agora tem um jeito de marcar "houve problema" e escolher de quem é a culpa (vendedores, estoque ou freteiro), com um campo de observação. Fica salvo por parada.
+- **Relatório por freteiro**: aba **Relatórios** — mostra quantas paradas cada freteiro levou num período e qual % delas teve problema atribuído a ele. O histórico fica guardado indefinidamente no banco; o período ali é só um filtro de visualização (o padrão é olhar os últimos 30 dias, mas dá pra escolher qualquer intervalo, inclusive mais antigo).
+
+Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as colunas novas (é seguro, só adiciona o que falta).
+
 ## Arquivos
 
 | Arquivo | O que faz |
@@ -117,6 +126,8 @@ A Omie devolve nomes de campo um pouco diferentes conforme a conta/versão. Use 
 | `netlify/functions/nfs-periodo.js` | Busca notas fiscais num intervalo de datas |
 | `netlify/functions/geocode.js` | Descobre lat/lng de 1 endereço (Nominatim), com cache |
 | `netlify/functions/reordenar-paradas.js` | Grava a nova ordem das paradas de um romaneio |
+| `netlify/functions/parada-problema.js` | Registra problema numa parada e de quem é a culpa |
+| `netlify/functions/relatorio.js` | Estatísticas por freteiro num período |
 | `netlify/functions/freteiros.js` | Cadastro de freteiros |
 | `netlify/functions/romaneios.js` | Criar/listar/excluir romaneios |
 | `netlify/functions/romaneio-publico.js` | Dados do romaneio pra `entrega.html` e `separacao.html` (sem login) |

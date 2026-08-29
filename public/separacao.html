@@ -51,9 +51,10 @@ function render(rom){
     const c = p.cliente || {};
     const cid = [c.cidade, c.estado].filter(Boolean).join('/');
     const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}</div>`).join('');
+    const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
     return `<div class="p">
       <span class="n">${i+1} de ${rom.paradas.length}</span>
-      <span class="n">Pedido ${esc(p.numero)}</span>
+      <span class="n">${rotulo}${p.numero?' '+esc(p.numero):''}</span>
       <h3>${esc(c.nome||'(sem cliente)')}</h3>
       ${cid?`<div class="cli">${esc(cid)}</div>`:''}
       ${itens?`<div class="itens">${itens}</div>`:''}

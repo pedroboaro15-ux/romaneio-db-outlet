@@ -68,6 +68,11 @@ alter table public.paradas add column if not exists geo_lat numeric;
 alter table public.paradas add column if not exists geo_lng numeric;
 alter table public.paradas add column if not exists geo_prec text default '';
 
+-- tipo agora também aceita 'assistencia', além de 'pedido' e 'nf' (sem constraint, é só texto).
+alter table public.paradas add column if not exists problema boolean default false;
+alter table public.paradas add column if not exists problema_responsavel text default ''; -- 'vendedores' | 'estoque' | 'freteiro'
+alter table public.paradas add column if not exists problema_obs text default '';
+
 create index if not exists paradas_romaneio_idx on public.paradas(romaneio_id);
 
 create table if not exists public.geo_cache (

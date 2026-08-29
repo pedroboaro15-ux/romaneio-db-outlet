@@ -95,6 +95,7 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
     <button data-t="pedido" class="on">Buscar pedido</button>
     <button data-t="rom">Romaneios</button>
     <button data-t="fret">Freteiros</button>
+    <button data-t="rel">Relatórios</button>
     <button data-t="diag">Diagnóstico</button>
   </nav>
   <button class="btn ghost sm" id="sair">Sair</button>
@@ -109,6 +110,7 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
       <div class="subnav">
         <button data-m="numero" class="on">Por número</button>
         <button data-m="periodo">Por período</button>
+        <button data-m="assistencia">Assistência técnica</button>
       </div>
 
       <!-- --- por número --- -->
@@ -149,6 +151,7 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
               <option value="60">60 · Faturado</option>
             </select>
           </div>
+          <div class="auto"><button class="btn ghost" id="buscarHoje" title="Busca os pedidos de hoje na hora">Pedidos de hoje</button></div>
           <div class="auto"><button class="btn" id="buscarPeriodo">Buscar</button></div>
         </div>
 
@@ -165,6 +168,31 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
           <div style="padding:10px 14px;border-top:1px solid var(--line)">
             <button class="btn" id="addSelecionados">Adicionar selecionados ao romaneio</button>
           </div>
+        </div>
+      </div>
+
+      <!-- --- assistência técnica (não vem da Omie, você digita) --- -->
+      <div id="modo-assistencia" hidden>
+        <h2>Adicionar uma assistência técnica</h2>
+        <p class="mut" style="margin-top:-6px">Pra visitas que não são um pedido de venda — você preenche o endereço na mão.</p>
+        <div class="row">
+          <div><label>Nome do cliente</label><input id="aNome"></div>
+          <div><label>Referência / nº da OS (opcional)</label><input id="aRef"></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:2"><label>Endereço</label><input id="aEndereco" placeholder="Rua, número"></div>
+          <div><label>Complemento</label><input id="aCompl"></div>
+          <div><label>Bairro</label><input id="aBairro"></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div><label>Cidade</label><input id="aCidade"></div>
+          <div><label>Estado</label><input id="aEstado" maxlength="2" style="text-transform:uppercase"></div>
+          <div><label>CEP</label><input id="aCep"></div>
+          <div><label>Telefone</label><input id="aTel"></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div style="flex:2"><label>O que será feito (opcional)</label><input id="aDescricao"></div>
+          <div class="auto"><button class="btn" id="addAssistencia">Adicionar ao romaneio</button></div>
         </div>
       </div>
     </div>
@@ -216,6 +244,24 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
     <div class="card" style="padding:0"><div style="overflow-x:auto"><table id="tabFr">
       <thead><tr><th>Nome</th><th>Veículo</th><th>Placa</th><th>Telefone</th><th></th></tr></thead>
       <tbody></tbody></table></div></div>
+  </section>
+
+  <!-- ===================== RELATÓRIOS ===================== -->
+  <section id="t-rel" hidden>
+    <div class="card">
+      <h2>Quanto cada freteiro levou e quantos problemas deu</h2>
+      <p class="mut" style="margin-top:-6px">Baseado nas paradas marcadas com "houve problema" na aba Romaneios. Guarda o histórico todo — o período abaixo é só pra filtrar a visualização (padrão: últimos 30 dias).</p>
+      <div class="row">
+        <div><label>De</label><input type="date" id="relDe"></div>
+        <div><label>Até</label><input type="date" id="relAte"></div>
+        <div class="auto"><button class="btn" id="relBuscar">Buscar</button></div>
+      </div>
+      <div id="relResumo" class="mut" style="margin-top:12px"></div>
+      <div style="overflow-x:auto;margin-top:12px"><table>
+        <thead><tr><th>Freteiro</th><th class="center">Paradas</th><th class="center">Entregues</th><th class="center">Falharam</th><th class="center">Com problema</th><th class="center">% problema do freteiro</th></tr></thead>
+        <tbody id="tabRel"><tr><td colspan="6"><div class="empty">Escolha um período e clique em Buscar.</div></td></tr></tbody>
+      </table></div>
+    </div>
   </section>
 
   <!-- ===================== DIAGNÓSTICO ===================== -->
@@ -301,14 +347,16 @@ $('#sair').onclick = async () => { await sb.auth.signOut(); mostrarLogin(); };
 /* ---------------- navegação ---------------- */
 $$('nav button').forEach(b => b.onclick = () => {
   $$('nav button').forEach(x=>x.classList.toggle('on', x===b));
-  ['pedido','rom','fret','diag'].forEach(t => $('#t-'+t).hidden = t !== b.dataset.t);
+  ['pedido','rom','fret','rel','diag'].forEach(t => $('#t-'+t).hidden = t !== b.dataset.t);
   erro('');
   if(b.dataset.t==='rom') carregarRomaneios();
+  if(b.dataset.t==='rel') $('#relBuscar').click();
 });
 $$('.subnav button').forEach(b => b.onclick = () => {
   $$('.subnav button').forEach(x=>x.classList.toggle('on', x===b));
   $('#modo-numero').hidden = b.dataset.m !== 'numero';
   $('#modo-periodo').hidden = b.dataset.m !== 'periodo';
+  $('#modo-assistencia').hidden = b.dataset.m !== 'assistencia';
 });
 $('#pTipo').onchange = () => {
   const nf = $('#pTipo').value === 'nfs';
@@ -410,6 +458,38 @@ $('#addSelecionados').onclick = () => {
   toast('Adicionados ao romaneio em montagem — confira os volumes de cada um');
 };
 
+$('#buscarHoje').onclick = () => {
+  const hoje = new Date().toISOString().slice(0,10);
+  $('#pTipo').value = 'pedidos'; $('#pTipo').dispatchEvent(new Event('change'));
+  $('#pDe').value = hoje; $('#pAte').value = hoje;
+  $('#buscarPeriodo').click();
+};
+
+/* ---------------- assistência técnica ---------------- */
+$('#addAssistencia').onclick = () => {
+  if(!$('#aNome').value.trim() && !$('#aEndereco').value.trim()) return toast('Informe ao menos o nome ou o endereço');
+  rascunho.push({
+    tipo: 'assistencia',
+    numero: $('#aRef').value.trim(),
+    docId: '', data: '', volumes: 0, valor: 0, peso: 0,
+    observacao: $('#aDescricao').value.trim(),
+    cliente: {
+      nome: $('#aNome').value.trim() || '(assistência sem nome)',
+      doc: '',
+      endereco: $('#aEndereco').value.trim(),
+      complemento: $('#aCompl').value.trim(),
+      bairro: $('#aBairro').value.trim(),
+      cidade: $('#aCidade').value.trim(),
+      estado: $('#aEstado').value.trim().toUpperCase(),
+      cep: $('#aCep').value.trim(),
+      telefone: $('#aTel').value.trim()
+    }
+  });
+  ['aNome','aRef','aEndereco','aCompl','aBairro','aCidade','aEstado','aCep','aTel','aDescricao'].forEach(id => $('#'+id).value = '');
+  renderRascunho();
+  toast('Assistência adicionada ao romaneio em montagem');
+};
+
 /* ---------------- rascunho ---------------- */
 function renderRascunho(){
   $('#cardRascunho').hidden = rascunho.length === 0;
@@ -418,8 +498,9 @@ function renderRascunho(){
     const c = d.cliente || {};
     const dest = [c.endereco, c.bairro].filter(Boolean).join(' - ');
     const cid = [c.cidade, c.estado].filter(Boolean).join('/');
+    const tagTipo = d.tipo==='assistencia' ? '<span class="tag alt">assist.</span> ' : (d.tipo==='nf' ? '<span class="tag">NF</span> ' : '');
     return `<tr>
-      <td><strong>${esc(d.numero)}</strong></td>
+      <td>${tagTipo}<strong>${esc(d.numero||'—')}</strong></td>
       <td>${esc(c.nome||'(sem cliente)')}</td>
       <td class="mut">${esc(dest||'—')}${cid?`<div>${esc(cid)}</div>`:''}</td>
       <td class="center"><input class="volinput" type="number" min="0" value="${d.volumes||0}" onchange="atualizarVolume(${i}, this.value)"></td>
@@ -471,16 +552,30 @@ async function carregarRomaneios(){
           </span>
         </div>
         <details><summary>Ver paradas</summary>
-          <table style="margin-top:8px"><thead><tr><th>#</th><th>Cliente</th><th>Pedido</th><th class="center">Vol.</th><th>Status</th><th>Recebedor</th></tr></thead><tbody>
+          <table style="margin-top:8px"><thead><tr><th>#</th><th>Cliente</th><th>Pedido</th><th class="center">Vol.</th><th>Status</th><th>Recebedor</th><th>Problema</th></tr></thead><tbody>
           ${r.paradas.map((p,i)=>{
             const c=p.cliente||{};
             const cls = p.status==='entregue'?'ok':p.status==='falhou'?'falhou':'pend';
+            const tipoLabel = p.tipo==='assistencia'?'Assist.':(p.tipo==='nf'?'NF':'Ped.');
             return `<tr><td>${i+1}</td>
               <td>${esc(c.nome||'—')}<div class="mut">${esc([c.endereco,c.cidade].filter(Boolean).join(' - '))}</div></td>
-              <td>${esc(p.numero)}</td>
+              <td>${tipoLabel} ${esc(p.numero||'')}</td>
               <td class="center">${p.volumes||0}</td>
               <td><span class="tag ${cls}">${esc(p.status)}</span>${p.entregue_em?`<div class="mut">${new Date(p.entregue_em).toLocaleString('pt-BR')}</div>`:''}</td>
               <td class="mut">${esc(p.recebedor||'—')}${(p.lat&&p.lng)?`<div><a href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank">local da confirmação</a></div>`:''}</td>
+              <td style="min-width:150px">
+                <label style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:400;text-transform:none;color:var(--ink)">
+                  <input type="checkbox" id="prob-${p.id}" style="width:auto" ${p.problema?'checked':''}> houve problema
+                </label>
+                <select id="resp-${p.id}" style="margin-top:4px;font-size:11px;padding:3px">
+                  <option value="">— culpa de quem —</option>
+                  <option value="vendedores" ${p.problema_responsavel==='vendedores'?'selected':''}>Vendedores</option>
+                  <option value="estoque" ${p.problema_responsavel==='estoque'?'selected':''}>Estoque</option>
+                  <option value="freteiro" ${p.problema_responsavel==='freteiro'?'selected':''}>Freteiro</option>
+                </select>
+                <input id="obs-${p.id}" placeholder="obs (opcional)" value="${esc(p.problema_obs||'')}" style="margin-top:4px;font-size:11px;padding:3px">
+                <button class="btn ghost sm" style="margin-top:4px;padding:3px 8px;font-size:11px" onclick="salvarProblema('${p.id}')">Salvar</button>
+              </td>
             </tr>`;}).join('')}
           </tbody></table>
         </details>
@@ -495,6 +590,18 @@ async function excluirRom(id){
   carregarRomaneios();
 }
 function copiar(t){ navigator.clipboard.writeText(t).then(()=>toast('Link copiado: '+t)); }
+
+async function salvarProblema(paradaId){
+  const problema = document.getElementById('prob-'+paradaId).checked;
+  const responsavel = document.getElementById('resp-'+paradaId).value;
+  const obs = document.getElementById('obs-'+paradaId).value;
+  try{
+    await api('/.netlify/functions/parada-problema', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ paradaId, problema, responsavel, obs }) });
+    toast('Registrado');
+    carregarRomaneios();
+  }catch(e){ erro(e.message); }
+}
 
 /* ---------------- mapa da rota ---------------- */
 function toggleMapa(id){
@@ -635,6 +742,28 @@ $('#addFr').onclick = async () => {
 };
 async function delFr(id){ await api('/.netlify/functions/freteiros?id='+id,{method:'DELETE'}); carregarFreteiros(); }
 
+/* ---------------- relatórios ---------------- */
+$('#relBuscar').onclick = async () => {
+  const de = $('#relDe').value, ate = $('#relAte').value;
+  if(!de || !ate) return toast('Informe o período');
+  try{
+    const r = await api('/.netlify/functions/relatorio?de='+de+'&ate='+ate);
+    renderRelatorio(r);
+  }catch(e){ erro(e.message); }
+};
+function renderRelatorio(r){
+  const s = r.resumoResponsaveis;
+  $('#relResumo').innerHTML = `Problemas registrados no período — <strong>vendedores:</strong> ${s.vendedores} · <strong>estoque:</strong> ${s.estoque} · <strong>freteiro:</strong> ${s.freteiro}`;
+  $('#tabRel').innerHTML = r.porFreteiro.length ? r.porFreteiro.map(f => `<tr>
+    <td>${esc(f.nome)}</td>
+    <td class="center">${f.totalParadas}</td>
+    <td class="center">${f.entregues}</td>
+    <td class="center">${f.falharam}</td>
+    <td class="center">${f.comProblema}</td>
+    <td class="center">${f.percProblemaFreteiro}%</td>
+  </tr>`).join('') : '<tr><td colspan="6"><div class="empty">Nenhum romaneio nesse período.</div></td></tr>';
+}
+
 /* ---------------- diagnóstico ---------------- */
 $('#dGo').onclick = async () => {
   $('#dOut').textContent = 'executando…';
@@ -652,6 +781,8 @@ function statusHoje(){
   $('#dataRota').value = iso(hoje);
   const semana = new Date(hoje); semana.setDate(hoje.getDate()+7);
   $('#pDe').value = iso(hoje); $('#pAte').value = iso(semana);
+  const trintaDiasAtras = new Date(hoje); trintaDiasAtras.setDate(hoje.getDate()-30);
+  $('#relDe').value = iso(trintaDiasAtras); $('#relAte').value = iso(hoje);
 }
 window.removerRascunho = removerRascunho;
 window.atualizarVolume = atualizarVolume;
@@ -662,6 +793,7 @@ window.toggleMapa = toggleMapa;
 window.recalcularGeo = recalcularGeo;
 window.sugerirOrdem = sugerirOrdem;
 window.confirmarOrdem = confirmarOrdem;
+window.salvarProblema = salvarProblema;
 
 checarSessao();
 </script>
