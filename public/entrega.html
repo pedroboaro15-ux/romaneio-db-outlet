@@ -103,7 +103,8 @@ async function marcar(i, status){
     if(motivo === null) return;
     body.motivo = motivo;
   }
-  body.geo = await geo();
+  const g = await geo();
+  if(g){ body.lat = g.lat; body.lng = g.lng; }
   const r = await fetch('/.netlify/functions/parada-status', {
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
   });
