@@ -2,7 +2,9 @@
   publish = "public"
   functions = "netlify/functions"
 
-# Links dos freteiros e estoquistas: /entrega/<id> e /separacao/<id>
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL"
+
 [[redirects]]
   from = "/entrega/*"
   to = "/entrega.html"
@@ -13,7 +15,6 @@
   to = "/separacao.html"
   status = 200
 
-# Folha de impressão: /romaneio/<id>/imprimir
 [[redirects]]
   from = "/romaneio/:id/imprimir"
   to = "/.netlify/functions/romaneio-imprimir?id=:id"
