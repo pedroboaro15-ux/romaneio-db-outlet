@@ -1,0 +1,20 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# Links dos freteiros e estoquistas: /entrega/<id> e /separacao/<id>
+[[redirects]]
+  from = "/entrega/*"
+  to = "/entrega.html"
+  status = 200
+
+[[redirects]]
+  from = "/separacao/*"
+  to = "/separacao.html"
+  status = 200
+
+# Folha de impressão: /romaneio/<id>/imprimir
+[[redirects]]
+  from = "/romaneio/:id/imprimir"
+  to = "/.netlify/functions/romaneio-imprimir?id=:id"
+  status = 200

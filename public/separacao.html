@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Separação — Romaneio</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#f4f5f7;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#15181d;padding-bottom:30px}
+header{background:#0f8a4a;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5}
+header h1{font-size:17px;margin:0}
+header p{margin:3px 0 0;font-size:13px;opacity:.85}
+main{padding:12px}
+.p{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.p .n{display:inline-block;background:#eef1f5;color:#6b7280;font-weight:700;font-size:12px;padding:2px 8px;border-radius:20px}
+.p h3{margin:8px 0 2px;font-size:16px}
+.p .cli{color:#5b6270;font-size:13px}
+.p .itens{margin:10px 0;padding:8px 10px;background:#f7f8fa;border-radius:8px;font-size:13px}
+.vol{margin-top:10px;background:#eafaf1;border:1px solid #c8ecd9;border-radius:9px;padding:10px 12px;text-align:center}
+.vol b{display:block;font-size:26px;color:#0f8a4a;line-height:1.2}
+.vol span{font-size:12px;color:#4a7a63;text-transform:uppercase;letter-spacing:.04em}
+.obs{margin-top:8px;font-size:13px;font-style:italic;color:#5b6270}
+.empty{text-align:center;padding:40px;color:#6b7280}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="titulo">Carregando…</h1>
+  <p id="sub"></p>
+</header>
+<main id="lista"></main>
+
+<script>
+const id = location.pathname.split('/').filter(Boolean).pop();
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function carregar(){
+  const r = await fetch('/.netlify/functions/romaneio-publico?id='+id);
+  if(!r.ok){ document.getElementById('lista').innerHTML = '<div class="empty">Romaneio não encontrado.</div>'; return; }
+  const rom = await r.json();
+  render(rom);
+}
+
+function render(rom){
+  const totalVol = rom.paradas.reduce((s,p)=>s+(p.volumes||0),0);
+  document.getElementById('titulo').textContent = 'Separação — Romaneio ' + rom.codigo;
+  document.getElementById('sub').textContent =
+    rom.data + ' · ' + rom.paradas.length + ' pedido(s) · ' + totalVol + ' volume(s) no total';
+
+  document.getElementById('lista').innerHTML = rom.paradas.map((p,i)=>{
+    const c = p.cliente || {};
+    const cid = [c.cidade, c.estado].filter(Boolean).join('/');
+    const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}</div>`).join('');
+    return `<div class="p">
+      <span class="n">${i+1} de ${rom.paradas.length}</span>
+      <span class="n">Pedido ${esc(p.numero)}</span>
+      <h3>${esc(c.nome||'(sem cliente)')}</h3>
+      ${cid?`<div class="cli">${esc(cid)}</div>`:''}
+      ${itens?`<div class="itens">${itens}</div>`:''}
+      <div class="vol"><b>${p.volumes||0}</b><span>volume(s) a separar</span></div>
+      ${p.observacao?`<div class="obs">Obs: ${esc(p.observacao)}</div>`:''}
+    </div>`;
+  }).join('') || '<div class="empty">Sem paradas.</div>';
+}
+
+carregar();
+</script>
+</body>
+</html>

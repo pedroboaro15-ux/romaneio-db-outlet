@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Romaneio Omie</title>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#fff; --line:#e3e6ea; --ink:#15181d; --mut:#6b7280;
+  --brand:#1f6feb; --brand-ink:#fff; --ok:#0f8a4a; --warn:#b45309; --bad:#b91c1c;
+  --radius:10px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);padding:0 16px;position:sticky;top:0;z-index:20}
+.hrow{display:flex;align-items:center;gap:16px;max-width:1280px;margin:0 auto;height:56px}
+.logo{font-weight:700;font-size:16px;letter-spacing:-.02em}
+.logo span{color:var(--brand)}
+nav{display:flex;gap:2px;margin-left:auto}
+nav button{background:none;border:0;padding:8px 14px;border-radius:8px;cursor:pointer;color:var(--mut);font:inherit;font-weight:500}
+nav button:hover{background:#f0f2f5;color:var(--ink)}
+nav button.on{background:var(--brand);color:#fff}
+main{max-width:1280px;margin:20px auto;padding:0 16px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+h2{font-size:15px;margin:0 0 12px;letter-spacing:-.01em}
+h3{font-size:13px;margin:0 0 8px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px;font-weight:500}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+input:focus,select:focus{outline:2px solid var(--brand);outline-offset:-1px;border-color:transparent}
+button.btn{background:var(--brand);color:var(--brand-ink);border:0;padding:9px 16px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer}
+button.btn:hover{filter:brightness(1.08)}
+button.btn:disabled{opacity:.45;cursor:not-allowed}
+button.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+button.ghost:hover{background:#f4f6f8;filter:none}
+button.sm{padding:5px 10px;font-size:12px;font-weight:500}
+button.danger{color:var(--bad);border-color:#f0c9c9;background:#fff}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.row>div{flex:1;min-width:130px}
+.row>.auto{flex:0 0 auto;min-width:0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 8px;border-bottom:1px solid #f0f2f4;vertical-align:top}
+tr:hover td{background:#fbfcfd}
+.mut{color:var(--mut);font-size:12px}
+.right{text-align:right}.center{text-align:center}
+.tag{display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:600;background:#eef1f5;color:var(--mut)}
+.tag.nf{background:#e7f0fe;color:#1d4ed8}
+.tag.ped{background:#f1eafe;color:#6d28d9}
+.tag.ok{background:#e3f6ec;color:var(--ok)}
+.tag.pend{background:#fef3e2;color:var(--warn)}
+.tag.falhou{background:#fdeaea;color:var(--bad)}
+.empty{padding:34px;text-align:center;color:var(--mut)}
+.bar{position:sticky;bottom:0;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 -2px 12px rgba(0,0,0,.06);margin-top:12px}
+.bar .grow{flex:1}
+.itens{margin-top:5px;padding-left:9px;border-left:2px solid var(--line);font-size:12px;color:#444}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#15181d;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:99;opacity:0;transition:.2s;pointer-events:none}
+.toast.show{opacity:1}
+.err{background:#fdeaea;border:1px solid #f5c6c6;color:#7f1d1d;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rm{border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:10px}
+.rm .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.rm .cod{font-weight:700}
+details>summary{cursor:pointer;color:var(--brand);font-size:12px;margin-top:8px}
+code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #fff6;border-top-color:#fff;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px}
+@keyframes s{to{transform:rotate(360deg)}}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}nav button{padding:8px 10px;font-size:13px}}
+</style>
+</head>
+<body>
+
+<header><div class="hrow">
+  <div class="logo">Romaneio<span>Omie</span></div>
+  <nav>
+    <button data-t="docs" class="on">Documentos</button>
+    <button data-t="rom">Romaneios</button>
+    <button data-t="fret">Freteiros</button>
+    <button data-t="cfg">Configurações</button>
+  </nav>
+</div></header>
+
+<main>
+  <div id="erro"></div>
+
+  <!-- ===================== DOCUMENTOS ===================== -->
+  <section id="t-docs">
+    <div class="card">
+      <h2>Buscar documentos no Omie</h2>
+      <div class="row">
+        <div><label>Origem</label>
+          <select id="origem">
+            <option value="pedidos">Pedidos de venda</option>
+            <option value="nfs">Notas fiscais (NF-e / NFC-e)</option>
+          </select></div>
+        <div><label>De</label><input type="date" id="de"></div>
+        <div><label>Até</label><input type="date" id="ate"></div>
+        <div id="wEtapa"><label>Etapa (opcional)</label>
+          <select id="etapa">
+            <option value="">Todas</option>
+            <option value="10">10 · Não faturar</option>
+            <option value="20">20 · Aguardando aprovação</option>
+            <option value="30">30 · Aprovado</option>
+            <option value="40">40 · Separação de estoque</option>
+            <option value="50">50 · Faturamento</option>
+            <option value="60">60 · Faturado</option>
+          </select></div>
+        <div class="auto"><button class="btn" id="buscar">Buscar</button></div>
+      </div>
+      <p class="mut" style="margin:10px 0 0">Selecione os documentos abaixo e gere um romaneio para o freteiro.</p>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="todos" style="width:auto">
+        <label for="todos" style="margin:0;cursor:pointer">Selecionar todos</label>
+        <span class="mut" id="contagem" style="margin-left:auto"></span>
+      </div>
+      <div style="overflow-x:auto"><table id="tabela">
+        <thead><tr>
+          <th style="width:34px"></th><th>Doc.</th><th>Data</th><th>Cliente</th>
+          <th>Destino</th><th class="center">Vol.</th><th class="right">Valor</th>
+        </tr></thead>
+        <tbody><tr><td colspan="7"><div class="empty">Faça uma busca para carregar os documentos.</div></td></tr></tbody>
+      </table></div>
+    </div>
+
+    <div class="bar" id="barra" hidden>
+      <div class="grow"><strong id="selInfo">0 selecionados</strong></div>
+      <div style="min-width:180px"><select id="frSel"></select></div>
+      <div style="min-width:150px"><input type="date" id="dataRota"></div>
+      <button class="btn" id="gerar">Gerar romaneio</button>
+    </div>
+  </section>
+
+  <!-- ===================== ROMANEIOS ===================== -->
+  <section id="t-rom" hidden>
+    <div class="card"><h2>Romaneios</h2><div id="listaRom"></div></div>
+  </section>
+
+  <!-- ===================== FRETEIROS ===================== -->
+  <section id="t-fret" hidden>
+    <div class="card">
+      <h2>Cadastrar freteiro</h2>
+      <div class="row">
+        <div><label>Nome</label><input id="fNome" placeholder="João Silva"></div>
+        <div><label>Veículo</label><input id="fVeic" placeholder="Fiorino"></div>
+        <div><label>Placa</label><input id="fPlaca" placeholder="ABC1D23"></div>
+        <div><label>Telefone</label><input id="fTel" placeholder="(11) 99999-0000"></div>
+        <div class="auto"><button class="btn" id="addFr">Adicionar</button></div>
+      </div>
+    </div>
+    <div class="card" style="padding:0"><div style="overflow-x:auto"><table id="tabFr">
+      <thead><tr><th>Nome</th><th>Veículo</th><th>Placa</th><th>Telefone</th><th></th></tr></thead>
+      <tbody></tbody></table></div></div>
+  </section>
+
+  <!-- ===================== CONFIG ===================== -->
+  <section id="t-cfg" hidden>
+    <div class="card">
+      <h2>Credenciais da API Omie</h2>
+      <p class="mut">No Omie: <strong>Configurações → Geral → Aplicativos</strong>. Gere um app com acesso a Pedidos de Venda, Notas Fiscais e Clientes. As credenciais ficam salvas apenas neste computador, em <code>data/db.json</code>.</p>
+      <div class="grid2" style="margin-top:12px">
+        <div><label>App Key</label><input id="cKey" autocomplete="off"></div>
+        <div><label>App Secret</label><input id="cSec" type="password" autocomplete="off"></div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <button class="btn" id="salvarCfg">Salvar</button>
+        <button class="btn ghost" id="testarCfg">Testar conexão</button>
+        <span class="mut" id="cfgStatus"></span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Diagnóstico da API</h2>
+      <p class="mut">Chama qualquer método da Omie e mostra a resposta crua. Útil se algum campo não aparecer corretamente na listagem.</p>
+      <div class="row" style="margin-top:10px">
+        <div><label>Endpoint</label><input id="dPath" value="produtos/pedido/"></div>
+        <div><label>Call</label><input id="dCall" value="ListarPedidos"></div>
+        <div class="auto"><button class="btn ghost" id="dGo">Executar</button></div>
+      </div>
+      <div style="margin-top:10px"><label>Param (JSON)</label>
+        <textarea id="dParam" rows="4">{"pagina":1,"registros_por_pagina":1,"apenas_importado_api":"N"}</textarea></div>
+      <pre id="dOut" style="background:#0f1115;color:#d5dae1;padding:12px;border-radius:8px;overflow:auto;max-height:340px;font-size:12px;margin-top:10px"></pre>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+let docs = [], sel = new Set(), freteiros = [], romaneios = [];
+
+const money = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+function erro(m){$('#erro').innerHTML = m ? `<div class="err">${esc(m)}</div>` : '';}
+
+async function api(url, opt){
+  const r = await fetch(url, opt);
+  const j = await r.json().catch(()=>({erro:'resposta inválida do servidor'}));
+  if(!r.ok) throw new Error(j.erro || ('HTTP '+r.status));
+  return j;
+}
+
+/* ---------------- navegação ---------------- */
+$$('nav button').forEach(b => b.onclick = () => {
+  $$('nav button').forEach(x=>x.classList.toggle('on', x===b));
+  ['docs','rom','fret','cfg'].forEach(t => $('#t-'+t).hidden = t !== b.dataset.t);
+  erro('');
+  if(b.dataset.t==='rom') carregarRomaneios();
+});
+
+$('#origem').onchange = () => { $('#wEtapa').style.display = $('#origem').value==='pedidos' ? '' : 'none'; };
+
+/* ---------------- documentos ---------------- */
+$('#buscar').onclick = async () => {
+  const b = $('#buscar'); b.disabled = true; const t0 = b.textContent; b.innerHTML = '<span class="spin"></span> Buscando…';
+  erro('');
+  try{
+    const q = new URLSearchParams();
+    if($('#de').value) q.set('de', $('#de').value);
+    if($('#ate').value) q.set('ate', $('#ate').value);
+    if($('#origem').value==='pedidos' && $('#etapa').value) q.set('etapa', $('#etapa').value);
+    docs = await api('/api/' + $('#origem').value + '?' + q);
+    sel.clear(); render();
+    toast(docs.length + ' documento(s) carregado(s)');
+  }catch(e){ erro(e.message); }
+  finally{ b.disabled=false; b.textContent = t0; }
+};
+
+function render(){
+  const tb = $('#tabela tbody');
+  $('#contagem').textContent = docs.length ? docs.length + ' documento(s)' : '';
+  if(!docs.length){ tb.innerHTML = '<tr><td colspan="7"><div class="empty">Nenhum documento no período.</div></td></tr>'; atualizarBarra(); return; }
+  tb.innerHTML = docs.map((d,i) => {
+    const c = d.cliente || {};
+    const dest = [c.endereco, c.bairro].filter(Boolean).join(' - ');
+    const cid = [c.cidade, c.estado].filter(Boolean).join('/');
+    const itens = (d.itens||[]).slice(0,4).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.descricao)}</div>`).join('')
+      + ((d.itens||[]).length>4 ? `<div class="mut">+${d.itens.length-4} item(ns)</div>` : '');
+    return `<tr>
+      <td><input type="checkbox" data-i="${i}" ${sel.has(i)?'checked':''} style="width:auto"></td>
+      <td><span class="tag ${d.tipo==='nf'?'nf':'ped'}">${d.tipo==='nf'?'NF':'PED'}</span> <strong>${esc(d.numero)}</strong>
+        ${d.etapaLabel?`<div class="mut">${esc(d.etapaLabel)}</div>`:''}</td>
+      <td class="mut">${esc(d.data||'—')}</td>
+      <td><strong>${esc(c.nome||'(sem cliente)')}</strong>${c.doc?`<div class="mut">${esc(c.doc)}</div>`:''}
+        ${itens?`<div class="itens">${itens}</div>`:''}</td>
+      <td class="mut">${esc(dest||'—')}${cid?`<div>${esc(cid)}${c.cep?' · '+esc(c.cep):''}</div>`:''}</td>
+      <td class="center">${d.volumes||'—'}</td>
+      <td class="right">${money(d.valor)}</td>
+    </tr>`;
+  }).join('');
+  tb.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = () => {
+    const i = +cb.dataset.i; cb.checked ? sel.add(i) : sel.delete(i); atualizarBarra();
+  });
+  atualizarBarra();
+}
+
+$('#todos').onchange = e => {
+  sel = e.target.checked ? new Set(docs.map((_,i)=>i)) : new Set();
+  render();
+};
+
+function atualizarBarra(){
+  const n = sel.size;
+  $('#barra').hidden = n === 0;
+  const tot = [...sel].reduce((s,i)=>s+(docs[i].valor||0),0);
+  $('#selInfo').textContent = `${n} selecionado(s) · ${money(tot)}`;
+}
+
+$('#gerar').onclick = async () => {
+  if(!sel.size) return;
+  try{
+    const paradas = [...sel].map(i => docs[i]);
+    const r = await api('/api/romaneios', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ freteiroId: $('#frSel').value || null, data: brDate($('#dataRota').value), paradas })
+    });
+    sel.clear(); render();
+    toast('Romaneio ' + r.codigo + ' criado');
+    $$('nav button').find(b=>b.dataset.t==='rom').click();
+  }catch(e){ erro(e.message); }
+};
+
+const brDate = v => { if(!v) return ''; const [a,m,d] = v.split('-'); return `${d}/${m}/${a}`; };
+
+/* ---------------- romaneios ---------------- */
+async function carregarRomaneios(){
+  try{
+    romaneios = await api('/api/romaneios');
+    const el = $('#listaRom');
+    if(!romaneios.length){ el.innerHTML = '<div class="empty">Nenhum romaneio criado ainda.</div>'; return; }
+    el.innerHTML = romaneios.map(r => {
+      const fr = freteiros.find(f=>f.id===r.freteiroId);
+      const ok = r.paradas.filter(p=>p.status==='entregue').length;
+      const falhou = r.paradas.filter(p=>p.status==='falhou').length;
+      const link = location.origin + '/entrega/' + r.id;
+      return `<div class="rm">
+        <div class="top">
+          <span class="cod">${esc(r.codigo)}</span>
+          <span class="tag">${esc(fr?fr.nome:'sem freteiro')}</span>
+          <span class="mut">${esc(r.data)} · ${r.paradas.length} parada(s)</span>
+          <span class="tag ${ok===r.paradas.length?'ok':'pend'}">${ok}/${r.paradas.length} entregues${falhou?` · ${falhou} falha(s)`:''}</span>
+          <span style="margin-left:auto;display:flex;gap:6px">
+            <button class="btn ghost sm" onclick="window.open('/romaneio/${r.id}/imprimir','_blank')">Imprimir</button>
+            <button class="btn ghost sm" onclick="copiar('${link}')">Link do freteiro</button>
+            <button class="btn ghost sm danger" onclick="excluirRom('${r.id}')">Excluir</button>
+          </span>
+        </div>
+        <details><summary>Ver paradas</summary>
+          <table style="margin-top:8px"><thead><tr><th>#</th><th>Cliente</th><th>Doc.</th><th>Status</th><th>Recebedor</th></tr></thead><tbody>
+          ${r.paradas.map((p,i)=>{
+            const c=p.cliente||{};
+            const cls = p.status==='entregue'?'ok':p.status==='falhou'?'falhou':'pend';
+            return `<tr><td>${i+1}</td>
+              <td>${esc(c.nome||'—')}<div class="mut">${esc([c.endereco,c.cidade].filter(Boolean).join(' - '))}</div></td>
+              <td>${p.tipo==='nf'?'NF':'Ped.'} ${esc(p.numero)}</td>
+              <td><span class="tag ${cls}">${esc(p.status)}</span>${p.entregueEm?`<div class="mut">${new Date(p.entregueEm).toLocaleString('pt-BR')}</div>`:''}</td>
+              <td class="mut">${esc(p.recebedor||'—')}${p.geo?`<div><a href="https://maps.google.com/?q=${p.geo.lat},${p.geo.lng}" target="_blank">ver no mapa</a></div>`:''}</td>
+            </tr>`;}).join('')}
+          </tbody></table>
+        </details>
+      </div>`;
+    }).join('');
+  }catch(e){ erro(e.message); }
+}
+async function excluirRom(id){
+  if(!confirm('Excluir este romaneio?')) return;
+  await api('/api/romaneios/'+id, {method:'DELETE'});
+  carregarRomaneios();
+}
+function copiar(t){ navigator.clipboard.writeText(t).then(()=>toast('Link copiado: '+t)); }
+
+/* ---------------- freteiros ---------------- */
+async function carregarFreteiros(){
+  freteiros = await api('/api/freteiros');
+  $('#tabFr tbody').innerHTML = freteiros.length ? freteiros.map(f=>`<tr>
+    <td><strong>${esc(f.nome)}</strong></td><td>${esc(f.veiculo||'—')}</td>
+    <td>${esc(f.placa||'—')}</td><td>${esc(f.telefone||'—')}</td>
+    <td class="right"><button class="btn ghost sm danger" onclick="delFr('${f.id}')">Remover</button></td>
+  </tr>`).join('') : '<tr><td colspan="5"><div class="empty">Nenhum freteiro cadastrado.</div></td></tr>';
+  $('#frSel').innerHTML = '<option value="">— escolher freteiro —</option>' +
+    freteiros.map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join('');
+}
+$('#addFr').onclick = async () => {
+  if(!$('#fNome').value.trim()) return toast('Informe o nome');
+  await api('/api/freteiros',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({nome:$('#fNome').value,veiculo:$('#fVeic').value,placa:$('#fPlaca').value,telefone:$('#fTel').value})});
+  ['#fNome','#fVeic','#fPlaca','#fTel'].forEach(s=>$(s).value='');
+  carregarFreteiros(); toast('Freteiro cadastrado');
+};
+async function delFr(id){ await api('/api/freteiros/'+id,{method:'DELETE'}); carregarFreteiros(); }
+
+/* ---------------- config ---------------- */
+$('#salvarCfg').onclick = async () => {
+  await api('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({app_key:$('#cKey').value,app_secret:$('#cSec').value})});
+  toast('Credenciais salvas'); statusCfg();
+};
+$('#testarCfg').onclick = async () => {
+  $('#cfgStatus').textContent = 'testando…';
+  try{ const r = await api('/api/testar'); $('#cfgStatus').innerHTML = `<span style="color:var(--ok)">✓ conectado — ${r.totalClientes} cliente(s) na base</span>`; }
+  catch(e){ $('#cfgStatus').innerHTML = `<span style="color:var(--bad)">✗ ${esc(e.message)}</span>`; }
+};
+async function statusCfg(){
+  const c = await api('/api/config');
+  $('#cfgStatus').textContent = c.configurado ? 'Configurado ('+c.app_key+')' + (c.viaEnv?' via variável de ambiente':'') : 'Não configurado';
+}
+$('#dGo').onclick = async () => {
+  $('#dOut').textContent = 'executando…';
+  try{
+    const r = await api('/api/raw',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path:$('#dPath').value,call:$('#dCall').value,param:JSON.parse($('#dParam').value||'{}')})});
+    $('#dOut').textContent = JSON.stringify(r,null,2);
+  }catch(e){ $('#dOut').textContent = 'ERRO: ' + e.message; }
+};
+
+/* ---------------- init ---------------- */
+(function init(){
+  const hoje = new Date(), iso = d => d.toISOString().slice(0,10);
+  const ini = new Date(hoje); ini.setDate(hoje.getDate()-7);
+  $('#de').value = iso(ini); $('#ate').value = iso(hoje); $('#dataRota').value = iso(hoje);
+  carregarFreteiros(); statusCfg();
+})();
+</script>
+</body>
+</html>
