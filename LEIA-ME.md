@@ -1,5 +1,7 @@
 # Romaneio Omie
 
+> **Atualização:** corrigido o bug das tabelas do Supabase (rode o `schema.sql` de novo, é seguro) e o bug de "Pedido undefined". Adicionado: busca por período/NF, e mapa da rota com sugestão de ordem. Veja "O que mudou" no final.
+
 App pessoal (só você usa) que puxa **pedidos de venda** do Omie pelo número, monta **romaneios de entrega** por freteiro, e dá a cada um dos seus times um link de celular:
 
 - **Freteiro**: vê a rota, abre no Google Maps, marca entregue/não entregue com GPS.
@@ -96,11 +98,36 @@ Abre em `http://localhost:8888`.
 
 A Omie devolve nomes de campo um pouco diferentes conforme a conta/versão. Use a aba **Diagnóstico** do painel pra chamar `ConsultarPedido` (ou qualquer outro método) e ver a resposta crua em JSON. Com isso em mãos, ajuste a função `normalizarPedido` em [`netlify/functions/pedido.js`](netlify/functions/pedido.js) — ela concentra todo o mapeamento de campos.
 
+## O que mudou nesta atualização
+
+- **Bug das tabelas ("Could not find the table"):** o `supabase/schema.sql` provavelmente nunca rodou no seu projeto. Ele agora é seguro de rodar de novo quantas vezes precisar (só cria o que falta) — cole no SQL Editor e clique em Run de novo.
+- **Bug do "Pedido undefined":** o `ConsultarPedido` da Omie devolve os dados dentro de `pedido_venda_produto`; a leitura dos campos foi corrigida em `netlify/functions/pedido.js`. Também passou a detectar endereço de entrega alternativo (quando o pedido tem um endereço diferente do cadastro do cliente).
+- **Busca por período**: na aba Buscar pedido, alterne para "Por período" — traz vários pedidos (ou notas fiscais) de uma vez, com checkbox pra adicionar os que quiser ao romaneio.
+- **Mapa da rota**: em Romaneios, clique em "Ver mapa". Mostra os pinos numerados (João Pessoa e região), uma linha ligando na ordem atual, e dois botões:
+  - **Recalcular coordenadas** — descobre a latitude/longitude de cada endereço (usa o Nominatim/OpenStreetMap, gratuito, sem chave). Pode demorar ~1 segundo por parada.
+  - **Ordenar pela melhor rota** — sugere uma ordem mais eficiente; só grava se você clicar em "Confirmar".
+  - O ponto de partida usado pra calcular a rota é uma constante `LOJA_LAT`/`LOJA_LNG` no topo do `<script>` de `public/index.html` (hoje aponta pro centro de João Pessoa) — troque pelas coordenadas reais do seu depósito quando souber.
+
+## Mais novidades
+
+- **Assistência técnica**: na aba Buscar pedido → "Assistência técnica", dá pra adicionar uma parada que não vem da Omie — você digita nome, endereço e o que vai ser feito. Entra no romaneio junto com os pedidos normais.
+- **Pedidos de hoje**: botão na busca por período que já preenche a data de hoje e busca na hora — você só marca quais quer levar.
+- **Registrar problema**: em Romaneios → "Ver paradas", cada linha agora tem um jeito de marcar "houve problema" e escolher de quem é a culpa (vendedores, estoque ou freteiro), com um campo de observação. Fica salvo por parada.
+- **Relatório por freteiro**: aba **Relatórios** — mostra quantas paradas cada freteiro levou num período e qual % delas teve problema atribuído a ele. O histórico fica guardado indefinidamente no banco; o período ali é só um filtro de visualização (o padrão é olhar os últimos 30 dias, mas dá pra escolher qualquer intervalo, inclusive mais antigo).
+
+Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as colunas novas (é seguro, só adiciona o que falta).
+
 ## Arquivos
 
 | Arquivo | O que faz |
 |---|---|
-| `netlify/functions/pedido.js` | Busca um pedido + cliente na Omie |
+| `netlify/functions/pedido.js` | Busca 1 pedido + cliente na Omie, pelo número |
+| `netlify/functions/pedidos-periodo.js` | Busca pedidos num intervalo de datas |
+| `netlify/functions/nfs-periodo.js` | Busca notas fiscais num intervalo de datas |
+| `netlify/functions/geocode.js` | Descobre lat/lng de 1 endereço (Nominatim), com cache |
+| `netlify/functions/reordenar-paradas.js` | Grava a nova ordem das paradas de um romaneio |
+| `netlify/functions/parada-problema.js` | Registra problema numa parada e de quem é a culpa |
+| `netlify/functions/relatorio.js` | Estatísticas por freteiro num período |
 | `netlify/functions/freteiros.js` | Cadastro de freteiros |
 | `netlify/functions/romaneios.js` | Criar/listar/excluir romaneios |
 | `netlify/functions/romaneio-publico.js` | Dados do romaneio pra `entrega.html` e `separacao.html` (sem login) |

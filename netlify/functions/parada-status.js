@@ -1,5 +1,7 @@
-// POST /.netlify/functions/parada-status  { paradaId, status, recebedor?, motivo?, geo? }
+// POST /.netlify/functions/parada-status  { paradaId, status, recebedor?, motivo?, lat?, lng? }
 // Sem login — chamado pela página do freteiro (protegida só pelo id imprevisível do romaneio).
+// lat/lng aqui são de ONDE o freteiro estava ao confirmar (não confundir com geo_lat/geo_lng,
+// que são a coordenada do endereço calculada pelo geocode.js).
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 
@@ -13,7 +15,8 @@ exports.handler = async event => {
   const patch = { status: b.status };
   if (b.status === 'entregue') { patch.entregue_em = new Date().toISOString(); patch.recebedor = b.recebedor || ''; }
   if (b.status === 'falhou') patch.motivo = b.motivo || '';
-  if (b.geo) patch.geo = b.geo;
+  if (b.lat != null) patch.lat = b.lat;
+  if (b.lng != null) patch.lng = b.lng;
 
   const { data: parada, error } = await sb.from('paradas').update(patch).eq('id', b.paradaId).select().single();
   if (error) return json(500, { erro: error.message });

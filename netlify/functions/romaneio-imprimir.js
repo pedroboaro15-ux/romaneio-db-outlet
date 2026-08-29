@@ -67,7 +67,7 @@ tfoot td{font-weight:700;background:#fafafa}
 <div class="box">
   <div><b>Freteiro</b>${esc(fr.nome || '—')}</div>
   <div><b>Veículo / Placa</b>${esc([fr.veiculo, fr.placa].filter(Boolean).join(' · ') || '—')}</div>
-  <div><b>Data da rota</b>${esc(r.data || '—')}</div>
+  <div><b>Data da rota</b>${esc(r.data_rota || '—')}</div>
   <div><b>Paradas</b>${r.paradas.length}</div>
 </div>
 <table>

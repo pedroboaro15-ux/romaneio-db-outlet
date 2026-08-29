@@ -30,13 +30,14 @@ exports.handler = async event => {
     const paradas = Array.isArray(b.paradas) ? b.paradas : [];
     if (!paradas.length) return json(400, { erro: 'informe ao menos uma parada' });
 
-    const { count, error: eCount } = await sb.from('romaneios').select('id', { count: 'exact', head: true });
-    if (eCount) return json(500, { erro: eCount.message });
-    const codigo = 'R' + String((count || 0) + 1).padStart(4, '0');
-
     const { data: rom, error: e1 } = await sb
       .from('romaneios')
-      .insert({ codigo, freteiro_id: b.freteiroId || null, data: b.data || '', status: 'aberto' })
+      .insert({
+        freteiro_id: b.freteiroId || null,
+        data_rota: b.dataRota || null,
+        observacao: b.observacao || '',
+        status: 'aberto'
+      })
       .select()
       .single();
     if (e1) return json(500, { erro: e1.message });
@@ -46,10 +47,12 @@ exports.handler = async event => {
       ordem: i,
       tipo: p.tipo || 'pedido',
       numero: String(p.numero || ''),
-      codigo_cliente: p.codigoCliente != null ? String(p.codigoCliente) : null,
-      cliente: p.cliente || null,
+      doc_id: p.docId != null ? String(p.docId) : '',
+      data_doc: p.data || '',
+      cliente: p.cliente ? { ...p.cliente, codigo: p.codigoCliente != null ? String(p.codigoCliente) : null } : null,
       itens: p.itens || [],
       volumes: Number(p.volumes) || 0,
+      peso: Number(p.peso) || 0,
       valor: Number(p.valor) || 0,
       observacao: p.observacao || '',
       status: 'pendente'

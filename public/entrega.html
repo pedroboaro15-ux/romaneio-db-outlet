@@ -64,9 +64,10 @@ function render(){
     const q = encodeURIComponent([end, cid, c.cep].filter(Boolean).join(', '));
     const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.descricao)}</div>`).join('');
     const feito = p.status !== 'pendente';
+    const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
     return `<div class="p ${feito?'done':''}">
       <span class="n">${i+1} de ${rom.paradas.length}</span>
-      <span class="n">Pedido ${esc(p.numero)} · ${p.volumes||0} vol.</span>
+      <span class="n">${rotulo}${p.numero?' '+esc(p.numero):''} · ${p.volumes||0} vol.</span>
       <h3>${esc(c.nome||'(sem cliente)')}</h3>
       <div class="end">${esc(end||'endereço não informado')}${cid?' · '+esc(cid):''}${c.cep?' · '+esc(c.cep):''}</div>
       ${c.telefone?`<div class="end">Tel: <a href="tel:${esc(c.telefone.replace(/\\D/g,''))}">${esc(c.telefone)}</a></div>`:''}
@@ -103,7 +104,8 @@ async function marcar(i, status){
     if(motivo === null) return;
     body.motivo = motivo;
   }
-  body.geo = await geo();
+  const g = await geo();
+  if(g){ body.lat = g.lat; body.lng = g.lng; }
   const r = await fetch('/.netlify/functions/parada-status', {
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
   });

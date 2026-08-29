@@ -20,7 +20,7 @@ exports.handler = async event => {
   return json(200, {
     id: rom.id,
     codigo: rom.codigo,
-    data: rom.data,
+    data: rom.data_rota,
     status: rom.status,
     freteiro: rom.freteiros || null,
     paradas: (rom.paradas || []).sort((a, b) => a.ordem - b.ordem)
