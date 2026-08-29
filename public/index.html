@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Romaneio Omie</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#fff; --line:#e3e6ea; --ink:#15181d; --mut:#6b7280;
+  --brand:#1f6feb; --brand-ink:#fff; --ok:#0f8a4a; --warn:#b45309; --bad:#b91c1c;
+  --radius:10px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);padding:0 16px;position:sticky;top:0;z-index:20}
+.hrow{display:flex;align-items:center;gap:16px;max-width:1100px;margin:0 auto;height:56px}
+.logo{font-weight:700;font-size:16px;letter-spacing:-.02em}
+.logo span{color:var(--brand)}
+nav{display:flex;gap:2px;margin-left:auto}
+nav button{background:none;border:0;padding:8px 14px;border-radius:8px;cursor:pointer;color:var(--mut);font:inherit;font-weight:500}
+nav button:hover{background:#f0f2f5;color:var(--ink)}
+nav button.on{background:var(--brand);color:#fff}
+main{max-width:1100px;margin:20px auto;padding:0 16px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+h2{font-size:15px;margin:0 0 12px;letter-spacing:-.01em}
+h3{font-size:13px;margin:0 0 8px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px;font-weight:500}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+input:focus,select:focus{outline:2px solid var(--brand);outline-offset:-1px;border-color:transparent}
+button.btn{background:var(--brand);color:var(--brand-ink);border:0;padding:9px 16px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer}
+button.btn:hover{filter:brightness(1.08)}
+button.btn:disabled{opacity:.45;cursor:not-allowed}
+button.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+button.ghost:hover{background:#f4f6f8;filter:none}
+button.sm{padding:5px 10px;font-size:12px;font-weight:500}
+button.danger{color:var(--bad);border-color:#f0c9c9;background:#fff}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.row>div{flex:1;min-width:130px}
+.row>.auto{flex:0 0 auto;min-width:0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 8px;border-bottom:1px solid #f0f2f4;vertical-align:top}
+tr:hover td{background:#fbfcfd}
+.mut{color:var(--mut);font-size:12px}
+.right{text-align:right}.center{text-align:center}
+.tag{display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:600;background:#eef1f5;color:var(--mut)}
+.tag.ok{background:#e3f6ec;color:var(--ok)}
+.tag.pend{background:#fef3e2;color:var(--warn)}
+.tag.falhou{background:#fdeaea;color:var(--bad)}
+.empty{padding:34px;text-align:center;color:var(--mut)}
+.itens{margin-top:5px;padding-left:9px;border-left:2px solid var(--line);font-size:12px;color:#444}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#15181d;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:99;opacity:0;transition:.2s;pointer-events:none}
+.toast.show{opacity:1}
+.err{background:#fdeaea;border:1px solid #f5c6c6;color:#7f1d1d;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rm{border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:10px}
+.rm .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.rm .cod{font-weight:700}
+details>summary{cursor:pointer;color:var(--brand);font-size:12px;margin-top:8px}
+code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #fff6;border-top-color:#fff;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px}
+@keyframes s{to{transform:rotate(360deg)}}
+.loginbox{max-width:340px;margin:80px auto}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}nav button{padding:8px 10px;font-size:13px}}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="tela-login" class="loginbox card" hidden>
+  <h2>Entrar</h2>
+  <div id="erroLogin"></div>
+  <div style="margin-bottom:10px"><label>E-mail</label><input id="lEmail" type="email" autocomplete="username"></div>
+  <div style="margin-bottom:12px"><label>Senha</label><input id="lSenha" type="password" autocomplete="current-password"></div>
+  <button class="btn" id="btnLogin" style="width:100%">Entrar</button>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="tela-app" hidden>
+<header><div class="hrow">
+  <div class="logo">Romaneio<span>Omie</span></div>
+  <nav>
+    <button data-t="pedido" class="on">Buscar pedido</button>
+    <button data-t="rom">Romaneios</button>
+    <button data-t="fret">Freteiros</button>
+    <button data-t="diag">Diagnóstico</button>
+  </nav>
+  <button class="btn ghost sm" id="sair">Sair</button>
+</div></header>
+
+<main>
+  <div id="erro"></div>
+
+  <!-- ===================== BUSCAR PEDIDO ===================== -->
+  <section id="t-pedido">
+    <div class="card">
+      <h2>Buscar pedido de venda na Omie</h2>
+      <div class="row">
+        <div><label>Número do pedido</label><input id="numPedido" placeholder="Ex: 1234"></div>
+        <div class="auto"><button class="btn" id="buscarPedido">Buscar</button></div>
+      </div>
+    </div>
+
+    <div class="card" id="cardResultado" hidden>
+      <h2>Pedido encontrado</h2>
+      <div id="resultado"></div>
+      <div class="row" style="margin-top:12px">
+        <div><label>Quantidade de volumes</label><input id="rVolumes" type="number" min="0" value="0"></div>
+        <div style="flex:2"><label>Observação (opcional)</label><input id="rObs"></div>
+        <div class="auto"><button class="btn" id="addRascunho">Adicionar ao romaneio</button></div>
+      </div>
+    </div>
+
+    <div class="card" id="cardRascunho" hidden style="padding:0;overflow:hidden">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center">
+        <h2 style="margin:0">Romaneio em montagem</h2>
+        <span class="mut" id="contagem" style="margin-left:auto"></span>
+      </div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>Pedido</th><th>Cliente</th><th>Destino</th><th class="center">Vol.</th><th class="right">Valor</th><th></th></tr></thead>
+        <tbody id="tabRascunho"></tbody>
+      </table></div>
+      <div style="padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div style="min-width:180px"><label>Freteiro</label><select id="frSel"></select></div>
+        <div style="min-width:150px"><label>Data da rota</label><input type="date" id="dataRota"></div>
+        <button class="btn" id="gerar">Gerar romaneio</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ROMANEIOS ===================== -->
+  <section id="t-rom" hidden>
+    <div class="card"><h2>Romaneios</h2><div id="listaRom"></div></div>
+  </section>
+
+  <!-- ===================== FRETEIROS ===================== -->
+  <section id="t-fret" hidden>
+    <div class="card">
+      <h2>Cadastrar freteiro</h2>
+      <div class="row">
+        <div><label>Nome</label><input id="fNome" placeholder="João Silva"></div>
+        <div><label>Veículo</label><input id="fVeic" placeholder="Fiorino"></div>
+        <div><label>Placa</label><input id="fPlaca" placeholder="ABC1D23"></div>
+        <div><label>Telefone</label><input id="fTel" placeholder="(11) 99999-0000"></div>
+        <div class="auto"><button class="btn" id="addFr">Adicionar</button></div>
+      </div>
+    </div>
+    <div class="card" style="padding:0"><div style="overflow-x:auto"><table id="tabFr">
+      <thead><tr><th>Nome</th><th>Veículo</th><th>Placa</th><th>Telefone</th><th></th></tr></thead>
+      <tbody></tbody></table></div></div>
+  </section>
+
+  <!-- ===================== DIAGNÓSTICO ===================== -->
+  <section id="t-diag" hidden>
+    <div class="card">
+      <h2>Diagnóstico da API Omie</h2>
+      <p class="mut">Chama qualquer método da Omie e mostra a resposta crua. Útil se algum campo não aparecer certo na busca de pedido.</p>
+      <div class="row" style="margin-top:10px">
+        <div><label>Endpoint</label><input id="dPath" value="produtos/pedido/"></div>
+        <div><label>Call</label><input id="dCall" value="ConsultarPedido"></div>
+        <div class="auto"><button class="btn ghost" id="dGo">Executar</button></div>
+      </div>
+      <div style="margin-top:10px"><label>Param (JSON)</label>
+        <textarea id="dParam" rows="4">{"codigo_pedido":0,"numero_pedido":"1234"}</textarea></div>
+      <pre id="dOut" style="background:#0f1115;color:#d5dae1;padding:12px;border-radius:8px;overflow:auto;max-height:340px;font-size:12px;margin-top:10px"></pre>
+    </div>
+  </section>
+</main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= CONFIGURAÇÃO ================= */
+/* Cole aqui a URL e a chave "anon public" do seu projeto Supabase.
+   Painel do Supabase -> Project Settings -> API.
+   A chave "anon" é feita pra ficar exposta no navegador, não é segredo. */
+const SUPABASE_URL = 'https://teaymabvqynopsbnnuwp.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_rE-fSECVdd8sThPSQReZAg_GDjilRcu';
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+let freteiros = [], romaneios = [], rascunho = [], pedidoAtual = null;
+
+const money = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+function erro(m){$('#erro').innerHTML = m ? `<div class="err">${esc(m)}</div>` : '';}
+
+/* ---------------- chamadas às Functions ---------------- */
+async function api(url, opt){
+  const { data } = await sb.auth.getSession();
+  const token = data.session ? data.session.access_token : null;
+  opt = opt || {};
+  opt.headers = Object.assign({}, opt.headers, token ? { Authorization: 'Bearer ' + token } : {});
+  const r = await fetch(url, opt);
+  const j = await r.json().catch(()=>({erro:'resposta inválida do servidor'}));
+  if(!r.ok) throw new Error(j.erro || ('HTTP '+r.status));
+  return j;
+}
+
+/* ---------------- login ---------------- */
+async function checarSessao(){
+  const { data } = await sb.auth.getSession();
+  if(data.session){ mostrarApp(); } else { mostrarLogin(); }
+}
+function mostrarLogin(){ $('#tela-login').hidden = false; $('#tela-app').hidden = true; }
+function mostrarApp(){
+  $('#tela-login').hidden = true; $('#tela-app').hidden = false;
+  carregarFreteiros(); statusHoje();
+}
+$('#btnLogin').onclick = async () => {
+  const email = $('#lEmail').value.trim(), senha = $('#lSenha').value;
+  $('#erroLogin').innerHTML = '';
+  const { error } = await sb.auth.signInWithPassword({ email, password: senha });
+  if(error){ $('#erroLogin').innerHTML = `<div class="err">${esc(error.message)}</div>`; return; }
+  mostrarApp();
+};
+$('#sair').onclick = async () => { await sb.auth.signOut(); mostrarLogin(); };
+
+/* ---------------- navegação ---------------- */
+$$('nav button').forEach(b => b.onclick = () => {
+  $$('nav button').forEach(x=>x.classList.toggle('on', x===b));
+  ['pedido','rom','fret','diag'].forEach(t => $('#t-'+t).hidden = t !== b.dataset.t);
+  erro('');
+  if(b.dataset.t==='rom') carregarRomaneios();
+});
+
+/* ---------------- buscar pedido ---------------- */
+$('#buscarPedido').onclick = async () => {
+  const numero = $('#numPedido').value.trim();
+  if(!numero) return toast('Informe o número do pedido');
+  const b = $('#buscarPedido'); b.disabled = true; const t0 = b.textContent; b.innerHTML = '<span class="spin"></span> Buscando…';
+  erro('');
+  try{
+    pedidoAtual = await api('/.netlify/functions/pedido?numero=' + encodeURIComponent(numero));
+    renderResultado();
+  }catch(e){ erro(e.message); $('#cardResultado').hidden = true; }
+  finally{ b.disabled=false; b.textContent = t0; }
+};
+
+function renderResultado(){
+  const p = pedidoAtual, c = p.cliente || {};
+  const end = [c.endereco, c.complemento, c.bairro].filter(Boolean).join(' - ');
+  const cid = [c.cidade, c.estado].filter(Boolean).join('/');
+  const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}</div>`).join('');
+  $('#resultado').innerHTML = `
+    <strong>Pedido ${esc(p.numero)}</strong> ${p.etapaLabel?`<span class="tag">${esc(p.etapaLabel)}</span>`:''}
+    <span class="mut" style="margin-left:8px">${esc(p.data||'')}</span>
+    <div style="margin-top:8px"><strong>${esc(c.nome||'(sem cliente)')}</strong>${c.doc?` <span class="mut">${esc(c.doc)}</span>`:''}</div>
+    <div class="mut">${esc(end||'(endereço não informado)')}${cid?' · '+esc(cid):''}${c.cep?' · CEP '+esc(c.cep):''}</div>
+    ${c.telefone?`<div class="mut">Tel: ${esc(c.telefone)}</div>`:''}
+    ${itens?`<div class="itens">${itens}</div>`:''}
+    <div class="mut" style="margin-top:6px">Valor: ${money(p.valor)}${p.volumesOmie?` · Omie indica ${p.volumesOmie} volume(s) — confira e digite abaixo`:''}</div>
+  `;
+  $('#rVolumes').value = 0;
+  $('#rObs').value = p.observacao || '';
+  $('#cardResultado').hidden = false;
+}
+
+$('#addRascunho').onclick = () => {
+  if(!pedidoAtual) return;
+  const volumes = Number($('#rVolumes').value) || 0;
+  rascunho.push({ ...pedidoAtual, volumes, observacao: $('#rObs').value || '' });
+  pedidoAtual = null;
+  $('#cardResultado').hidden = true;
+  $('#numPedido').value = '';
+  renderRascunho();
+  toast('Pedido adicionado ao romaneio em montagem');
+};
+
+function renderRascunho(){
+  $('#cardRascunho').hidden = rascunho.length === 0;
+  $('#contagem').textContent = rascunho.length ? rascunho.length + ' pedido(s)' : '';
+  $('#tabRascunho').innerHTML = rascunho.map((d,i) => {
+    const c = d.cliente || {};
+    const dest = [c.endereco, c.bairro].filter(Boolean).join(' - ');
+    const cid = [c.cidade, c.estado].filter(Boolean).join('/');
+    return `<tr>
+      <td><strong>${esc(d.numero)}</strong></td>
+      <td>${esc(c.nome||'(sem cliente)')}</td>
+      <td class="mut">${esc(dest||'—')}${cid?`<div>${esc(cid)}</div>`:''}</td>
+      <td class="center">${d.volumes||0}</td>
+      <td class="right">${money(d.valor)}</td>
+      <td class="right"><button class="btn ghost sm danger" onclick="removerRascunho(${i})">Remover</button></td>
+    </tr>`;
+  }).join('');
+}
+function removerRascunho(i){ rascunho.splice(i,1); renderRascunho(); }
+
+$('#gerar').onclick = async () => {
+  if(!rascunho.length) return;
+  try{
+    const r = await api('/.netlify/functions/romaneios', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ freteiroId: $('#frSel').value || null, data: brDate($('#dataRota').value), paradas: rascunho })
+    });
+    rascunho = []; renderRascunho();
+    toast('Romaneio ' + r.codigo + ' criado');
+    $$('nav button').find(b=>b.dataset.t==='rom').click();
+  }catch(e){ erro(e.message); }
+};
+const brDate = v => { if(!v) return ''; const [a,m,d] = v.split('-'); return `${d}/${m}/${a}`; };
+
+/* ---------------- romaneios ---------------- */
+async function carregarRomaneios(){
+  try{
+    romaneios = await api('/.netlify/functions/romaneios');
+    const el = $('#listaRom');
+    if(!romaneios.length){ el.innerHTML = '<div class="empty">Nenhum romaneio criado ainda.</div>'; return; }
+    el.innerHTML = romaneios.map(r => {
+      const ok = r.paradas.filter(p=>p.status==='entregue').length;
+      const falhou = r.paradas.filter(p=>p.status==='falhou').length;
+      const linkEntrega = location.origin + '/entrega/' + r.id;
+      const linkSeparacao = location.origin + '/separacao/' + r.id;
+      return `<div class="rm">
+        <div class="top">
+          <span class="cod">${esc(r.codigo)}</span>
+          <span class="tag">${esc(r.freteiroNome || 'sem freteiro')}</span>
+          <span class="mut">${esc(r.data)} · ${r.paradas.length} parada(s)</span>
+          <span class="tag ${ok===r.paradas.length && r.paradas.length?'ok':'pend'}">${ok}/${r.paradas.length} entregues${falhou?` · ${falhou} falha(s)`:''}</span>
+          <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn ghost sm" onclick="window.open('/romaneio/${r.id}/imprimir','_blank')">Imprimir</button>
+            <button class="btn ghost sm" onclick="copiar('${linkEntrega}')">Link do freteiro</button>
+            <button class="btn ghost sm" onclick="copiar('${linkSeparacao}')">Link de separação</button>
+            <button class="btn ghost sm danger" onclick="excluirRom('${r.id}')">Excluir</button>
+          </span>
+        </div>
+        <details><summary>Ver paradas</summary>
+          <table style="margin-top:8px"><thead><tr><th>#</th><th>Cliente</th><th>Pedido</th><th class="center">Vol.</th><th>Status</th><th>Recebedor</th></tr></thead><tbody>
+          ${r.paradas.map((p,i)=>{
+            const c=p.cliente||{};
+            const cls = p.status==='entregue'?'ok':p.status==='falhou'?'falhou':'pend';
+            return `<tr><td>${i+1}</td>
+              <td>${esc(c.nome||'—')}<div class="mut">${esc([c.endereco,c.cidade].filter(Boolean).join(' - '))}</div></td>
+              <td>${esc(p.numero)}</td>
+              <td class="center">${p.volumes||0}</td>
+              <td><span class="tag ${cls}">${esc(p.status)}</span>${p.entregue_em?`<div class="mut">${new Date(p.entregue_em).toLocaleString('pt-BR')}</div>`:''}</td>
+              <td class="mut">${esc(p.recebedor||'—')}${p.geo?`<div><a href="https://maps.google.com/?q=${p.geo.lat},${p.geo.lng}" target="_blank">ver no mapa</a></div>`:''}</td>
+            </tr>`;}).join('')}
+          </tbody></table>
+        </details>
+      </div>`;
+    }).join('');
+  }catch(e){ erro(e.message); }
+}
+async function excluirRom(id){
+  if(!confirm('Excluir este romaneio?')) return;
+  await api('/.netlify/functions/romaneios?id='+id, {method:'DELETE'});
+  carregarRomaneios();
+}
+function copiar(t){ navigator.clipboard.writeText(t).then(()=>toast('Link copiado: '+t)); }
+
+/* ---------------- freteiros ---------------- */
+async function carregarFreteiros(){
+  freteiros = await api('/.netlify/functions/freteiros');
+  $('#tabFr tbody').innerHTML = freteiros.length ? freteiros.map(f=>`<tr>
+    <td><strong>${esc(f.nome)}</strong></td><td>${esc(f.veiculo||'—')}</td>
+    <td>${esc(f.placa||'—')}</td><td>${esc(f.telefone||'—')}</td>
+    <td class="right"><button class="btn ghost sm danger" onclick="delFr('${f.id}')">Remover</button></td>
+  </tr>`).join('') : '<tr><td colspan="5"><div class="empty">Nenhum freteiro cadastrado.</div></td></tr>';
+  $('#frSel').innerHTML = '<option value="">— escolher freteiro —</option>' +
+    freteiros.map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join('');
+}
+$('#addFr').onclick = async () => {
+  if(!$('#fNome').value.trim()) return toast('Informe o nome');
+  await api('/.netlify/functions/freteiros',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({nome:$('#fNome').value,veiculo:$('#fVeic').value,placa:$('#fPlaca').value,telefone:$('#fTel').value})});
+  ['#fNome','#fVeic','#fPlaca','#fTel'].forEach(s=>$(s).value='');
+  carregarFreteiros(); toast('Freteiro cadastrado');
+};
+async function delFr(id){ await api('/.netlify/functions/freteiros?id='+id,{method:'DELETE'}); carregarFreteiros(); }
+
+/* ---------------- diagnóstico ---------------- */
+$('#dGo').onclick = async () => {
+  $('#dOut').textContent = 'executando…';
+  try{
+    const r = await api('/.netlify/functions/omie-raw',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path:$('#dPath').value,call:$('#dCall').value,param:JSON.parse($('#dParam').value||'{}')})});
+    $('#dOut').textContent = JSON.stringify(r,null,2);
+  }catch(e){ $('#dOut').textContent = 'ERRO: ' + e.message; }
+};
+
+/* ---------------- init ---------------- */
+function statusHoje(){
+  const iso = d => d.toISOString().slice(0,10);
+  $('#dataRota').value = iso(new Date());
+}
+window.removerRascunho = removerRascunho;
+window.excluirRom = excluirRom;
+window.copiar = copiar;
+window.delFr = delFr;
+
+checarSessao();
+</script>
+</body>
+</html>

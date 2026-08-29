@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Entregas — Romaneio</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#f4f5f7;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#15181d;padding-bottom:30px}
+header{background:#1f6feb;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5}
+header h1{font-size:17px;margin:0}
+header p{margin:3px 0 0;font-size:13px;opacity:.85}
+.prog{height:5px;background:#ffffff40;border-radius:3px;margin-top:10px;overflow:hidden}
+.prog i{display:block;height:100%;background:#fff;width:0;transition:.3s}
+main{padding:12px}
+.p{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.p.done{opacity:.6}
+.p .n{display:inline-block;background:#eef1f5;color:#6b7280;font-weight:700;font-size:12px;padding:2px 8px;border-radius:20px}
+.p h3{margin:8px 0 2px;font-size:16px}
+.p .end{color:#5b6270;font-size:13px}
+.p .itens{margin:10px 0;padding:8px 10px;background:#f7f8fa;border-radius:8px;font-size:13px}
+.acoes{display:flex;gap:8px;margin-top:10px}
+button{flex:1;padding:11px;border:0;border-radius:9px;font:inherit;font-weight:600;cursor:pointer}
+.ok{background:#0f8a4a;color:#fff}
+.no{background:#fff;color:#b91c1c;border:1px solid #f0c9c9}
+.map{background:#fff;color:#1f6feb;border:1px solid #cddffb;text-decoration:none;display:block;text-align:center;padding:11px;border-radius:9px;margin-top:8px;font-weight:600}
+.status{margin-top:10px;font-size:13px;font-weight:600}
+.status.ok{background:none;color:#0f8a4a}
+.status.no{background:none;color:#b91c1c;border:0}
+.empty{text-align:center;padding:40px;color:#6b7280}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="titulo">Carregando…</h1>
+  <p id="sub"></p>
+  <div class="prog"><i id="bar"></i></div>
+</header>
+<main id="lista"></main>
+
+<script>
+const id = location.pathname.split('/').filter(Boolean).pop();
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let rom = null;
+
+async function carregar(){
+  const r = await fetch('/.netlify/functions/romaneio-publico?id='+id);
+  if(!r.ok){ document.getElementById('lista').innerHTML = '<div class="empty">Romaneio não encontrado.</div>'; return; }
+  rom = await r.json();
+  render();
+}
+
+function render(){
+  const ok = rom.paradas.filter(p=>p.status!=='pendente').length;
+  document.getElementById('titulo').textContent = 'Romaneio ' + rom.codigo;
+  document.getElementById('sub').textContent =
+    (rom.freteiro ? rom.freteiro.nome + ' · ' : '') + rom.data + ' · ' + ok + '/' + rom.paradas.length + ' concluídas';
+  document.getElementById('bar').style.width = (rom.paradas.length ? ok/rom.paradas.length*100 : 0) + '%';
+
+  document.getElementById('lista').innerHTML = rom.paradas.map((p,i)=>{
+    const c = p.cliente || {};
+    const end = [c.endereco, c.complemento, c.bairro].filter(Boolean).join(', ');
+    const cid = [c.cidade, c.estado].filter(Boolean).join('/');
+    const q = encodeURIComponent([end, cid, c.cep].filter(Boolean).join(', '));
+    const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.descricao)}</div>`).join('');
+    const feito = p.status !== 'pendente';
+    return `<div class="p ${feito?'done':''}">
+      <span class="n">${i+1} de ${rom.paradas.length}</span>
+      <span class="n">Pedido ${esc(p.numero)} · ${p.volumes||0} vol.</span>
+      <h3>${esc(c.nome||'(sem cliente)')}</h3>
+      <div class="end">${esc(end||'endereço não informado')}${cid?' · '+esc(cid):''}${c.cep?' · '+esc(c.cep):''}</div>
+      ${c.telefone?`<div class="end">Tel: <a href="tel:${esc(c.telefone.replace(/\\D/g,''))}">${esc(c.telefone)}</a></div>`:''}
+      ${itens?`<div class="itens">${itens}</div>`:''}
+      ${end?`<a class="map" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${q}">Abrir rota no mapa</a>`:''}
+      ${feito
+        ? `<div class="status ${p.status==='entregue'?'ok':'no'}">${p.status==='entregue'?'✓ Entregue':'✕ Não entregue'}${p.recebedor?' — '+esc(p.recebedor):''}${p.motivo?' — '+esc(p.motivo):''}<br><small>${p.entregue_em?new Date(p.entregue_em).toLocaleString('pt-BR'):''}</small></div>`
+        : `<div class="acoes">
+             <button class="ok" onclick="marcar(${i},'entregue')">Entreguei</button>
+             <button class="no" onclick="marcar(${i},'falhou')">Não entreguei</button>
+           </div>`}
+    </div>`;
+  }).join('') || '<div class="empty">Sem paradas.</div>';
+}
+
+function geo(){
+  return new Promise(res => {
+    if(!navigator.geolocation) return res(null);
+    navigator.geolocation.getCurrentPosition(
+      p => res({lat:+p.coords.latitude.toFixed(6), lng:+p.coords.longitude.toFixed(6)}),
+      () => res(null), {timeout:6000, enableHighAccuracy:true});
+  });
+}
+
+async function marcar(i, status){
+  const parada = rom.paradas[i];
+  let body = { paradaId: parada.id, status };
+  if(status === 'entregue'){
+    const nome = prompt('Nome de quem recebeu:');
+    if(nome === null) return;
+    body.recebedor = nome;
+  } else {
+    const motivo = prompt('Motivo (ausente, endereço errado, recusou…):');
+    if(motivo === null) return;
+    body.motivo = motivo;
+  }
+  body.geo = await geo();
+  const r = await fetch('/.netlify/functions/parada-status', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+  });
+  if(r.ok){ await carregar(); }
+  else alert('Falha ao salvar. Verifique a conexão.');
+}
+
+carregar();
+</script>
+</body>
+</html>
