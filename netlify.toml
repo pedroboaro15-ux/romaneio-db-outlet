@@ -2,6 +2,12 @@
   publish = "public"
   functions = "netlify/functions"
 
+# SUPABASE_URL aparece de propósito tanto no código (public/index.html, pro navegador)
+# quanto aqui como variável de ambiente (pras Functions) — não é segredo, é só o
+# endereço público do projeto. Sem isso o Netlify bloqueia o deploy achando que vazou.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL"
+
 # Links dos freteiros e estoquistas: /entrega/<id> e /separacao/<id>
 [[redirects]]
   from = "/entrega/*"
