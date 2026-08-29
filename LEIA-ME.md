@@ -108,6 +108,23 @@ A Omie devolve nomes de campo um pouco diferentes conforme a conta/versão. Use 
   - **Ordenar pela melhor rota** — sugere uma ordem mais eficiente; só grava se você clicar em "Confirmar".
   - O ponto de partida usado pra calcular a rota é uma constante `LOJA_LAT`/`LOJA_LNG` no topo do `<script>` de `public/index.html` (hoje aponta pro centro de João Pessoa) — troque pelas coordenadas reais do seu depósito quando souber.
 
+## Freteiros e estoquistas agora fazem login
+
+Antes era só um link, sem senha. Agora cada freteiro e estoquista precisa de um login de verdade, igual ao seu:
+
+1. No Supabase, vá em **Authentication → Users → Add user** e crie um usuário (e-mail + senha) pra cada freteiro e cada estoquista. Você escolhe a senha inicial e passa pra pessoa.
+2. No painel, aba **Freteiros**, cadastre cada freteiro com o **mesmo e-mail** que você usou no passo 1. O mesmo vale pra "Cadastrar estoquista".
+3. Mande pra pessoa o endereço `seusite.netlify.app/entrega` (freteiro) ou `/separacao` (estoquista) — ela loga com o e-mail/senha e já vê as rotas dela (freteiro só vê as próprias; estoquista vê todas).
+4. Os links antigos (`/entrega/<código>`) continuam funcionando, mas agora também pedem login — e um freteiro só consegue abrir romaneio que for dele.
+
+## Endereço fixo da loja e do estoque
+
+O freteiro sempre passa por dois lugares fixos antes de entregar: a **loja** (pegar a nota) e o **estoque** (pegar os móveis, que é onde fica a maior parte). Isso já está fixo no código (`LOJA` e `ESTOQUE`, no topo do `<script>` de `public/index.html` e `public/entrega.html`) — se esses endereços mudarem um dia, é só editar os dois arquivos.
+
+> **Confira**: assumi que a loja (Rua Presidente Venceslau Braz, 1013) fica em **João Pessoa/PB**, já que o estoque é ali perto em Cabedelo — você não tinha dito a cidade. Se estiver errado, me avisa que eu corrijo o endereço no código.
+
+Em cada romaneio agora tem um botão **"Rota no Maps"** (painel) / **"Abrir rota completa no Google Maps"** (página do freteiro) que já monta a rota inteira: loja → estoque → cada entrega, na ordem. O **Waze não aceita várias paradas de uma vez** — essa opção existe só no Google Maps; pra cada parada individual ainda dá pra abrir separado.
+
 ## Mais novidades
 
 - **Assistência técnica**: na aba Buscar pedido → "Assistência técnica", dá pra adicionar uma parada que não vem da Omie — você digita nome, endereço e o que vai ser feito. Entra no romaneio junto com os pedidos normais.
@@ -115,7 +132,11 @@ A Omie devolve nomes de campo um pouco diferentes conforme a conta/versão. Use 
 - **Registrar problema**: em Romaneios → "Ver paradas", cada linha agora tem um jeito de marcar "houve problema" e escolher de quem é a culpa (vendedores, estoque ou freteiro), com um campo de observação. Fica salvo por parada.
 - **Relatório por freteiro**: aba **Relatórios** — mostra quantas paradas cada freteiro levou num período e qual % delas teve problema atribuído a ele. O histórico fica guardado indefinidamente no banco; o período ali é só um filtro de visualização (o padrão é olhar os últimos 30 dias, mas dá pra escolher qualquer intervalo, inclusive mais antigo).
 
-Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as colunas novas (é seguro, só adiciona o que falta).
+- **Assistência técnica ficou mais rápida**: agora você digita o número do pedido (igual à busca normal) e só complementa com o tipo de problema — Cor, Defeito na peça ou Esquecimento. Não precisa mais digitar endereço na mão.
+- **Em rota / Conferido**: em Romaneios → Ver paradas, dá pra marcar uma parada como "em rota" antes do freteiro confirmar a entrega, e depois que ele confirma (entregue/não entregue) você pode marcar como "conferido" — um jeito de dizer "eu revisei essa entrega e está tudo certo". O que exatamente foi conferido (pagamento, reclamação do cliente etc.) fica de fora do app de propósito, é só uma marcação sua.
+- **Datas**: na busca por período e no relatório, o campo "até" não aceita mais uma data anterior ao "de".
+
+Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas novas (é seguro, só adiciona o que falta).
 
 ## Arquivos
 
@@ -128,6 +149,8 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as colunas novas (�
 | `netlify/functions/reordenar-paradas.js` | Grava a nova ordem das paradas de um romaneio |
 | `netlify/functions/parada-problema.js` | Registra problema numa parada e de quem é a culpa |
 | `netlify/functions/relatorio.js` | Estatísticas por freteiro num período |
+| `netlify/functions/minhas-rotas.js` | Lista as rotas de quem logou (freteiro/estoquista/gerente) |
+| `netlify/functions/estoquistas.js` | Cadastro de estoquistas |
 | `netlify/functions/freteiros.js` | Cadastro de freteiros |
 | `netlify/functions/romaneios.js` | Criar/listar/excluir romaneios |
 | `netlify/functions/romaneio-publico.js` | Dados do romaneio pra `entrega.html` e `separacao.html` (sem login) |

@@ -3,10 +3,13 @@
 --
 -- RLS fica ligado e SEM policies de propósito: só as Netlify Functions (com a
 -- service role key) leem/escrevem essas tabelas. O navegador nunca fala direto
--- com o Supabase pra buscar dados — nem o painel, nem o link do freteiro/estoquista.
+-- com o Supabase pra buscar dados — nem o painel, nem as páginas de freteiro/estoquista.
 -- Isso impede que alguém, só por ver a chave pública no código do site, liste
--- todos os seus romaneios/clientes — ele só vê o que a Function deixa (1 romaneio
--- por vez, pelo id imprevisível do link).
+-- todos os seus romaneios/clientes.
+--
+-- Freteiros e estoquistas agora fazem LOGIN (Supabase Auth), igual ao gerente.
+-- O e-mail cadastrado em "freteiros"/"estoquistas" precisa bater com um usuário
+-- criado em Authentication -> Users no Supabase (mesmo processo do seu próprio login).
 
 create extension if not exists "pgcrypto";
 
@@ -19,6 +22,17 @@ create table if not exists public.freteiros (
   criado_em timestamptz default now()
 );
 alter table public.freteiros add column if not exists criado_em timestamptz default now();
+alter table public.freteiros add column if not exists email text default '';
+
+-- Estoquistas fazem login igual ao freteiro, mas não pertencem a um romaneio
+-- específico: quem loga aqui vê todas as rotas (pra separar o que precisar).
+create table if not exists public.estoquistas (
+  id uuid primary key default gen_random_uuid(),
+  nome text not null,
+  email text default '',
+  criado_em timestamptz default now()
+);
+alter table public.estoquistas enable row level security;
 
 create sequence if not exists public.romaneio_seq;
 
@@ -72,6 +86,11 @@ alter table public.paradas add column if not exists geo_prec text default '';
 alter table public.paradas add column if not exists problema boolean default false;
 alter table public.paradas add column if not exists problema_responsavel text default ''; -- 'vendedores' | 'estoque' | 'freteiro'
 alter table public.paradas add column if not exists problema_obs text default '';
+
+-- status agora também aceita 'em_rota' (pedido saiu pra entrega), além de
+-- 'pendente' | 'entregue' | 'falhou'. conferido = você revisou depois que o
+-- freteiro confirmou (pagamento/reclamação ficam fora do app de propósito).
+alter table public.paradas add column if not exists conferido boolean default false;
 
 create index if not exists paradas_romaneio_idx on public.paradas(romaneio_id);
 

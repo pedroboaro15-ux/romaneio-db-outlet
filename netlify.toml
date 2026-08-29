@@ -9,9 +9,20 @@
   SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL"
 
 # Links dos freteiros e estoquistas: /entrega/<id> e /separacao/<id>
+# (sem id, /entrega e /separacao mostram a lista de rotas de quem logou)
+[[redirects]]
+  from = "/entrega"
+  to = "/entrega.html"
+  status = 200
+
 [[redirects]]
   from = "/entrega/*"
   to = "/entrega.html"
+  status = 200
+
+[[redirects]]
+  from = "/separacao"
+  to = "/separacao.html"
   status = 200
 
 [[redirects]]
