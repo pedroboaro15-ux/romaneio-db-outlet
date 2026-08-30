@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Entrar — Romaneio</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#f4f5f7;font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#15181d;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.box{max-width:340px;width:100%;background:#fff;border-radius:16px;padding:28px 22px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+h1{font-size:20px;text-align:center;margin:0 0 22px}
+.papel{display:flex;flex-direction:column;gap:14px;width:100%;padding:22px;border:2px solid #e3e6ea;border-radius:14px;background:#fff;margin-bottom:14px;cursor:pointer;text-align:center;font-size:18px;font-weight:700;color:#15181d}
+.papel .emoji{font-size:40px;display:block}
+.papel:active{background:#f4f6f8}
+input{width:100%;padding:14px;border:1px solid #ddd;border-radius:10px;font:inherit;margin-bottom:12px;box-sizing:border-box;font-size:17px}
+button.entrar{width:100%;padding:15px;border:0;border-radius:10px;font:inherit;font-weight:700;font-size:17px;cursor:pointer;background:#1f6feb;color:#fff}
+.voltar{background:none;border:0;color:#6b7280;font-size:14px;margin-bottom:14px;cursor:pointer;padding:0}
+.err{background:#fdeaea;color:#7f1d1d;padding:10px 12px;border-radius:8px;font-size:14px;margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<div class="box">
+  <div id="tela1">
+    <h1>Você é...</h1>
+    <button class="papel" onclick="escolher('freteiro')"><span class="emoji">🚚</span>Freteiro</button>
+    <button class="papel" onclick="escolher('estoquista')"><span class="emoji">📦</span>Estoquista</button>
+  </div>
+
+  <div id="tela2" hidden>
+    <button class="voltar" onclick="voltar()">◀ Voltar</button>
+    <h1 id="tituloPapel"></h1>
+    <div id="erro"></div>
+    <input id="telefone" type="tel" placeholder="Seu telefone" autocomplete="tel">
+    <button class="entrar" id="btnEntrar">Entrar</button>
+  </div>
+</div>
+
+<script>
+let papel = null;
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function escolher(p){
+  papel = p;
+  document.getElementById('tela1').hidden = true;
+  document.getElementById('tela2').hidden = false;
+  document.getElementById('tituloPapel').textContent = p === 'freteiro' ? '🚚 Freteiro' : '📦 Estoquista';
+  document.getElementById('telefone').value = '';
+  document.getElementById('erro').innerHTML = '';
+  document.getElementById('telefone').focus();
+}
+function voltar(){
+  document.getElementById('tela1').hidden = false;
+  document.getElementById('tela2').hidden = true;
+}
+
+document.getElementById('btnEntrar').onclick = async () => {
+  const telefone = document.getElementById('telefone').value.trim();
+  document.getElementById('erro').innerHTML = '';
+  if(!telefone){ document.getElementById('erro').innerHTML = '<div class="err">Digite o telefone</div>'; return; }
+  try{
+    const r = await fetch('/.netlify/functions/equipe-login', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ telefone, tipo: papel })
+    });
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.erro || 'não foi possível entrar');
+    localStorage.setItem('equipeToken', j.token);
+    location.href = papel === 'freteiro' ? '/entrega' : '/separacao';
+  }catch(e){ document.getElementById('erro').innerHTML = '<div class="err">'+esc(e.message)+'</div>'; }
+};
+</script>
+</body>
+</html>

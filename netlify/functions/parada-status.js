@@ -36,13 +36,22 @@ exports.handler = async event => {
 
   const patch = {};
   if (b.status) { patch.status = b.status; }
-  if (b.status === 'entregue') { patch.entregue_em = new Date().toISOString(); patch.recebedor = b.recebedor || ''; }
+  if (b.status === 'entregue') {
+    patch.entregue_em = new Date().toISOString();
+    patch.recebedor = b.recebedor || '';
+    const daqui3dias = new Date(); daqui3dias.setDate(daqui3dias.getDate() + 3);
+    patch.revisao_em = daqui3dias.toISOString().slice(0, 10);
+  }
   if (b.status === 'falhou') patch.motivo = b.motivo || '';
   if (b.lat != null) patch.lat = b.lat;
   if (b.lng != null) patch.lng = b.lng;
   if (b.conferido != null) {
     if (quem.role !== 'admin') return json(403, { erro: 'só o gerente pode marcar como conferido' });
     patch.conferido = !!b.conferido;
+  }
+  if (b.revisaoFeita != null) {
+    if (quem.role !== 'admin') return json(403, { erro: 'só o gerente marca a revisão' });
+    patch.revisao_feita = !!b.revisaoFeita;
   }
 
   const { data: atualizada, error } = await sb.from('paradas').update(patch).eq('id', b.paradaId).select().single();

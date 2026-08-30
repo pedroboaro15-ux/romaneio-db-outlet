@@ -23,11 +23,12 @@ main{padding:12px}
 button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:700;cursor:pointer;font-size:15px}
 .ok{background:#0f8a4a;color:#fff}
 .no{background:#fff;color:#b91c1c;border:2px solid #f0c9c9}
-.contatos{display:flex;gap:10px;margin-top:12px}
-.botaogrande{flex:1;text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:16px 8px;border-radius:12px;font-weight:700;font-size:15px;color:#fff}
+.contatos{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.botaogrande{flex:1;min-width:88px;text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:14px 6px;border-radius:12px;font-weight:700;font-size:13px;color:#fff}
 .botaogrande .emoji{font-size:28px}
 .bmapa{background:#1f6feb}
 .btel{background:#0f8a4a}
+.bwpp{background:#25d366}
 .maprota{background:#7c3aed;color:#fff;text-decoration:none;display:block;text-align:center;padding:14px;border-radius:10px;margin:0 12px 12px;font-weight:700;font-size:15px}
 .status{margin-top:10px;font-size:15px;font-weight:700}
 .status.ok{background:none;color:#0f8a4a}
@@ -46,10 +47,9 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 <body>
 
 <div id="tela-login" class="loginbox" hidden>
-  <h3 style="margin-top:0">Entrar</h3>
+  <h3 style="margin-top:0">Entrar — Freteiro</h3>
   <div id="erroLogin"></div>
-  <input id="lTel" type="tel" placeholder="seu telefone" autocomplete="username">
-  <input id="lPin" type="tel" inputmode="numeric" placeholder="seu PIN" autocomplete="current-password">
+  <input id="lTel" type="tel" placeholder="seu telefone" autocomplete="tel">
   <button id="btnLogin" style="width:100%">Entrar</button>
 </div>
 
@@ -87,16 +87,16 @@ function checarSessao(){
   else { document.getElementById('tela-login').hidden = false; document.getElementById('tela-app').hidden = true; }
 }
 document.getElementById('btnLogin').onclick = async () => {
-  const telefone = document.getElementById('lTel').value.trim(), pin = document.getElementById('lPin').value.trim();
+  const telefone = document.getElementById('lTel').value.trim();
   document.getElementById('erroLogin').innerHTML = '';
   try{
-    const r = await api('/.netlify/functions/equipe-login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ telefone, pin }) });
+    const r = await api('/.netlify/functions/equipe-login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ telefone, tipo: 'freteiro' }) });
     localStorage.setItem('equipeToken', r.token);
     checarSessao();
   }catch(e){ document.getElementById('erroLogin').innerHTML = '<div class="err">'+esc(e.message)+'</div>'; }
 };
 
-document.getElementById('btnSair').onclick = () => { localStorage.removeItem('equipeToken'); checarSessao(); };
+document.getElementById('btnSair').onclick = () => { localStorage.removeItem('equipeToken'); location.href = '/equipe'; };
 
 async function iniciar(){
   if(id){ await carregar(); }
@@ -157,13 +157,13 @@ function render(){
     const cid = [c.cidade, c.estado].filter(Boolean).join('/');
     const q = encodeURIComponent([end, cid, c.cep].filter(Boolean).join(', '));
     const telLimpo = (c.telefone||'').replace(/\D/g,'');
-    const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.descricao)}</div>`).join('');
+    const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.descricao)}${it.cor?` — <b>${esc(it.cor)}</b>`:''}</div>`).join('');
     const feito = p.status === 'entregue' || p.status === 'falhou';
     const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
     const fotos = (p.fotos||[]).map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}"></a>`).join('');
     return `<div class="p ${feito?'done':''}">
       <span class="n">${i+1} de ${rom.paradas.length}</span>
-      <span class="n">${rotulo}${p.numero?' '+esc(p.numero):''} · ${p.volumes||0} vol.${p.cor?' · '+esc(p.cor):''}</span>
+      <span class="n">${rotulo}${p.numero?' '+esc(p.numero):''} · ${p.volumes||0} vol.</span>
       ${p.status==='em_rota'?'<span class="n">Em rota</span>':''}
       <h3>${esc(c.nome||'(sem cliente)')}</h3>
       <div class="end">${esc(end||'endereço não informado')}${cid?' · '+esc(cid):''}${c.cep?' · '+esc(c.cep):''}</div>
@@ -171,6 +171,7 @@ function render(){
       <div class="contatos">
         ${end?`<a class="botaogrande bmapa" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${q}"><span class="emoji">📍</span>Mapa</a>`:''}
         ${telLimpo?`<a class="botaogrande btel" href="tel:${telLimpo}"><span class="emoji">📞</span>Ligar</a>`:''}
+        ${telLimpo?`<a class="botaogrande bwpp" target="_blank" href="https://wa.me/55${telLimpo}"><span class="emoji">💬</span>WhatsApp</a>`:''}
       </div>
       <div class="fotos">${fotos}</div>
       <button class="btnfoto" onclick="document.getElementById('foto-${p.id}').click()">📷 Enviar foto</button>

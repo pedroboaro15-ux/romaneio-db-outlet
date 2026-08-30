@@ -1,5 +1,5 @@
-// POST /.netlify/functions/equipe-login  { telefone, pin }
-// Login do freteiro/estoquista. Sem senha de verdade — telefone (cadastrado por você) + PIN.
+// POST /.netlify/functions/equipe-login  { telefone, tipo: 'freteiro'|'estoquista' }
+// Sem senha/PIN de propósito: só o telefone cadastrado por você já identifica a pessoa.
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 const { criarSessao, soDigitos } = require('./lib/sessao');
@@ -10,24 +10,15 @@ exports.handler = async event => {
   try { b = JSON.parse(event.body || '{}'); } catch (e) { return json(400, { erro: 'JSON inválido' }); }
 
   const telefone = soDigitos(b.telefone);
-  const pin = String(b.pin || '').trim();
-  if (!telefone || !pin) return json(400, { erro: 'informe telefone e PIN' });
+  const tipo = b.tipo === 'estoquista' ? 'estoquista' : 'freteiro';
+  if (!telefone) return json(400, { erro: 'informe o telefone' });
 
   const sb = admin();
+  const tabela = tipo === 'estoquista' ? 'estoquistas' : 'freteiros';
+  const { data: pessoas } = await sb.from(tabela).select('id, nome, telefone');
+  const pessoa = (pessoas || []).find(p => soDigitos(p.telefone) === telefone && telefone);
+  if (!pessoa) return json(401, { erro: `telefone não cadastrado como ${tipo}` });
 
-  const { data: freteiros } = await sb.from('freteiros').select('id, nome, telefone, pin');
-  const fr = (freteiros || []).find(f => soDigitos(f.telefone) === telefone && String(f.pin || '') === pin && pin);
-  if (fr) {
-    const token = await criarSessao('freteiro', fr.id, fr.nome);
-    return json(200, { token, tipo: 'freteiro', nome: fr.nome });
-  }
-
-  const { data: estoquistas } = await sb.from('estoquistas').select('id, nome, telefone, pin');
-  const es = (estoquistas || []).find(e => soDigitos(e.telefone) === telefone && String(e.pin || '') === pin && pin);
-  if (es) {
-    const token = await criarSessao('estoquista', es.id, es.nome);
-    return json(200, { token, tipo: 'estoquista', nome: es.nome });
-  }
-
-  return json(401, { erro: 'telefone ou PIN incorretos' });
+  const token = await criarSessao(tipo, pessoa.id, pessoa.nome);
+  return json(200, { token, tipo, nome: pessoa.nome });
 };
