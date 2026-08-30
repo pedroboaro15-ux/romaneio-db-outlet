@@ -13,13 +13,13 @@ exports.handler = async event => {
   if (event.httpMethod === 'GET') {
     const { data, error } = await sb
       .from('romaneios')
-      .select('*, freteiros(nome), paradas(*)')
+      .select('*, freteiros(nome), paradas(*, parada_fotos(*))')
       .order('criado_em', { ascending: false });
     if (error) return json(500, { erro: error.message });
     const out = data.map(r => ({
       ...r,
       freteiroNome: r.freteiros ? r.freteiros.nome : null,
-      paradas: (r.paradas || []).sort((a, b) => a.ordem - b.ordem)
+      paradas: (r.paradas || []).map(p => ({ ...p, fotos: p.parada_fotos || [] })).sort((a, b) => a.ordem - b.ordem)
     }));
     return json(200, out);
   }
@@ -42,6 +42,7 @@ exports.handler = async event => {
       peso: Number(p.peso) || 0,
       valor: Number(p.valor) || 0,
       observacao: p.observacao || '',
+      cor: p.cor || '',
       status: 'pendente'
     });
 
@@ -67,9 +68,13 @@ exports.handler = async event => {
         if (eIns) return json(500, { erro: eIns.message });
       }
 
-      const { data: rom, error: eFinal } = await sb.from('romaneios').select('*, freteiros(nome), paradas(*)').eq('id', q.id).single();
+      const { data: rom, error: eFinal } = await sb.from('romaneios').select('*, freteiros(nome), paradas(*, parada_fotos(*))').eq('id', q.id).single();
       if (eFinal) return json(500, { erro: eFinal.message });
-      return json(200, { ...rom, freteiroNome: rom.freteiros ? rom.freteiros.nome : null, paradas: (rom.paradas || []).sort((a, b2) => a.ordem - b2.ordem) });
+      return json(200, {
+        ...rom,
+        freteiroNome: rom.freteiros ? rom.freteiros.nome : null,
+        paradas: (rom.paradas || []).map(p => ({ ...p, fotos: p.parada_fotos || [] })).sort((a, b2) => a.ordem - b2.ordem)
+      });
     }
 
     // Criar romaneio novo.

@@ -139,6 +139,11 @@ Em cada romaneio agora tem um botão **"Rota no Maps"** (painel) / **"Abrir rota
 - **Mandar no WhatsApp com 1 clique**: cada romaneio tem um botão "Mandar no WhatsApp" que já abre a conversa com o freteiro (usa o telefone cadastrado) com a mensagem e o link prontos — só falta clicar em Enviar. Não é automático de verdade (isso exigiria a API paga do WhatsApp Business), mas tira o trabalho de copiar/colar.
 - **Exportar relatório em CSV**: na aba Relatórios, depois de buscar um período, aparece um botão "Exportar CSV" — abre certinho no Excel/Google Sheets.
 - **Separação por volume, na ordem de carregar o caminhão**: a página do estoquista (`/separacao`) virou um passo a passo. Ela mostra as paradas **de trás pra frente** (a última entrega da rota aparece primeiro) — assim o que for carregado primeiro no caminhão é o que sai por último, e a primeira entrega fica na frente pra tirar mais fácil. Pra cada parada, o estoquista confirma **um volume de cada vez** (ex: 2 módulos de sofá = 2 confirmações) até bater o total, e o app já avança pra próxima sozinho.
+- **Cor do móvel**: ao adicionar um pedido (busca por número ou na lista de rascunho), agora tem um campo de cor com sugestões (Branco, Off, Amadeirado) mas você pode digitar qualquer outra. O estoquista vê essa cor em destaque na tela de separação, pra conferir antes de carregar.
+- **Fotos**: freteiro e estoquista têm um botão "📷 Enviar foto" em cada parada (usa a câmera do celular direto). As fotos ficam guardadas no Storage do Supabase e aparecem tanto pra eles quanto pra você, no painel, em "Ver paradas" (miniaturas clicáveis).
+- **Páginas do freteiro e do estoquista ficaram maiores e mais visuais**: nome do cliente bem grande, e dois botões grandes com ícone — 📍 **Mapa** (abre o endereço no Google Maps) e 📞 **Ligar** (liga direto pro cliente) — pensados pra quem não tem facilidade de leitura.
+
+> **Um passo a mais no Supabase**: o `schema.sql` agora também cria um "bucket" de Storage chamado `fotos` (público, mas com caminhos por código aleatório — ninguém acha uma foto sem o link exato). Isso já vem dentro do próprio script, não precisa mexer em nada separado — só rodar o `schema.sql` de novo.
 
 Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas novas (é seguro, só adiciona o que falta).
 
@@ -156,6 +161,7 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas 
 | `netlify/functions/minhas-rotas.js` | Lista as rotas de quem logou (freteiro/estoquista/gerente) |
 | `netlify/functions/equipe-login.js` | Login por telefone+PIN (freteiro/estoquista) |
 | `netlify/functions/parada-separar.js` | Estoquista confirma volume a volume |
+| `netlify/functions/foto-upload.js` | Recebe foto do freteiro/estoquista e guarda no Storage |
 | `netlify/functions/estoquistas.js` | Cadastro de estoquistas |
 | `netlify/functions/freteiros.js` | Cadastro de freteiros |
 | `netlify/functions/romaneios.js` | Criar/listar/excluir romaneios |

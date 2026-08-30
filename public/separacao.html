@@ -26,6 +26,12 @@ main{padding:12px}
 .vol b{display:block;font-size:30px;color:#0f8a4a;line-height:1.2}
 .vol span{font-size:12px;color:#4a7a63;text-transform:uppercase;letter-spacing:.04em}
 .obs{margin-top:8px;font-size:13px;font-style:italic;color:#5b6270}
+.cordestaque{margin-top:10px;background:#eef1f5;border-radius:10px;padding:12px;text-align:center}
+.cordestaque b{display:block;font-size:22px;color:#15181d}
+.cordestaque span{font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em}
+.fotos{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.fotos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #ddd}
+.btnfoto{background:#7c3aed;color:#fff;margin-top:10px}
 button{padding:14px;border:0;border-radius:9px;font:inherit;font-weight:700;cursor:pointer;width:100%}
 .ok{background:#0f8a4a;color:#fff;font-size:16px}
 .nav{display:flex;gap:8px;margin-top:10px}
@@ -161,6 +167,7 @@ function render(){
   const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
   const total_vol = Number(p.volumes) || 0;
   const confirmados = Math.min(p.volumes_confirmados || 0, total_vol);
+  const fotos = (p.fotos||[]).map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}"></a>`).join('');
 
   document.getElementById('lista').innerHTML = `
     <div class="p">
@@ -170,7 +177,11 @@ function render(){
       <h3>${esc(c.nome||'(sem cliente)')}</h3>
       ${[c.cidade,c.estado].filter(Boolean).length?`<div class="cli">${esc([c.cidade,c.estado].filter(Boolean).join('/'))}</div>`:''}
       ${itens?`<div class="itens">${itens}</div>`:''}
+      ${p.cor?`<div class="cordestaque"><b>${esc(p.cor)}</b><span>cor do móvel — confira antes de carregar</span></div>`:''}
       ${p.observacao?`<div class="obs">Obs: ${esc(p.observacao)}</div>`:''}
+      <div class="fotos">${fotos}</div>
+      <button class="btnfoto" onclick="document.getElementById('foto-${p.id}').click()">📷 Enviar foto</button>
+      <input type="file" id="foto-${p.id}" accept="image/*" capture="environment" style="display:none" onchange="enviarFoto('${p.id}', this.files[0])">
       ${total_vol > 0 ? `
         <div class="vol"><b>${confirmados} / ${total_vol}</b><span>volumes confirmados</span></div>
         ${confirmados < total_vol
@@ -200,8 +211,37 @@ async function confirmarVolume(paradaId){
     render();
   }catch(e){ alert('Falha ao salvar: ' + e.message); }
 }
+function redimensionarImagem(file, maxLado){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let { width, height } = img;
+      if(width > height && width > maxLado){ height = Math.round(height * maxLado/width); width = maxLado; }
+      else if(height > maxLado){ width = Math.round(width * maxLado/height); height = maxLado; }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+async function enviarFoto(paradaId, file){
+  if(!file) return;
+  try{
+    const imagemBase64 = await redimensionarImagem(file, 1280);
+    await api('/.netlify/functions/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64 }) });
+    await carregar();
+  }catch(e){ alert('Falha ao enviar a foto: ' + e.message); }
+}
+
 window.irPara = irPara;
 window.confirmarVolume = confirmarVolume;
+window.enviarFoto = enviarFoto;
 
 checarSessao();
 </script>

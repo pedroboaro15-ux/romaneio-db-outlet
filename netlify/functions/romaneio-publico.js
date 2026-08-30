@@ -15,7 +15,7 @@ exports.handler = async event => {
   const sb = admin();
   const { data: rom, error } = await sb
     .from('romaneios')
-    .select('*, freteiros(id, nome, veiculo, placa, telefone), paradas(*)')
+    .select('*, freteiros(id, nome, veiculo, placa, telefone), paradas(*, parada_fotos(*))')
     .eq('id', id)
     .maybeSingle();
   if (error) return json(500, { erro: error.message });
@@ -31,6 +31,8 @@ exports.handler = async event => {
     data: rom.data_rota,
     status: rom.status,
     freteiro: rom.freteiros || null,
-    paradas: (rom.paradas || []).sort((a, b) => a.ordem - b.ordem)
+    paradas: (rom.paradas || [])
+      .map(p => ({ ...p, fotos: p.parada_fotos || [] }))
+      .sort((a, b) => a.ordem - b.ordem)
   });
 };

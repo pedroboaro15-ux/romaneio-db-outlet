@@ -111,7 +111,27 @@ alter table public.paradas add column if not exists volumes_confirmados int defa
 alter table public.paradas add column if not exists separado boolean default false;
 alter table public.paradas add column if not exists separado_em timestamptz;
 
+-- Cor do móvel: 'branco' | 'off' | 'amadeirado' | qualquer texto livre digitado por você.
+alter table public.paradas add column if not exists cor text default '';
+
 create index if not exists paradas_romaneio_idx on public.paradas(romaneio_id);
+
+-- Fotos que o freteiro/estoquista mandam de uma parada (ida pro Storage do Supabase).
+create table if not exists public.parada_fotos (
+  id uuid primary key default gen_random_uuid(),
+  parada_id uuid not null references public.paradas(id) on delete cascade,
+  url text not null,
+  enviado_por text default '',
+  criado_em timestamptz default now()
+);
+alter table public.parada_fotos enable row level security;
+create index if not exists parada_fotos_parada_idx on public.parada_fotos(parada_id);
+
+-- Bucket de Storage pras fotos. Público (mas os caminhos usam uuid, então não são
+-- adivinháveis) pra não precisar gerenciar link assinado com validade.
+insert into storage.buckets (id, name, public)
+values ('fotos', 'fotos', true)
+on conflict (id) do nothing;
 
 create table if not exists public.geo_cache (
   chave text primary key,
