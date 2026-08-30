@@ -33,9 +33,10 @@ exports.handler = async event => {
 
   const { data: pub } = sb.storage.from('fotos').getPublicUrl(nomeArquivo);
 
+  const tipo = b.tipo === 'carro' ? 'carro' : 'produto';
   const { data: foto, error: eIns } = await sb
     .from('parada_fotos')
-    .insert({ parada_id: b.paradaId, url: pub.publicUrl, enviado_por: quem.nome || quem.role })
+    .insert({ parada_id: b.paradaId, url: pub.publicUrl, tipo, enviado_por: quem.nome || quem.role })
     .select()
     .single();
   if (eIns) return json(500, { erro: eIns.message });

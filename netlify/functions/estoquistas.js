@@ -20,7 +20,7 @@ exports.handler = async event => {
     let b;
     try { b = JSON.parse(event.body || '{}'); } catch (e) { return json(400, { erro: 'JSON inválido' }); }
     if (!b.nome || !b.nome.trim()) return json(400, { erro: 'informe o nome' });
-    const row = { nome: b.nome.trim(), telefone: b.telefone || '', pin: String(b.pin || '').trim() };
+    const row = { nome: b.nome.trim(), telefone: b.telefone || '' };
     if (b.id) row.id = b.id;
     const { data, error } = await sb.from('estoquistas').upsert(row).select().single();
     if (error) return json(500, { erro: error.message });

@@ -7,8 +7,9 @@
 -- Isso impede que alguém, só por ver a chave pública no código do site, liste
 -- todos os seus romaneios/clientes.
 --
--- Freteiros e estoquistas fazem login por TELEFONE + PIN (não é Supabase Auth,
--- é uma sessão própria guardada em "sessoes_equipe"). Só o gerente usa Supabase Auth.
+-- Freteiros e estoquistas fazem login só por TELEFONE (sem senha/PIN — escolha
+-- consciente pra facilitar o uso; não é Supabase Auth, é sessão própria em
+-- "sessoes_equipe"). Só o gerente usa Supabase Auth de verdade.
 
 create extension if not exists "pgcrypto";
 
@@ -111,8 +112,19 @@ alter table public.paradas add column if not exists volumes_confirmados int defa
 alter table public.paradas add column if not exists separado boolean default false;
 alter table public.paradas add column if not exists separado_em timestamptz;
 
--- Cor do móvel: 'branco' | 'off' | 'amadeirado' | qualquer texto livre digitado por você.
+-- Cor do móvel: hoje fica por ITEM (dentro do jsonb "itens", campo "cor" de cada um) —
+-- essa coluna é legado de uma versão anterior, mantida só por segurança.
 alter table public.paradas add column if not exists cor text default '';
+
+-- Motivo estruturado do problema (a lista de opções depende de quem é o responsável —
+-- ver ARRAYS no código de netlify/functions/parada-problema.js). problema_obs continua
+-- livre, pra observação extra.
+alter table public.paradas add column if not exists problema_motivo text default '';
+
+-- Revisão pós-entrega: agendada automaticamente uns dias depois de "entregue", pra você
+-- ligar e checar se está tudo bem antes que vire uma assistência.
+alter table public.paradas add column if not exists revisao_em date;
+alter table public.paradas add column if not exists revisao_feita boolean default false;
 
 create index if not exists paradas_romaneio_idx on public.paradas(romaneio_id);
 
@@ -121,10 +133,12 @@ create table if not exists public.parada_fotos (
   id uuid primary key default gen_random_uuid(),
   parada_id uuid not null references public.paradas(id) on delete cascade,
   url text not null,
+  tipo text default 'produto', -- 'produto' | 'carro'
   enviado_por text default '',
   criado_em timestamptz default now()
 );
 alter table public.parada_fotos enable row level security;
+alter table public.parada_fotos add column if not exists tipo text default 'produto';
 create index if not exists parada_fotos_parada_idx on public.parada_fotos(parada_id);
 
 -- Bucket de Storage pras fotos. Público (mas os caminhos usam uuid, então não são

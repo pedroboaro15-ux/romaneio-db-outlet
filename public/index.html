@@ -30,13 +30,13 @@ h3{font-size:13px;margin:0 0 8px;color:var(--mut);text-transform:uppercase;lette
 label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px;font-weight:500}
 input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
 input:focus,select:focus{outline:2px solid var(--brand);outline-offset:-1px;border-color:transparent}
-button.btn{background:var(--brand);color:var(--brand-ink);border:0;padding:9px 16px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer}
-button.btn:hover{filter:brightness(1.08)}
+button.btn,a.btn{background:var(--brand);color:var(--brand-ink);border:0;padding:9px 16px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+button.btn:hover,a.btn:hover{filter:brightness(1.08)}
 button.btn:disabled{opacity:.45;cursor:not-allowed}
-button.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
-button.ghost:hover{background:#f4f6f8;filter:none}
-button.sm{padding:5px 10px;font-size:12px;font-weight:500}
-button.danger{color:var(--bad);border-color:#f0c9c9;background:#fff}
+button.ghost,a.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+button.ghost:hover,a.ghost:hover{background:#f4f6f8;filter:none}
+button.sm,a.sm{padding:5px 10px;font-size:12px;font-weight:500}
+button.danger,a.danger{color:var(--bad);border-color:#f0c9c9;background:#fff}
 .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
 .row>div{flex:1;min-width:130px}
 .row>.auto{flex:0 0 auto;min-width:0}
@@ -94,6 +94,7 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
   <nav>
     <button data-t="pedido" class="on">Buscar pedido</button>
     <button data-t="rom">Romaneios</button>
+    <button data-t="revisao">Revisão</button>
     <button data-t="fret">Freteiros</button>
     <button data-t="rel">Relatórios</button>
     <button data-t="diag">Diagnóstico</button>
@@ -194,10 +195,6 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
           </select>
         </div>
         <div id="wVolumes"><label>Quantidade de volumes</label><input id="rVolumes" type="number" min="0" value="0"></div>
-        <div><label>Cor do móvel</label>
-          <input id="rCor" list="coresPadrao" placeholder="Branco, Off, Amadeirado...">
-          <datalist id="coresPadrao"><option value="Branco"><option value="Off"><option value="Amadeirado"></datalist>
-        </div>
         <div style="flex:2"><label>Observação (opcional)</label><input id="rObs"></div>
         <div class="auto"><button class="btn" id="addRascunho">Adicionar ao romaneio</button></div>
       </div>
@@ -227,39 +224,58 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
 
   <!-- ===================== ROMANEIOS ===================== -->
   <section id="t-rom" hidden>
-    <div class="card"><h2>Romaneios</h2><div id="listaRom"></div></div>
+    <div class="card">
+      <h2>Romaneios</h2>
+      <div class="subnav" id="filtroRom">
+        <button data-filtro="ativos" class="on">Em rota</button>
+        <button data-filtro="concluidos">Entregues</button>
+        <button data-filtro="todos">Todos</button>
+      </div>
+      <div id="listaRom"></div>
+    </div>
+  </section>
+
+  <!-- ===================== REVISÃO ===================== -->
+  <section id="t-revisao" hidden>
+    <div class="card">
+      <h2>Revisão pós-entrega</h2>
+      <p class="mut" style="margin-top:-6px">Toda entrega confirmada agenda uma revisão pra uns dias depois — uma ligação rápida pra ver se está tudo bem, antes que vire uma assistência.</p>
+      <div id="listaRevisao"></div>
+    </div>
   </section>
 
   <!-- ===================== FRETEIROS ===================== -->
   <section id="t-fret" hidden>
     <div class="card">
-      <h2>Cadastrar freteiro</h2>
-      <p class="mut" style="margin-top:-6px">O freteiro loga em /entrega com o telefone e o PIN que você definir aqui.</p>
+      <h2 id="tituloFr">Cadastrar freteiro</h2>
+      <p class="mut" style="margin-top:-6px">O freteiro entra em /equipe com esse telefone — sem senha.</p>
+      <input type="hidden" id="fId">
       <div class="row">
         <div><label>Nome</label><input id="fNome" placeholder="João Silva"></div>
         <div><label>Telefone (login)</label><input id="fTel" placeholder="(11) 99999-0000"></div>
-        <div><label>PIN (login)</label><input id="fPin" placeholder="4 a 6 números" maxlength="6"></div>
         <div><label>Veículo</label><input id="fVeic" placeholder="Fiorino"></div>
         <div><label>Placa</label><input id="fPlaca" placeholder="ABC1D23"></div>
         <div class="auto"><button class="btn" id="addFr">Adicionar</button></div>
+        <div class="auto"><button class="btn ghost" id="cancelarFr" hidden>Cancelar edição</button></div>
       </div>
     </div>
     <div class="card" style="padding:0"><div style="overflow-x:auto"><table id="tabFr">
-      <thead><tr><th>Nome</th><th>Telefone</th><th>PIN</th><th>Veículo</th><th>Placa</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>Telefone</th><th>Veículo</th><th>Placa</th><th></th></tr></thead>
       <tbody></tbody></table></div></div>
 
     <div class="card">
-      <h2>Cadastrar estoquista</h2>
-      <p class="mut" style="margin-top:-6px">Estoquista loga em /separacao com telefone + PIN e vê todas as rotas (não precisa vincular a um romaneio específico).</p>
+      <h2 id="tituloEs">Cadastrar estoquista</h2>
+      <p class="mut" style="margin-top:-6px">Estoquista entra em /equipe com esse telefone e vê todas as rotas (não precisa vincular a um romaneio específico).</p>
+      <input type="hidden" id="eId">
       <div class="row">
         <div><label>Nome</label><input id="eNome" placeholder="Maria"></div>
         <div><label>Telefone (login)</label><input id="eTel" placeholder="(11) 99999-0000"></div>
-        <div><label>PIN (login)</label><input id="ePin" placeholder="4 a 6 números" maxlength="6"></div>
         <div class="auto"><button class="btn" id="addEs">Adicionar</button></div>
+        <div class="auto"><button class="btn ghost" id="cancelarEs" hidden>Cancelar edição</button></div>
       </div>
     </div>
     <div class="card" style="padding:0"><div style="overflow-x:auto"><table id="tabEs">
-      <thead><tr><th>Nome</th><th>Telefone</th><th>PIN</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>Telefone</th><th></th></tr></thead>
       <tbody></tbody></table></div></div>
   </section>
 
@@ -300,6 +316,7 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
 </main>
 </div>
 
+<datalist id="coresPadrao"><option value="Branco"><option value="Off"><option value="Amadeirado"></datalist>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -371,16 +388,23 @@ $('#sair').onclick = async () => { await sb.auth.signOut(); mostrarLogin(); };
 /* ---------------- navegação ---------------- */
 $$('nav button').forEach(b => b.onclick = () => {
   $$('nav button').forEach(x=>x.classList.toggle('on', x===b));
-  ['pedido','rom','fret','rel','diag'].forEach(t => $('#t-'+t).hidden = t !== b.dataset.t);
+  ['pedido','rom','revisao','fret','rel','diag'].forEach(t => $('#t-'+t).hidden = t !== b.dataset.t);
   erro('');
   if(b.dataset.t==='rom') carregarRomaneios();
+  if(b.dataset.t==='revisao') carregarRevisoes();
   if(b.dataset.t==='rel') $('#relBuscar').click();
 });
-$$('.subnav button').forEach(b => b.onclick = () => {
-  $$('.subnav button').forEach(x=>x.classList.toggle('on', x===b));
+$$('#t-pedido .subnav button').forEach(b => b.onclick = () => {
+  $$('#t-pedido .subnav button').forEach(x=>x.classList.toggle('on', x===b));
   $('#modo-numero').hidden = b.dataset.m !== 'numero';
   $('#modo-periodo').hidden = b.dataset.m !== 'periodo';
   $('#modo-assistencia').hidden = b.dataset.m !== 'assistencia';
+});
+let filtroRom = 'ativos';
+$$('#filtroRom button').forEach(b => b.onclick = () => {
+  $$('#filtroRom button').forEach(x=>x.classList.toggle('on', x===b));
+  filtroRom = b.dataset.filtro;
+  renderListaRom();
 });
 $('#pTipo').onchange = () => {
   const nf = $('#pTipo').value === 'nfs';
@@ -409,7 +433,10 @@ function renderResultado(){
   const p = pedidoAtual, c = p.cliente || {};
   const end = [c.endereco, c.complemento, c.bairro].filter(Boolean).join(' - ');
   const cid = [c.cidade, c.estado].filter(Boolean).join('/');
-  const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}</div>`).join('');
+  const itens = (p.itens||[]).map((it,i)=>`<div class="row" style="align-items:center;gap:6px;margin-top:4px">
+    <span style="flex:2">${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}</span>
+    <input list="coresPadrao" placeholder="cor" style="max-width:130px" id="itemCor-${i}" value="${esc(it.cor||'')}">
+  </div>`).join('');
   $('#resultado').innerHTML = `
     <strong>Pedido ${esc(p.numero)}</strong> ${p.etapaLabel?`<span class="tag">${esc(p.etapaLabel)}</span>`:''}
     ${c.alternativo?`<span class="tag alt">endereço de entrega alternativo</span>`:''}
@@ -417,7 +444,7 @@ function renderResultado(){
     <div style="margin-top:8px"><strong>${esc(c.nome||'(sem cliente)')}</strong>${c.doc?` <span class="mut">${esc(c.doc)}</span>`:''}</div>
     <div class="mut">${esc(end||'(endereço não informado)')}${cid?' · '+esc(cid):''}${c.cep?' · CEP '+esc(c.cep):''}</div>
     ${c.telefone?`<div class="mut">Tel: ${esc(c.telefone)}</div>`:''}
-    ${itens?`<div class="itens">${itens}</div>`:''}
+    ${itens?`<div class="itens">${itens}<div class="mut" style="margin-top:4px">Informe a cor de cada item — o estoquista vai ver isso na hora de separar.</div></div>`:''}
     <div class="mut" style="margin-top:6px">Valor: ${money(p.valor)}${p.peso?` · ${p.peso} kg`:''}${p.volumesOmie?` · Omie indica ${p.volumesOmie} volume(s) — confira e digite abaixo`:''}</div>
   `;
   const assist = modoBusca === 'assistencia';
@@ -426,24 +453,26 @@ function renderResultado(){
   $('#wVolumes').hidden = assist;
   $('#addRascunho').textContent = assist ? 'Adicionar como assistência' : 'Adicionar ao romaneio';
   $('#rVolumes').value = 0;
-  $('#rCor').value = '';
   $('#rObs').value = assist ? '' : (p.observacao || '');
   $('#cardResultado').hidden = false;
 }
 
 $('#addRascunho').onclick = () => {
   if(!pedidoAtual) return;
-  const cor = $('#rCor').value.trim();
+  const itensComCor = (pedidoAtual.itens||[]).map((it,i)=>{
+    const campo = document.getElementById('itemCor-'+i);
+    return { ...it, cor: campo ? campo.value.trim() : (it.cor||'') };
+  });
   if(modoBusca === 'assistencia'){
     const motivos = { cor: 'Cor', defeito: 'Defeito na peça', esquecimento: 'Esquecimento' };
     const motivo = motivos[$('#rTipoProblema').value] || '';
     const obsExtra = $('#rObs').value.trim();
-    rascunho.push({ ...pedidoAtual, tipo: 'assistencia', volumes: 0, cor,
+    rascunho.push({ ...pedidoAtual, tipo: 'assistencia', volumes: 0, itens: itensComCor,
       observacao: 'Assistência — ' + motivo + (obsExtra ? ': ' + obsExtra : '') });
     $('#numAssist').value = '';
   } else {
     const volumes = Number($('#rVolumes').value) || 0;
-    rascunho.push({ ...pedidoAtual, volumes, cor, observacao: $('#rObs').value || '' });
+    rascunho.push({ ...pedidoAtual, volumes, itens: itensComCor, observacao: $('#rObs').value || '' });
     $('#numPedido').value = '';
   }
   pedidoAtual = null;
@@ -498,7 +527,7 @@ $('#pTodos').onchange = e => {
 };
 $('#addSelecionados').onclick = () => {
   if(!selPeriodo.size) return toast('Selecione ao menos um documento');
-  [...selPeriodo].forEach(i => rascunho.push({ ...resultadosPeriodo[i], volumes: 0, cor: '', observacao: resultadosPeriodo[i].observacao || '' }));
+  [...selPeriodo].forEach(i => rascunho.push({ ...resultadosPeriodo[i], volumes: 0, observacao: resultadosPeriodo[i].observacao || '' }));
   selPeriodo.clear(); renderPeriodo(); renderRascunho();
   toast('Adicionados ao romaneio em montagem — confira os volumes de cada um');
 };
@@ -524,7 +553,7 @@ function renderRascunho(){
       <td>${esc(c.nome||'(sem cliente)')}</td>
       <td class="mut">${esc(dest||'—')}${cid?`<div>${esc(cid)}</div>`:''}</td>
       <td class="center"><input class="volinput" type="number" min="0" value="${d.volumes||0}" onchange="atualizarVolume(${i}, this.value)"></td>
-      <td><input list="coresPadrao" style="min-width:110px" value="${esc(d.cor||'')}" onchange="atualizarCor(${i}, this.value)"></td>
+      <td class="mut">${(d.itens||[]).filter(it=>it.cor).map(it=>esc(it.cor)).join(', ') || '—'}</td>
       <td class="right">${money(d.valor)}</td>
       <td class="right"><button class="btn ghost sm danger" onclick="removerRascunho(${i})">Remover</button></td>
     </tr>`;
@@ -532,7 +561,6 @@ function renderRascunho(){
 }
 function removerRascunho(i){ rascunho.splice(i,1); renderRascunho(); }
 function atualizarVolume(i, v){ rascunho[i].volumes = Number(v)||0; }
-function atualizarCor(i, v){ rascunho[i].cor = v; }
 
 function atualizarRomDestino(){
   const atual = $('#romDestino').value;
@@ -567,9 +595,17 @@ async function carregarRomaneios(){
     romaneios = await api('/.netlify/functions/romaneios');
     mapas = {}; // os mapas antigos já saem da tela quando o HTML é reconstruído abaixo
     atualizarRomDestino();
-    const el = $('#listaRom');
-    if(!romaneios.length){ el.innerHTML = '<div class="empty">Nenhum romaneio criado ainda.</div>'; return; }
-    el.innerHTML = romaneios.map(r => {
+    renderListaRom();
+  }catch(e){ erro(e.message); }
+}
+
+function renderListaRom(){
+  const el = $('#listaRom');
+  const lista = filtroRom === 'ativos' ? romaneios.filter(r=>r.status!=='concluido')
+    : filtroRom === 'concluidos' ? romaneios.filter(r=>r.status==='concluido')
+    : romaneios;
+  if(!lista.length){ el.innerHTML = '<div class="empty">Nenhum romaneio aqui.</div>'; return; }
+  el.innerHTML = lista.map(r => {
       const ok = r.paradas.filter(p=>p.status==='entregue').length;
       const falhou = r.paradas.filter(p=>p.status==='falhou').length;
       const linkEntrega = location.origin + '/entrega/' + r.id;
@@ -600,10 +636,17 @@ async function carregarRomaneios(){
             const cls = p.status==='entregue'?'ok':p.status==='falhou'?'falhou':p.status==='em_rota'?'alt':'pend';
             const tipoLabel = p.tipo==='assistencia'?'Assist.':(p.tipo==='nf'?'NF':'Ped.');
             const finalizado = p.status==='entregue' || p.status==='falhou';
-            return `<tr><td>${i+1}</td>
+            return `<tr><td>${i+1}
+              <div style="display:flex;gap:2px;margin-top:4px">
+                <button class="btn ghost sm" style="padding:2px 6px" title="Subir" ${i===0?'disabled':''} onclick="moverParada('${r.id}',${i},-1)">▲</button>
+                <button class="btn ghost sm" style="padding:2px 6px" title="Descer" ${i===r.paradas.length-1?'disabled':''} onclick="moverParada('${r.id}',${i},1)">▼</button>
+              </div>
+            </td>
               <td>${esc(c.nome||'—')}<div class="mut">${esc([c.endereco,c.cidade].filter(Boolean).join(' - '))}</div></td>
-              <td>${tipoLabel} ${esc(p.numero||'')}${p.cor?`<div class="mut">Cor: ${esc(p.cor)}</div>`:''}
-                ${(p.fotos&&p.fotos.length)?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${p.fotos.map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--line)"></a>`).join('')}</div>`:''}
+              <td>${tipoLabel} ${esc(p.numero||'')}
+                ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut">${esc(it.descricao||'')}: ${esc(it.cor)}</div>`).join('')}
+                ${(!((p.itens||[]).some(it=>it.cor)) && p.cor)?`<div class="mut">Cor: ${esc(p.cor)}</div>`:''}
+                ${(p.fotos&&p.fotos.length)?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${p.fotos.map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--line)" title="${f.tipo==='carro'?'foto do carro':'foto do produto'}"></a>`).join('')}</div>`:''}
               </td>
               <td class="center">${p.volumes||0}</td>
               <td>
@@ -614,17 +657,18 @@ async function carregarRomaneios(){
                 </label>`:''}
               </td>
               <td class="mut">${esc(p.recebedor||'—')}${(p.lat&&p.lng)?`<div><a href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank">local da confirmação</a></div>`:''}</td>
-              <td style="min-width:150px">
+              <td style="min-width:170px">
                 <label style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:400;text-transform:none;color:var(--ink)">
                   <input type="checkbox" id="prob-${p.id}" style="width:auto" ${p.problema?'checked':''}> houve problema
                 </label>
-                <select id="resp-${p.id}" style="margin-top:4px;font-size:11px;padding:3px">
+                <select id="resp-${p.id}" style="margin-top:4px;font-size:11px;padding:3px" onchange="atualizarMotivos('${p.id}')">
                   <option value="">— culpa de quem —</option>
                   <option value="vendedores" ${p.problema_responsavel==='vendedores'?'selected':''}>Vendedores</option>
                   <option value="estoque" ${p.problema_responsavel==='estoque'?'selected':''}>Estoque</option>
                   <option value="freteiro" ${p.problema_responsavel==='freteiro'?'selected':''}>Freteiro</option>
                 </select>
-                <input id="obs-${p.id}" placeholder="obs (opcional)" value="${esc(p.problema_obs||'')}" style="margin-top:4px;font-size:11px;padding:3px">
+                <select id="motivo-${p.id}" style="margin-top:4px;font-size:11px;padding:3px" data-atual="${esc(p.problema_motivo||'')}"></select>
+                <input id="obs-${p.id}" placeholder="obs extra (opcional)" value="${esc(p.problema_obs||'')}" style="margin-top:4px;font-size:11px;padding:3px">
                 <button class="btn ghost sm" style="margin-top:4px;padding:3px 8px;font-size:11px" onclick="salvarProblema('${p.id}')">Salvar</button>
               </td>
               <td><button class="btn ghost sm danger" style="padding:3px 8px;font-size:11px" onclick="removerParada('${p.id}')">Remover</button></td>
@@ -634,8 +678,43 @@ async function carregarRomaneios(){
         <div id="mapabox-${r.id}"></div>
       </div>`;
     }).join('');
+  lista.forEach(r => r.paradas.forEach(p => atualizarMotivos(p.id)));
+}
+/* ---------------- revisão pós-entrega ---------------- */
+async function carregarRevisoes(){
+  try{
+    const lista = await api('/.netlify/functions/revisoes');
+    const hoje = new Date().toISOString().slice(0,10);
+    $('#listaRevisao').innerHTML = lista.length ? lista.map(p => {
+      const c = p.cliente || {};
+      const tel = (c.telefone||'').replace(/\D/g,'');
+      const atrasada = p.revisaoEm && p.revisaoEm < hoje;
+      const hojeMesmo = p.revisaoEm === hoje;
+      const tag = atrasada ? 'falhou' : hojeMesmo ? 'pend' : '';
+      return `<div class="rm">
+        <div class="top">
+          <span class="cod">${esc(p.romaneioCodigo)} · ${esc(p.tipo==='assistencia'?'Assist.':'Ped.')} ${esc(p.numero||'')}</span>
+          <span class="tag ${tag}">${atrasada?'atrasada':hojeMesmo?'hoje':esc(p.revisaoEm||'')}</span>
+          <span class="mut">${esc(c.nome||'')}</span>
+          <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+            ${tel?`<a class="btn ghost sm" href="tel:${tel}">📞 Ligar</a>`:''}
+            ${tel?`<a class="btn ghost sm" href="https://wa.me/55${tel}" target="_blank">💬 WhatsApp</a>`:''}
+            <button class="btn ghost sm" onclick="marcarRevisado('${p.id}')">✓ Revisado, tudo certo</button>
+          </span>
+        </div>
+      </div>`;
+    }).join('') : '<div class="empty">Nenhuma revisão pendente.</div>';
   }catch(e){ erro(e.message); }
 }
+async function marcarRevisado(paradaId){
+  try{
+    await api('/.netlify/functions/parada-status', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ paradaId, revisaoFeita: true }) });
+    toast('Revisão registrada');
+    carregarRevisoes();
+  }catch(e){ erro(e.message); }
+}
+
 async function excluirRom(id){
   if(!confirm('Excluir este romaneio?')) return;
   await api('/.netlify/functions/romaneios?id='+id, {method:'DELETE'});
@@ -682,13 +761,28 @@ async function salvarConferido(paradaId, valor){
   }catch(e){ erro(e.message); carregarRomaneios(); }
 }
 
+const MOTIVOS_PROBLEMA = {
+  vendedores: ['Errou a cor', 'Errou o móvel', 'Esqueceu de avisar algo'],
+  estoque: ['Cor errada', 'Móvel errado', 'Volume faltando', 'Móvel quebrado'],
+  freteiro: ['Móvel quebrado', 'Não ligou pra cliente', 'Não cobrou o valor certo', 'Não entregou pra pessoa certa']
+};
+function atualizarMotivos(paradaId){
+  const respSel = document.getElementById('resp-'+paradaId);
+  const motSel = document.getElementById('motivo-'+paradaId);
+  if(!respSel || !motSel) return;
+  const atual = motSel.dataset.atual || '';
+  const opcoes = MOTIVOS_PROBLEMA[respSel.value] || [];
+  motSel.innerHTML = '<option value="">— motivo —</option>' + opcoes.map(m=>`<option value="${esc(m)}" ${m===atual?'selected':''}>${esc(m)}</option>`).join('');
+}
+
 async function salvarProblema(paradaId){
   const problema = document.getElementById('prob-'+paradaId).checked;
   const responsavel = document.getElementById('resp-'+paradaId).value;
+  const motivo = document.getElementById('motivo-'+paradaId).value;
   const obs = document.getElementById('obs-'+paradaId).value;
   try{
     await api('/.netlify/functions/parada-problema', { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ paradaId, problema, responsavel, obs }) });
+      body: JSON.stringify({ paradaId, problema, responsavel, motivo, obs }) });
     toast('Registrado');
     carregarRomaneios();
   }catch(e){ erro(e.message); }
@@ -808,6 +902,19 @@ function sugerirOrdem(id){
     </div>`;
 }
 
+async function moverParada(romaneioId, i, delta){
+  const r = romaneios.find(x=>x.id===romaneioId);
+  if(!r) return;
+  const j = i + delta;
+  if(j < 0 || j >= r.paradas.length) return;
+  const nova = [...r.paradas];
+  [nova[i], nova[j]] = [nova[j], nova[i]];
+  try{
+    await api('/.netlify/functions/reordenar-paradas', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ romaneioId, ordem: nova.map(p=>p.id) }) });
+    carregarRomaneios();
+  }catch(e){ erro(e.message); }
+}
+
 async function confirmarOrdem(id, ordemIds){
   try{
     await api('/.netlify/functions/reordenar-paradas', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ romaneioId: id, ordem: ordemIds }) });
@@ -821,38 +928,64 @@ async function confirmarOrdem(id, ordemIds){
 async function carregarFreteiros(){
   freteiros = await api('/.netlify/functions/freteiros');
   $('#tabFr tbody').innerHTML = freteiros.length ? freteiros.map(f=>`<tr>
-    <td><strong>${esc(f.nome)}</strong></td><td>${esc(f.telefone||'—')}</td><td>${esc(f.pin||'—')}</td>
+    <td><strong>${esc(f.nome)}</strong></td><td>${esc(f.telefone||'—')}</td>
     <td>${esc(f.veiculo||'—')}</td><td>${esc(f.placa||'—')}</td>
-    <td class="right"><button class="btn ghost sm danger" onclick="delFr('${f.id}')">Remover</button></td>
-  </tr>`).join('') : '<tr><td colspan="6"><div class="empty">Nenhum freteiro cadastrado.</div></td></tr>';
+    <td class="right"><button class="btn ghost sm" onclick="editarFr('${f.id}')">Editar</button> <button class="btn ghost sm danger" onclick="delFr('${f.id}')">Remover</button></td>
+  </tr>`).join('') : '<tr><td colspan="5"><div class="empty">Nenhum freteiro cadastrado.</div></td></tr>';
   $('#frSel').innerHTML = '<option value="">— escolher freteiro —</option>' +
     freteiros.map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join('');
 }
+function editarFr(id){
+  const f = freteiros.find(x=>x.id===id);
+  if(!f) return;
+  $('#fId').value = f.id; $('#fNome').value = f.nome||''; $('#fTel').value = f.telefone||'';
+  $('#fVeic').value = f.veiculo||''; $('#fPlaca').value = f.placa||'';
+  $('#tituloFr').textContent = 'Editar freteiro'; $('#addFr').textContent = 'Salvar'; $('#cancelarFr').hidden = false;
+  $('#fNome').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function limparFormFr(){
+  $('#fId').value=''; ['#fNome','#fTel','#fVeic','#fPlaca'].forEach(s=>$(s).value='');
+  $('#tituloFr').textContent = 'Cadastrar freteiro'; $('#addFr').textContent = 'Adicionar'; $('#cancelarFr').hidden = true;
+}
+$('#cancelarFr').onclick = limparFormFr;
 $('#addFr').onclick = async () => {
   if(!$('#fNome').value.trim()) return toast('Informe o nome');
-  if(!$('#fPin').value.trim()) return toast('Defina um PIN');
   await api('/.netlify/functions/freteiros',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({nome:$('#fNome').value,telefone:$('#fTel').value,pin:$('#fPin').value,veiculo:$('#fVeic').value,placa:$('#fPlaca').value})});
-  ['#fNome','#fTel','#fPin','#fVeic','#fPlaca'].forEach(s=>$(s).value='');
-  carregarFreteiros(); toast('Freteiro cadastrado');
+    body:JSON.stringify({id:$('#fId').value||undefined,nome:$('#fNome').value,telefone:$('#fTel').value,veiculo:$('#fVeic').value,placa:$('#fPlaca').value})});
+  const editando = !!$('#fId').value;
+  limparFormFr();
+  carregarFreteiros(); toast(editando ? 'Freteiro atualizado' : 'Freteiro cadastrado');
 };
 async function delFr(id){ await api('/.netlify/functions/freteiros?id='+id,{method:'DELETE'}); carregarFreteiros(); }
 
 /* ---------------- estoquistas ---------------- */
+let estoquistas = [];
 async function carregarEstoquistas(){
-  const lista = await api('/.netlify/functions/estoquistas');
-  $('#tabEs tbody').innerHTML = lista.length ? lista.map(e=>`<tr>
-    <td><strong>${esc(e.nome)}</strong></td><td>${esc(e.telefone||'—')}</td><td>${esc(e.pin||'—')}</td>
-    <td class="right"><button class="btn ghost sm danger" onclick="delEs('${e.id}')">Remover</button></td>
-  </tr>`).join('') : '<tr><td colspan="4"><div class="empty">Nenhum estoquista cadastrado.</div></td></tr>';
+  estoquistas = await api('/.netlify/functions/estoquistas');
+  $('#tabEs tbody').innerHTML = estoquistas.length ? estoquistas.map(e=>`<tr>
+    <td><strong>${esc(e.nome)}</strong></td><td>${esc(e.telefone||'—')}</td>
+    <td class="right"><button class="btn ghost sm" onclick="editarEs('${e.id}')">Editar</button> <button class="btn ghost sm danger" onclick="delEs('${e.id}')">Remover</button></td>
+  </tr>`).join('') : '<tr><td colspan="3"><div class="empty">Nenhum estoquista cadastrado.</div></td></tr>';
 }
+function editarEs(id){
+  const e = estoquistas.find(x=>x.id===id);
+  if(!e) return;
+  $('#eId').value = e.id; $('#eNome').value = e.nome||''; $('#eTel').value = e.telefone||'';
+  $('#tituloEs').textContent = 'Editar estoquista'; $('#addEs').textContent = 'Salvar'; $('#cancelarEs').hidden = false;
+  $('#eNome').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function limparFormEs(){
+  $('#eId').value=''; ['#eNome','#eTel'].forEach(s=>$(s).value='');
+  $('#tituloEs').textContent = 'Cadastrar estoquista'; $('#addEs').textContent = 'Adicionar'; $('#cancelarEs').hidden = true;
+}
+$('#cancelarEs').onclick = limparFormEs;
 $('#addEs').onclick = async () => {
   if(!$('#eNome').value.trim()) return toast('Informe o nome');
-  if(!$('#ePin').value.trim()) return toast('Defina um PIN');
   await api('/.netlify/functions/estoquistas',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({nome:$('#eNome').value,telefone:$('#eTel').value,pin:$('#ePin').value})});
-  ['#eNome','#eTel','#ePin'].forEach(s=>$(s).value='');
-  carregarEstoquistas(); toast('Estoquista cadastrado');
+    body:JSON.stringify({id:$('#eId').value||undefined,nome:$('#eNome').value,telefone:$('#eTel').value})});
+  const editando = !!$('#eId').value;
+  limparFormEs();
+  carregarEstoquistas(); toast(editando ? 'Estoquista atualizado' : 'Estoquista cadastrado');
 };
 async function delEs(id){ await api('/.netlify/functions/estoquistas?id='+id,{method:'DELETE'}); carregarEstoquistas(); }
 
@@ -916,17 +1049,21 @@ function statusHoje(){
 }
 window.removerRascunho = removerRascunho;
 window.atualizarVolume = atualizarVolume;
-window.atualizarCor = atualizarCor;
 window.excluirRom = excluirRom;
 window.copiar = copiar;
 window.delFr = delFr;
 window.delEs = delEs;
+window.editarFr = editarFr;
+window.editarEs = editarEs;
 window.toggleMapa = toggleMapa;
 window.abrirRotaCompleta = abrirRotaCompleta;
 window.recalcularGeo = recalcularGeo;
 window.sugerirOrdem = sugerirOrdem;
 window.confirmarOrdem = confirmarOrdem;
+window.moverParada = moverParada;
+window.marcarRevisado = marcarRevisado;
 window.salvarProblema = salvarProblema;
+window.atualizarMotivos = atualizarMotivos;
 window.marcarEmRota = marcarEmRota;
 window.salvarConferido = salvarConferido;
 window.removerParada = removerParada;

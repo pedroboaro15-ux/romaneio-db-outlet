@@ -48,10 +48,9 @@ button{padding:14px;border:0;border-radius:9px;font:inherit;font-weight:700;curs
 <body>
 
 <div id="tela-login" class="loginbox" hidden>
-  <h3 style="margin-top:0">Entrar</h3>
+  <h3 style="margin-top:0">Entrar — Estoquista</h3>
   <div id="erroLogin"></div>
-  <input id="lTel" type="tel" placeholder="seu telefone" autocomplete="username">
-  <input id="lPin" type="tel" inputmode="numeric" placeholder="seu PIN" autocomplete="current-password">
+  <input id="lTel" type="tel" placeholder="seu telefone" autocomplete="tel">
   <button id="btnLogin" style="width:100%">Entrar</button>
 </div>
 
@@ -68,7 +67,7 @@ button{padding:14px;border:0;border-radius:9px;font:inherit;font-weight:700;curs
 <script>
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const id = location.pathname.replace(/^\/separacao\/?/, '').trim() || null;
-let rom = null, ordemCarregamento = [], passo = 0;
+let rom = null, ordemCarregamento = [], passo = 0, paradaAguardandoFoto = null;
 
 async function api(url, opt){
   const token = localStorage.getItem('equipeToken');
@@ -85,15 +84,15 @@ function checarSessao(){
   else { document.getElementById('tela-login').hidden = false; document.getElementById('tela-app').hidden = true; }
 }
 document.getElementById('btnLogin').onclick = async () => {
-  const telefone = document.getElementById('lTel').value.trim(), pin = document.getElementById('lPin').value.trim();
+  const telefone = document.getElementById('lTel').value.trim();
   document.getElementById('erroLogin').innerHTML = '';
   try{
-    const r = await api('/.netlify/functions/equipe-login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ telefone, pin }) });
+    const r = await api('/.netlify/functions/equipe-login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ telefone, tipo: 'estoquista' }) });
     localStorage.setItem('equipeToken', r.token);
     checarSessao();
   }catch(e){ document.getElementById('erroLogin').innerHTML = '<div class="err">'+esc(e.message)+'</div>'; }
 };
-document.getElementById('btnSair').onclick = () => { localStorage.removeItem('equipeToken'); checarSessao(); };
+document.getElementById('btnSair').onclick = () => { localStorage.removeItem('equipeToken'); location.href = '/equipe'; };
 
 async function iniciar(){
   if(id){ await carregar(); } else { await carregarLista(); }
@@ -149,6 +148,9 @@ function render(){
   document.getElementById('bar').style.width = (total ? feitas/total*100 : 0) + '%';
 
   if(!total){ document.getElementById('lista').innerHTML = '<div class="empty">Sem paradas.</div>'; return; }
+
+  if(paradaAguardandoFoto){ renderDialogoFoto(paradaAguardandoFoto); return; }
+
   if(passo >= total){
     document.getElementById('lista').innerHTML = '<div class="done">✓ Caminhão carregado — todas as paradas separadas!</div>';
     return;
@@ -163,7 +165,8 @@ function render(){
   else aviso = { txt: `Entrega ${posicaoOriginal} de ${totalRota} da rota`, cls: 'meio' };
 
   const c = p.cliente || {};
-  const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}</div>`).join('');
+  const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}${it.cor?` — <b>${esc(it.cor)}</b>`:''}</div>`).join('');
+  const temCorPorItem = (p.itens||[]).some(it=>it.cor);
   const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
   const total_vol = Number(p.volumes) || 0;
   const confirmados = Math.min(p.volumes_confirmados || 0, total_vol);
@@ -177,11 +180,9 @@ function render(){
       <h3>${esc(c.nome||'(sem cliente)')}</h3>
       ${[c.cidade,c.estado].filter(Boolean).length?`<div class="cli">${esc([c.cidade,c.estado].filter(Boolean).join('/'))}</div>`:''}
       ${itens?`<div class="itens">${itens}</div>`:''}
-      ${p.cor?`<div class="cordestaque"><b>${esc(p.cor)}</b><span>cor do móvel — confira antes de carregar</span></div>`:''}
+      ${(p.cor && !temCorPorItem)?`<div class="cordestaque"><b>${esc(p.cor)}</b><span>cor do móvel — confira antes de carregar</span></div>`:''}
       ${p.observacao?`<div class="obs">Obs: ${esc(p.observacao)}</div>`:''}
-      <div class="fotos">${fotos}</div>
-      <button class="btnfoto" onclick="document.getElementById('foto-${p.id}').click()">📷 Enviar foto</button>
-      <input type="file" id="foto-${p.id}" accept="image/*" capture="environment" style="display:none" onchange="enviarFoto('${p.id}', this.files[0])">
+      ${fotos?`<div class="fotos">${fotos}</div>`:''}
       ${total_vol > 0 ? `
         <div class="vol"><b>${confirmados} / ${total_vol}</b><span>volumes confirmados</span></div>
         ${confirmados < total_vol
@@ -207,10 +208,38 @@ async function confirmarVolume(paradaId){
     const atualizada = await api('/.netlify/functions/parada-separar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId }) });
     const i = ordemCarregamento.findIndex(x=>x.id===paradaId);
     if(i>=0) ordemCarregamento[i] = { ...ordemCarregamento[i], ...atualizada };
-    if(atualizada.separado){ passo++; await avancarSeSemVolume(); }
+    if(atualizada.separado){
+      paradaAguardandoFoto = ordemCarregamento[i>=0?i:passo];
+    }
     render();
   }catch(e){ alert('Falha ao salvar: ' + e.message); }
 }
+
+function renderDialogoFoto(p){
+  document.getElementById('lista').innerHTML = `
+    <div class="p">
+      <h3 style="text-align:center">✓ ${esc(p.numero?('Pedido '+p.numero):'Parada')} separado!</h3>
+      <p style="text-align:center;color:#5b6270">Quer mandar uma foto?</p>
+      <button class="ok" style="margin-bottom:10px" onclick="escolherTipoFoto('${p.id}','produto')">📦 Foto do produto</button>
+      <button class="btnfoto" style="margin-bottom:10px" onclick="escolherTipoFoto('${p.id}','carro')">🚚 Foto do carro</button>
+      <button style="background:#fff;border:1px solid #ddd;color:#6b7280" onclick="pularFoto()">Pular</button>
+      <input type="file" id="fotoDialogo" accept="image/*" capture="environment" style="display:none">
+    </div>`;
+}
+
+function escolherTipoFoto(paradaId, tipo){
+  const input = document.getElementById('fotoDialogo');
+  input.onchange = () => enviarFoto(paradaId, input.files[0], tipo);
+  input.click();
+}
+
+async function avancarPassoDepoisDaFoto(){
+  paradaAguardandoFoto = null;
+  passo++;
+  await avancarSeSemVolume();
+  render();
+}
+function pularFoto(){ avancarPassoDepoisDaFoto(); }
 function redimensionarImagem(file, maxLado){
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -230,18 +259,19 @@ function redimensionarImagem(file, maxLado){
   });
 }
 
-async function enviarFoto(paradaId, file){
-  if(!file) return;
+async function enviarFoto(paradaId, file, tipo){
+  if(!file) return avancarPassoDepoisDaFoto();
   try{
     const imagemBase64 = await redimensionarImagem(file, 1280);
-    await api('/.netlify/functions/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64 }) });
-    await carregar();
+    await api('/.netlify/functions/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64, tipo }) });
   }catch(e){ alert('Falha ao enviar a foto: ' + e.message); }
+  await avancarPassoDepoisDaFoto();
 }
 
 window.irPara = irPara;
 window.confirmarVolume = confirmarVolume;
-window.enviarFoto = enviarFoto;
+window.escolherTipoFoto = escolherTipoFoto;
+window.pularFoto = pularFoto;
 
 checarSessao();
 </script>
