@@ -45,27 +45,4 @@ async function buscarCliente(codigo) {
   }
 }
 
-// Carrega todos os clientes de uma vez (ListarClientes, paginado) e devolve um Map por código.
-// Evita N chamadas de ConsultarCliente ao buscar pedidos por período.
-async function carregarTodosClientes() {
-  const mapa = new Map();
-  const sb = admin();
-  let pagina = 1, totalPaginas = 1;
-  const linhasCache = [];
-  do {
-    const r = await omie.post('geral/clientes/', 'ListarClientes', { pagina, registros_por_pagina: 500 }, omie.creds());
-    totalPaginas = r.total_de_paginas || 1;
-    for (const c of (r.clientes_cadastro || [])) {
-      const codigo = String(c.codigo_cliente_omie);
-      const row = normalizarClienteOmie(codigo, c);
-      mapa.set(codigo, mapCliente(row));
-      linhasCache.push(row);
-    }
-    pagina++;
-  } while (pagina <= totalPaginas && pagina <= 40);
-
-  if (linhasCache.length) await sb.from('clientes_cache').upsert(linhasCache);
-  return mapa;
-}
-
-module.exports = { buscarCliente, carregarTodosClientes, mapCliente, normalizarClienteOmie };
+module.exports = { buscarCliente, mapCliente, normalizarClienteOmie };

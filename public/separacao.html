@@ -25,6 +25,8 @@ main{padding:12px}
 .vol{margin-top:12px;background:#eafaf1;border:1px solid #c8ecd9;border-radius:9px;padding:16px 12px;text-align:center}
 .vol b{display:block;font-size:30px;color:#0f8a4a;line-height:1.2}
 .vol span{font-size:12px;color:#4a7a63;text-transform:uppercase;letter-spacing:.04em}
+.volitem{text-align:center;font-size:14px;font-weight:700;margin-top:6px;color:#15181d}
+.swatch{display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid #ccc;vertical-align:-2px;margin-right:4px}
 .obs{margin-top:8px;font-size:13px;font-style:italic;color:#5b6270}
 .cordestaque{margin-top:10px;background:#eef1f5;border-radius:10px;padding:12px;text-align:center}
 .cordestaque b{display:block;font-size:22px;color:#15181d}
@@ -33,6 +35,7 @@ main{padding:12px}
 .fotos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #ddd}
 .btnfoto{background:#7c3aed;color:#fff;margin-top:10px}
 button{padding:14px;border:0;border-radius:9px;font:inherit;font-weight:700;cursor:pointer;width:100%}
+button:disabled{opacity:.5}
 .ok{background:#0f8a4a;color:#fff;font-size:16px}
 .nav{display:flex;gap:8px;margin-top:10px}
 .nav button{flex:1;padding:10px;font-size:13px;font-weight:600;background:#fff;color:#4b5563;border:1px solid #ddd}
@@ -43,6 +46,10 @@ button{padding:14px;border:0;border-radius:9px;font:inherit;font-weight:700;curs
 .loginbox button{background:#0f8a4a;color:#fff}
 .err{background:#fdeaea;color:#7f1d1d;padding:8px 10px;border-radius:8px;font-size:13px;margin-bottom:10px}
 .rota{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);text-decoration:none;display:block;color:inherit}
+.avisoOffline{background:#7a5416;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:600}
+.resumoLinha{border-bottom:1px solid #eee;padding:8px 0;font-size:13px}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#15181d;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:99;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center}
+.toast.show{opacity:1}
 </style>
 </head>
 <body>
@@ -55,6 +62,7 @@ button{padding:14px;border:0;border-radius:9px;font:inherit;font-weight:700;curs
 </div>
 
 <div id="tela-app" hidden>
+<div id="avisoOffline" class="avisoOffline" hidden></div>
 <header>
   <h1 id="titulo">Carregando…</h1>
   <p id="sub"></p>
@@ -63,24 +71,62 @@ button{padding:14px;border:0;border-radius:9px;font:inherit;font-weight:700;curs
 </header>
 <main id="lista"></main>
 </div>
+<div class="toast" id="toast"></div>
 
 <script>
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const id = location.pathname.replace(/^\/separacao\/?/, '').trim() || null;
-let rom = null, ordemCarregamento = [], passo = 0, paradaAguardandoFoto = null;
+let rom = null, idAtual = null, ordemCarregamento = [], passo = 0, paradaAguardandoFoto = null;
 
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3200); }
+
+function corParaSwatch(nome){
+  const n = (nome||'').trim().toLowerCase();
+  if(n==='branco') return '#ffffff';
+  if(n==='off') return '#efe6d3';
+  if(n==='nature') return '#a3744f';
+  if(n==='nature/off') return 'linear-gradient(135deg,#a3744f 60%,#efe6d3 60%)';
+  if(n==='off/nature') return 'linear-gradient(135deg,#a3744f 40%,#efe6d3 40%)';
+  return n ? '#cbd5e1' : 'transparent';
+}
+
+class ErroOffline extends Error {}
 async function api(url, opt){
   const token = localStorage.getItem('equipeToken');
   opt = opt || {};
   opt.headers = Object.assign({}, opt.headers, token ? { Authorization: 'Bearer ' + token } : {});
-  const r = await fetch(url, opt);
+  let r;
+  try{ r = await fetch(url, opt); }
+  catch(e){ throw new ErroOffline('sem conexão'); }
   const j = await r.json().catch(()=>({erro:'resposta inválida'}));
   if(!r.ok) throw new Error(j.erro || ('HTTP '+r.status));
   return j;
 }
 
+/* ---------------- fila offline ---------------- */
+function filaOffline(){ try{ return JSON.parse(localStorage.getItem('filaOfflineSep')||'[]'); }catch(e){ return []; } }
+function salvarFila(f){ localStorage.setItem('filaOfflineSep', JSON.stringify(f)); atualizarAvisoOffline(); }
+function enfileirar(acao){ const f = filaOffline(); f.push(acao); salvarFila(f); }
+function atualizarAvisoOffline(){
+  const n = filaOffline().length;
+  const el = document.getElementById('avisoOffline');
+  el.hidden = n === 0;
+  if(n) el.textContent = `📶 Sem internet — ${n} confirmação(ões) salva(s) no celular, serão enviadas quando o sinal voltar`;
+}
+async function processarFila(){
+  const f = filaOffline();
+  if(!f.length) return;
+  const restam = [];
+  for(const acao of f){
+    try{ await fetch(acao.url, { method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+acao.token}, body: JSON.stringify(acao.body) }); }
+    catch(e){ restam.push(acao); }
+  }
+  salvarFila(restam);
+  if(restam.length < f.length){ toast('Confirmações pendentes enviadas!'); if(idAtual) carregar(); }
+}
+window.addEventListener('online', processarFila);
+
 function checarSessao(){
-  if(localStorage.getItem('equipeToken')){ document.getElementById('tela-login').hidden = true; document.getElementById('tela-app').hidden = false; iniciar(); }
+  if(localStorage.getItem('equipeToken')){ document.getElementById('tela-login').hidden = true; document.getElementById('tela-app').hidden = false; atualizarAvisoOffline(); processarFila(); iniciar(); }
   else { document.getElementById('tela-login').hidden = false; document.getElementById('tela-app').hidden = true; }
 }
 document.getElementById('btnLogin').onclick = async () => {
@@ -89,44 +135,61 @@ document.getElementById('btnLogin').onclick = async () => {
   try{
     const r = await api('/.netlify/functions/equipe-login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ telefone, tipo: 'estoquista' }) });
     localStorage.setItem('equipeToken', r.token);
+    localStorage.setItem('equipeTipo', 'estoquista');
     checarSessao();
   }catch(e){ document.getElementById('erroLogin').innerHTML = '<div class="err">'+esc(e.message)+'</div>'; }
 };
-document.getElementById('btnSair').onclick = () => { localStorage.removeItem('equipeToken'); location.href = '/equipe'; };
+document.getElementById('btnSair').onclick = () => {
+  localStorage.removeItem('equipeToken'); localStorage.removeItem('equipeTipo');
+  location.href = '/equipe';
+};
 
+// Estoquista só vê a(s) rota(s) de HOJE — nada de lista com meses de romaneios antigos.
 async function iniciar(){
-  if(id){ await carregar(); } else { await carregarLista(); }
-}
-
-async function carregarLista(){
-  document.getElementById('titulo').textContent = 'Separação — todas as rotas';
-  document.getElementById('sub').textContent = '';
   try{
     const rotas = await api('/.netlify/functions/minhas-rotas');
-    document.getElementById('lista').innerHTML = rotas.length ? rotas.map(r => `
-      <a class="rota" href="/separacao/${r.id}">
-        <span class="n">${esc(r.codigo)}</span> <span class="n">${esc(r.data||'')}</span>
+    if(!rotas.length){
+      document.getElementById('titulo').textContent = 'Sem rota hoje';
+      document.getElementById('sub').textContent = '';
+      document.getElementById('lista').innerHTML = '<div class="empty">Nenhuma rota criada pra hoje ainda. Fale com o gerente.</div>';
+      return;
+    }
+    if(rotas.length === 1){ idAtual = rotas[0].id; await carregar(); return; }
+    document.getElementById('titulo').textContent = 'Rotas de hoje';
+    document.getElementById('sub').textContent = 'Mais de uma rota hoje — escolha uma:';
+    document.getElementById('lista').innerHTML = rotas.map(r => `
+      <a class="rota" href="#" onclick="abrirRota('${r.id}');return false;">
+        <span class="n">${esc(r.codigo)}</span>
         <h3>${esc(r.freteiroNome||'sem freteiro')}</h3>
         <div class="cli">${r.totalParadas} parada(s)</div>
-      </a>`).join('') : '<div class="empty">Nenhuma rota encontrada.</div>';
-  }catch(e){ document.getElementById('lista').innerHTML = '<div class="empty">'+esc(e.message)+'</div>'; }
+      </a>`).join('');
+  }catch(e){
+    document.getElementById('titulo').textContent = 'Sem internet';
+    document.getElementById('lista').innerHTML = '<div class="empty">Não deu pra carregar a rota de hoje. Assim que voltar o sinal, tente de novo.</div>';
+  }
 }
+function abrirRota(id){ idAtual = id; carregar(); }
 
 // Carregar o caminhão é o CONTRÁRIO da ordem de entrega: quem sai primeiro do caminhão
 // tem que ter entrado por último. Por isso mostramos a rota de trás pra frente aqui.
 async function carregar(){
   try{
-    rom = await api('/.netlify/functions/romaneio-publico?id='+id);
-    ordemCarregamento = [...rom.paradas].reverse();
-    passo = ordemCarregamento.findIndex(p => !p.separado);
-    if(passo === -1) passo = ordemCarregamento.length; // tudo já separado
+    rom = await api('/.netlify/functions/romaneio-publico?id='+idAtual);
+    localStorage.setItem('romCacheSep_'+idAtual, JSON.stringify(rom));
+    prepararOrdem();
     document.getElementById('titulo').textContent = 'Separação — Romaneio ' + rom.codigo;
     await avancarSeSemVolume();
     render();
   }catch(e){
-    document.getElementById('titulo').textContent = 'Erro';
-    document.getElementById('lista').innerHTML = '<div class="empty">'+esc(e.message)+'</div>';
+    const cache = localStorage.getItem('romCacheSep_'+idAtual);
+    if(cache){ rom = JSON.parse(cache); prepararOrdem(); render(); toast('Sem internet — mostrando a última rota salva no celular'); }
+    else{ document.getElementById('titulo').textContent = 'Erro'; document.getElementById('lista').innerHTML = '<div class="empty">'+esc(e.message)+'</div>'; }
   }
+}
+function prepararOrdem(){
+  ordemCarregamento = [...rom.paradas].reverse();
+  passo = ordemCarregamento.findIndex(p => !p.separado);
+  if(passo === -1) passo = ordemCarregamento.length;
 }
 
 // Parada sem volume (ex: assistência sem peça) não tem o que confirmar — marca
@@ -141,6 +204,19 @@ async function avancarSeSemVolume(){
   }
 }
 
+// Descobre qual item corresponde ao N-ésimo volume confirmado, pra mostrar o nome
+// do produto junto (ex: "Sofá 3 lugares — módulo 2 de 2"), não só um número solto.
+function itemDoVolume(p, indice){
+  let acumulado = 0;
+  for(const it of (p.itens||[])){
+    const v = Number(it.volumes) || 0;
+    if(v <= 0) continue;
+    if(indice < acumulado + v) return { item: it, unidade: indice - acumulado + 1, totalItem: v };
+    acumulado += v;
+  }
+  return null;
+}
+
 function render(){
   const total = ordemCarregamento.length;
   const feitas = ordemCarregamento.filter(p=>p.separado).length;
@@ -151,10 +227,8 @@ function render(){
 
   if(paradaAguardandoFoto){ renderDialogoFoto(paradaAguardandoFoto); return; }
 
-  if(passo >= total){
-    document.getElementById('lista').innerHTML = '<div class="done">✓ Caminhão carregado — todas as paradas separadas!</div>';
-    return;
-  }
+  if(rom.carregamento_confirmado){ renderResumoFinal(true); return; }
+  if(passo >= total){ renderResumoFinal(false); return; }
 
   const p = ordemCarregamento[passo];
   const posicaoOriginal = rom.paradas.indexOf(p) + 1;
@@ -165,12 +239,13 @@ function render(){
   else aviso = { txt: `Entrega ${posicaoOriginal} de ${totalRota} da rota`, cls: 'meio' };
 
   const c = p.cliente || {};
-  const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}${it.cor?` — <b>${esc(it.cor)}</b>`:''}</div>`).join('');
+  const itens = (p.itens||[]).map(it=>`<div><span class="swatch" style="background:${corParaSwatch(it.cor)}"></span>${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}${it.cor?` — <b>${esc(it.cor)}</b>`:''}</div>`).join('');
   const temCorPorItem = (p.itens||[]).some(it=>it.cor);
   const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
   const total_vol = Number(p.volumes) || 0;
   const confirmados = Math.min(p.volumes_confirmados || 0, total_vol);
   const fotos = (p.fotos||[]).map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}"></a>`).join('');
+  const proximoItem = total_vol > 0 && confirmados < total_vol ? itemDoVolume(p, confirmados) : null;
 
   document.getElementById('lista').innerHTML = `
     <div class="p">
@@ -181,12 +256,13 @@ function render(){
       ${[c.cidade,c.estado].filter(Boolean).length?`<div class="cli">${esc([c.cidade,c.estado].filter(Boolean).join('/'))}</div>`:''}
       ${itens?`<div class="itens">${itens}</div>`:''}
       ${(p.cor && !temCorPorItem)?`<div class="cordestaque"><b>${esc(p.cor)}</b><span>cor do móvel — confira antes de carregar</span></div>`:''}
-      ${p.observacao?`<div class="obs">Obs: ${esc(p.observacao)}</div>`:''}
+      ${p.observacao?`<div class="obs">Obs do gerente: ${esc(p.observacao)}</div>`:''}
       ${fotos?`<div class="fotos">${fotos}</div>`:''}
       ${total_vol > 0 ? `
         <div class="vol"><b>${confirmados} / ${total_vol}</b><span>volumes confirmados</span></div>
+        ${proximoItem?`<div class="volitem">Próximo: ${esc(proximoItem.item.descricao||'')}${proximoItem.totalItem>1?' — parte '+proximoItem.unidade+' de '+proximoItem.totalItem:''}</div>`:''}
         ${confirmados < total_vol
-          ? `<button class="ok" style="margin-top:10px" onclick="confirmarVolume('${p.id}')">Confirmei o volume ${confirmados+1} de ${total_vol}</button>`
+          ? `<button class="ok" id="btnvol" style="margin-top:10px" onclick="confirmarVolume('${p.id}')">Confirmei o volume ${confirmados+1} de ${total_vol}</button>`
           : `<div class="done">✓ Separado</div>`}
       ` : `<div class="done" style="margin-top:10px">Sem volumes pra confirmar nessa parada</div>`}
       <div class="nav">
@@ -194,6 +270,33 @@ function render(){
         <button onclick="irPara(${passo+1})">Pular ▶</button>
       </div>
     </div>`;
+}
+
+function renderResumoFinal(jaConfirmado){
+  const linhas = rom.paradas.map((p,i) => {
+    const c = p.cliente || {};
+    const cores = (p.itens||[]).filter(it=>it.cor).map(it=>it.cor).join(', ');
+    return `<div class="resumoLinha"><strong>${i+1}. ${esc(c.nome||'(sem cliente)')}</strong> — ${esc(p.numero||'')}
+      ${cores?` · cores: ${esc(cores)}`:''} · ${p.volumes||0} volume(s)</div>`;
+  }).join('');
+  document.getElementById('lista').innerHTML = `
+    <div class="p">
+      <h3 style="text-align:center">${jaConfirmado?'✓ Carregamento já confirmado':'✓ Tudo separado!'}</h3>
+      <p style="text-align:center;color:#5b6270">${jaConfirmado?'Confira se ficou tudo certo:':'Dá uma última conferida antes de fechar:'}</p>
+      ${linhas}
+      ${jaConfirmado
+        ? `<div class="done" style="margin-top:14px">Carregamento confirmado ✓</div>`
+        : `<button class="ok" style="margin-top:14px" onclick="confirmarCarregamento()">Confirmar carregamento</button>`}
+    </div>`;
+}
+
+async function confirmarCarregamento(){
+  try{
+    await api('/.netlify/functions/romaneio-carregado', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ romaneioId: idAtual }) });
+    rom.carregamento_confirmado = true;
+    toast('Carregamento confirmado!');
+    render();
+  }catch(e){ alert('Não deu pra confirmar agora: ' + e.message); }
 }
 
 async function irPara(i){
@@ -204,15 +307,33 @@ async function irPara(i){
 }
 
 async function confirmarVolume(paradaId){
+  const botao = document.getElementById('btnvol');
+  if(botao && botao.disabled) return; // trava clique duplo (não conta o mesmo volume 2x)
+  if(botao) botao.disabled = true;
+  const i = ordemCarregamento.findIndex(x=>x.id===paradaId);
   try{
     const atualizada = await api('/.netlify/functions/parada-separar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId }) });
-    const i = ordemCarregamento.findIndex(x=>x.id===paradaId);
     if(i>=0) ordemCarregamento[i] = { ...ordemCarregamento[i], ...atualizada };
-    if(atualizada.separado){
-      paradaAguardandoFoto = ordemCarregamento[i>=0?i:passo];
-    }
+    if(atualizada.separado) paradaAguardandoFoto = ordemCarregamento[i>=0?i:passo];
     render();
-  }catch(e){ alert('Falha ao salvar: ' + e.message); }
+  }catch(e){
+    if(e instanceof ErroOffline){
+      if(i>=0){
+        const p = ordemCarregamento[i];
+        const novoTotal = Math.min((p.volumes_confirmados||0)+1, Number(p.volumes)||1);
+        p.volumes_confirmados = novoTotal;
+        if(novoTotal >= (Number(p.volumes)||0)) p.separado = true;
+        enfileirar({ url: '/.netlify/functions/parada-separar', body: { paradaId }, token: localStorage.getItem('equipeToken') });
+        localStorage.setItem('romCacheSep_'+idAtual, JSON.stringify(rom));
+        toast('Sem internet — confirmado no celular, será enviado quando voltar o sinal');
+        if(p.separado) paradaAguardandoFoto = p;
+      }
+      render();
+    } else {
+      alert('Falha ao salvar: ' + e.message);
+      if(botao) botao.disabled = false;
+    }
+  }
 }
 
 function renderDialogoFoto(p){
@@ -264,7 +385,7 @@ async function enviarFoto(paradaId, file, tipo){
   try{
     const imagemBase64 = await redimensionarImagem(file, 1280);
     await api('/.netlify/functions/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64, tipo }) });
-  }catch(e){ alert('Falha ao enviar a foto: ' + e.message); }
+  }catch(e){ if(!(e instanceof ErroOffline)) alert('Falha ao enviar a foto: ' + e.message); else toast('Sem internet — foto não enviada, siga em frente'); }
   await avancarPassoDepoisDaFoto();
 }
 
@@ -272,6 +393,8 @@ window.irPara = irPara;
 window.confirmarVolume = confirmarVolume;
 window.escolherTipoFoto = escolherTipoFoto;
 window.pularFoto = pularFoto;
+window.abrirRota = abrirRota;
+window.confirmarCarregamento = confirmarCarregamento;
 
 checarSessao();
 </script>

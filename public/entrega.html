@@ -24,11 +24,12 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 .ok{background:#0f8a4a;color:#fff}
 .no{background:#fff;color:#b91c1c;border:2px solid #f0c9c9}
 .contatos{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-.botaogrande{flex:1;min-width:88px;text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:14px 6px;border-radius:12px;font-weight:700;font-size:13px;color:#fff}
-.botaogrande .emoji{font-size:28px}
+.botaogrande{flex:1;min-width:80px;text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:14px 6px;border-radius:12px;font-weight:700;font-size:12px;color:#fff}
+.botaogrande .emoji{font-size:26px}
 .bmapa{background:#1f6feb}
 .btel{background:#0f8a4a}
 .bwpp{background:#25d366}
+.bouvir{background:#6b7280}
 .maprota{background:#7c3aed;color:#fff;text-decoration:none;display:block;text-align:center;padding:14px;border-radius:10px;margin:0 12px 12px;font-weight:700;font-size:15px}
 .status{margin-top:10px;font-size:15px;font-weight:700}
 .status.ok{background:none;color:#0f8a4a}
@@ -37,11 +38,15 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 .fotos{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .fotos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #ddd}
 .btnfoto{background:#7c3aed;color:#fff;margin-top:10px}
+.btndesfazer{background:#fff;color:#6b7280;border:1px solid #ddd;margin-top:8px;font-size:13px;padding:10px}
 .loginbox{max-width:320px;margin:70px auto;background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .loginbox input{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font:inherit;box-sizing:border-box}
 .loginbox button{background:#1f6feb;color:#fff}
 .err{background:#fdeaea;color:#7f1d1d;padding:8px 10px;border-radius:8px;font-size:13px;margin-bottom:10px}
 .rota{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);text-decoration:none;display:block;color:inherit}
+.avisoOffline{background:#7a5416;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:600}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#15181d;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:99;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center}
+.toast.show{opacity:1}
 </style>
 </head>
 <body>
@@ -54,6 +59,7 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 </div>
 
 <div id="tela-app" hidden>
+<div id="avisoOffline" class="avisoOffline" hidden></div>
 <header>
   <h1 id="titulo">Carregando…</h1>
   <p id="sub"></p>
@@ -63,27 +69,55 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 <div id="rotaCompleta"></div>
 <main id="lista"></main>
 </div>
+<div class="toast" id="toast"></div>
 
 <script>
 const LOJA = { nome: 'Loja — Outlet dos Móveis DB', endereco: 'Rua Presidente Venceslau Braz, 1013' };
 const ESTOQUE = { nome: 'Estoque', endereco: 'R. Márcia Travassos, 660 - Jardim Jerico, Cabedelo - PB, 58103-718' };
 
-const id = location.pathname.replace(/^\/entrega\/?/, '').trim() || null;
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let rom = null;
+let rom = null, idAtual = null;
 
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3200); }
+
+class ErroOffline extends Error {}
 async function api(url, opt){
   const token = localStorage.getItem('equipeToken');
   opt = opt || {};
   opt.headers = Object.assign({}, opt.headers, token ? { Authorization: 'Bearer ' + token } : {});
-  const r = await fetch(url, opt);
+  let r;
+  try{ r = await fetch(url, opt); }
+  catch(e){ throw new ErroOffline('sem conexão'); }
   const j = await r.json().catch(()=>({erro:'resposta inválida'}));
   if(!r.ok) throw new Error(j.erro || ('HTTP '+r.status));
   return j;
 }
 
+/* ---------------- fila offline: ações que não puderam ser enviadas ---------------- */
+function filaOffline(){ try{ return JSON.parse(localStorage.getItem('filaOffline')||'[]'); }catch(e){ return []; } }
+function salvarFila(f){ localStorage.setItem('filaOffline', JSON.stringify(f)); atualizarAvisoOffline(); }
+function enfileirar(acao){ const f = filaOffline(); f.push(acao); salvarFila(f); }
+function atualizarAvisoOffline(){
+  const n = filaOffline().length;
+  const el = document.getElementById('avisoOffline');
+  el.hidden = n === 0;
+  if(n) el.textContent = `📶 Sem internet — ${n} ação(ões) salva(s) no celular, serão enviadas quando o sinal voltar`;
+}
+async function processarFila(){
+  const f = filaOffline();
+  if(!f.length) return;
+  const restam = [];
+  for(const acao of f){
+    try{ await fetch(acao.url, { method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+acao.token}, body: JSON.stringify(acao.body) }); }
+    catch(e){ restam.push(acao); }
+  }
+  salvarFila(restam);
+  if(restam.length < f.length){ toast('Ações pendentes enviadas!'); if(idAtual) carregar(); }
+}
+window.addEventListener('online', processarFila);
+
 function checarSessao(){
-  if(localStorage.getItem('equipeToken')){ document.getElementById('tela-login').hidden = true; document.getElementById('tela-app').hidden = false; iniciar(); }
+  if(localStorage.getItem('equipeToken')){ document.getElementById('tela-login').hidden = true; document.getElementById('tela-app').hidden = false; atualizarAvisoOffline(); processarFila(); iniciar(); }
   else { document.getElementById('tela-login').hidden = false; document.getElementById('tela-app').hidden = true; }
 }
 document.getElementById('btnLogin').onclick = async () => {
@@ -92,38 +126,50 @@ document.getElementById('btnLogin').onclick = async () => {
   try{
     const r = await api('/.netlify/functions/equipe-login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ telefone, tipo: 'freteiro' }) });
     localStorage.setItem('equipeToken', r.token);
+    localStorage.setItem('equipeTipo', 'freteiro');
     checarSessao();
   }catch(e){ document.getElementById('erroLogin').innerHTML = '<div class="err">'+esc(e.message)+'</div>'; }
 };
 
-document.getElementById('btnSair').onclick = () => { localStorage.removeItem('equipeToken'); location.href = '/equipe'; };
+document.getElementById('btnSair').onclick = () => {
+  localStorage.removeItem('equipeToken'); localStorage.removeItem('equipeTipo');
+  location.href = '/equipe';
+};
 
+// Sempre mostra a rota de HOJE — sem link por romaneio, sem lista de rotas antigas.
 async function iniciar(){
-  if(id){ await carregar(); }
-  else { await carregarLista(); }
-}
-
-async function carregarLista(){
-  document.getElementById('titulo').textContent = 'Minhas rotas';
-  document.getElementById('sub').textContent = '';
   try{
     const rotas = await api('/.netlify/functions/minhas-rotas');
-    document.getElementById('lista').innerHTML = rotas.length ? rotas.map(r => `
-      <a class="rota" href="/entrega/${r.id}">
-        <span class="n">${esc(r.codigo)}</span> <span class="n">${esc(r.data||'')}</span>
-        <h3>${esc(r.freteiroNome||'')}</h3>
+    if(!rotas.length){
+      document.getElementById('titulo').textContent = 'Sem rota hoje';
+      document.getElementById('sub').textContent = '';
+      document.getElementById('lista').innerHTML = '<div class="empty">Nenhuma rota criada pra você hoje ainda. Fale com o gerente.</div>';
+      return;
+    }
+    if(rotas.length === 1){ idAtual = rotas[0].id; await carregar(); return; }
+    document.getElementById('titulo').textContent = 'Suas rotas de hoje';
+    document.getElementById('sub').textContent = 'Você tem mais de uma rota hoje — escolha uma:';
+    document.getElementById('lista').innerHTML = rotas.map(r => `
+      <a class="rota" href="#" onclick="abrirRota('${r.id}');return false;">
+        <span class="n">${esc(r.codigo)}</span>
         <div class="end">${r.entregues}/${r.totalParadas} entregues</div>
-      </a>`).join('') : '<div class="empty">Nenhuma rota encontrada.</div>';
-  }catch(e){ document.getElementById('lista').innerHTML = '<div class="empty">'+esc(e.message)+'</div>'; }
+      </a>`).join('');
+  }catch(e){
+    document.getElementById('titulo').textContent = 'Sem internet';
+    document.getElementById('lista').innerHTML = '<div class="empty">Não deu pra carregar a rota de hoje. Assim que voltar o sinal, tente de novo.</div>';
+  }
 }
+function abrirRota(id){ idAtual = id; carregar(); }
 
 async function carregar(){
   try{
-    rom = await api('/.netlify/functions/romaneio-publico?id='+id);
+    rom = await api('/.netlify/functions/romaneio-publico?id='+idAtual);
+    localStorage.setItem('romCache_'+idAtual, JSON.stringify(rom));
     render();
   }catch(e){
-    document.getElementById('titulo').textContent = 'Erro';
-    document.getElementById('lista').innerHTML = '<div class="empty">'+esc(e.message)+'</div>';
+    const cache = localStorage.getItem('romCache_'+idAtual);
+    if(cache){ rom = JSON.parse(cache); render(); toast('Sem internet — mostrando a última rota salva no celular'); }
+    else{ document.getElementById('titulo').textContent = 'Erro'; document.getElementById('lista').innerHTML = '<div class="empty">'+esc(e.message)+'</div>'; }
   }
 }
 
@@ -172,18 +218,37 @@ function render(){
         ${end?`<a class="botaogrande bmapa" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${q}"><span class="emoji">📍</span>Mapa</a>`:''}
         ${telLimpo?`<a class="botaogrande btel" href="tel:${telLimpo}"><span class="emoji">📞</span>Ligar</a>`:''}
         ${telLimpo?`<a class="botaogrande bwpp" target="_blank" href="https://wa.me/55${telLimpo}"><span class="emoji">💬</span>WhatsApp</a>`:''}
+        <button type="button" class="botaogrande bouvir" onclick="ouvirEndereco(${i})"><span class="emoji">🔊</span>Endereço</button>
+        ${telLimpo?`<button type="button" class="botaogrande bouvir" onclick="ouvirTelefone(${i})"><span class="emoji">🔊</span>Telefone</button>`:''}
       </div>
       <div class="fotos">${fotos}</div>
       <button class="btnfoto" onclick="document.getElementById('foto-${p.id}').click()">📷 Enviar foto</button>
       <input type="file" id="foto-${p.id}" accept="image/*" capture="environment" style="display:none" onchange="enviarFoto('${p.id}', this.files[0])">
       ${feito
-        ? `<div class="status ${p.status==='entregue'?'ok':'no'}">${p.status==='entregue'?'✓ Entregue':'✕ Não entregue'}${p.recebedor?' — '+esc(p.recebedor):''}${p.motivo?' — '+esc(p.motivo):''}<br><small>${p.entregue_em?new Date(p.entregue_em).toLocaleString('pt-BR'):''}</small></div>`
+        ? `<div class="status ${p.status==='entregue'?'ok':'no'}">${p.status==='entregue'?'✓ Entregue':'✕ Não entregue'}${p.recebedor?' — '+esc(p.recebedor):''}${p.motivo?' — '+esc(p.motivo):''}<br><small>${p.entregue_em?new Date(p.entregue_em).toLocaleString('pt-BR'):''}</small></div>
+           <button class="btndesfazer" onclick="desfazer(${i})">↩️ Desfazer</button>`
         : `<div class="acoes">
-             <button class="ok" onclick="marcar(${i},'entregue')">✓ Entreguei</button>
-             <button class="no" onclick="marcar(${i},'falhou')">✕ Não entreguei</button>
+             <button class="ok" id="btnok-${i}" onclick="marcar(${i},'entregue')">✓ Entreguei</button>
+             <button class="no" id="btnno-${i}" onclick="marcar(${i},'falhou')">✕ Não entreguei</button>
            </div>`}
     </div>`;
   }).join('') || '<div class="empty">Sem paradas.</div>';
+}
+
+function falar(texto){
+  if(!window.speechSynthesis){ alert('Seu celular não suporta isso.'); return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(texto);
+  u.lang = 'pt-BR';
+  speechSynthesis.speak(u);
+}
+function ouvirEndereco(i){
+  const c = rom.paradas[i].cliente || {};
+  falar([c.endereco, c.complemento, c.bairro, c.cidade, c.estado].filter(Boolean).join(', ') || 'Endereço não informado');
+}
+function ouvirTelefone(i){
+  const tel = ((rom.paradas[i].cliente||{}).telefone||'').replace(/\D/g,'');
+  falar(tel ? tel.split('').join(' ') : 'Telefone não informado');
 }
 
 function geo(){
@@ -196,6 +261,8 @@ function geo(){
 }
 
 async function marcar(i, status){
+  const botao = document.getElementById(status==='entregue'?'btnok-'+i:'btnno-'+i);
+  if(botao && botao.disabled) return; // trava clique duplo
   const parada = rom.paradas[i];
   let body = { paradaId: parada.id, status };
   if(status === 'entregue'){
@@ -207,13 +274,39 @@ async function marcar(i, status){
     if(motivo === null) return;
     body.motivo = motivo;
   }
+  if(botao){ document.getElementById('btnok-'+i).disabled = true; document.getElementById('btnno-'+i).disabled = true; }
   const g = await geo();
   if(g){ body.lat = g.lat; body.lng = g.lng; }
   try{
     await api('/.netlify/functions/parada-status', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
     await carregar();
-  }catch(e){ alert('Falha ao salvar: ' + e.message); }
+  }catch(e){
+    if(e instanceof ErroOffline){
+      parada.status = status;
+      if(status==='entregue'){ parada.entregue_em = new Date().toISOString(); parada.recebedor = body.recebedor; }
+      if(status==='falhou') parada.motivo = body.motivo;
+      enfileirar({ url: '/.netlify/functions/parada-status', body, token: localStorage.getItem('equipeToken') });
+      localStorage.setItem('romCache_'+idAtual, JSON.stringify(rom));
+      toast('Sem internet — salvo no celular, será enviado quando voltar o sinal');
+      render();
+    } else {
+      alert('Falha ao salvar: ' + e.message);
+      render();
+    }
+  }
 }
+
+async function desfazer(i){
+  const parada = rom.paradas[i];
+  const nome = prompt('Pra desfazer, digite seu nome (igual está cadastrado):');
+  if(nome === null) return;
+  try{
+    await api('/.netlify/functions/parada-status', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId: parada.id, desfazer: true, nomeConfirmacao: nome }) });
+    await carregar();
+    toast('Desfeito');
+  }catch(e){ alert('Não foi possível desfazer: ' + e.message); }
+}
+
 function redimensionarImagem(file, maxLado){
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -239,10 +332,17 @@ async function enviarFoto(paradaId, file){
     const imagemBase64 = await redimensionarImagem(file, 1280);
     await api('/.netlify/functions/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64 }) });
     await carregar();
-  }catch(e){ alert('Falha ao enviar a foto: ' + e.message); }
+  }catch(e){
+    if(e instanceof ErroOffline) toast('Sem internet — a foto não pôde ser enviada agora. Tente de novo com sinal.');
+    else alert('Falha ao enviar a foto: ' + e.message);
+  }
 }
 window.marcar = marcar;
+window.desfazer = desfazer;
 window.enviarFoto = enviarFoto;
+window.abrirRota = abrirRota;
+window.ouvirEndereco = ouvirEndereco;
+window.ouvirTelefone = ouvirTelefone;
 
 checarSessao();
 </script>

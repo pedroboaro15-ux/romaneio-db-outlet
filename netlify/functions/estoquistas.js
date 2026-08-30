@@ -2,6 +2,7 @@
 const { requireAdmin } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
+const { derrubarSessoes } = require('./lib/sessao');
 
 exports.handler = async event => {
   const user = await requireAdmin(event);
@@ -29,6 +30,7 @@ exports.handler = async event => {
 
   if (event.httpMethod === 'DELETE') {
     if (!q.id) return json(400, { erro: 'informe id' });
+    await derrubarSessoes(q.id);
     const { error } = await sb.from('estoquistas').delete().eq('id', q.id);
     if (error) return json(500, { erro: error.message });
     return json(200, { ok: true });

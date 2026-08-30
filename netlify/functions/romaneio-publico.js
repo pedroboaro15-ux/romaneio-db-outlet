@@ -30,6 +30,7 @@ exports.handler = async event => {
     codigo: rom.codigo,
     data: rom.data_rota,
     status: rom.status,
+    carregamento_confirmado: rom.carregamento_confirmado,
     freteiro: rom.freteiros || null,
     paradas: (rom.paradas || [])
       .map(p => ({ ...p, fotos: p.parada_fotos || [] }))
