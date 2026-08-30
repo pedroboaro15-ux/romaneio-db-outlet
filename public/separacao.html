@@ -10,61 +10,240 @@ body{margin:0;background:#f4f5f7;font:15px/1.5 -apple-system,BlinkMacSystemFont,
 header{background:#0f8a4a;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5}
 header h1{font-size:17px;margin:0}
 header p{margin:3px 0 0;font-size:13px;opacity:.85}
+.prog{height:5px;background:#ffffff40;border-radius:3px;margin-top:10px;overflow:hidden}
+.prog i{display:block;height:100%;background:#fff;width:0;transition:.3s}
 main{padding:12px}
-.p{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.p{background:#fff;border-radius:12px;padding:16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
 .p .n{display:inline-block;background:#eef1f5;color:#6b7280;font-weight:700;font-size:12px;padding:2px 8px;border-radius:20px}
-.p h3{margin:8px 0 2px;font-size:16px}
+.p h3{margin:8px 0 2px;font-size:18px}
 .p .cli{color:#5b6270;font-size:13px}
 .p .itens{margin:10px 0;padding:8px 10px;background:#f7f8fa;border-radius:8px;font-size:13px}
-.vol{margin-top:10px;background:#eafaf1;border:1px solid #c8ecd9;border-radius:9px;padding:10px 12px;text-align:center}
-.vol b{display:block;font-size:26px;color:#0f8a4a;line-height:1.2}
+.aviso{border-radius:10px;padding:10px 12px;margin:10px 0;font-size:13px;font-weight:600}
+.aviso.ultima{background:#fdeaea;color:#7f1d1d}
+.aviso.primeira{background:#eafaf1;color:#215e3f}
+.aviso.meio{background:#eef1f5;color:#4b5563}
+.vol{margin-top:12px;background:#eafaf1;border:1px solid #c8ecd9;border-radius:9px;padding:16px 12px;text-align:center}
+.vol b{display:block;font-size:30px;color:#0f8a4a;line-height:1.2}
 .vol span{font-size:12px;color:#4a7a63;text-transform:uppercase;letter-spacing:.04em}
 .obs{margin-top:8px;font-size:13px;font-style:italic;color:#5b6270}
+.cordestaque{margin-top:10px;background:#eef1f5;border-radius:10px;padding:12px;text-align:center}
+.cordestaque b{display:block;font-size:22px;color:#15181d}
+.cordestaque span{font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em}
+.fotos{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.fotos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #ddd}
+.btnfoto{background:#7c3aed;color:#fff;margin-top:10px}
+button{padding:14px;border:0;border-radius:9px;font:inherit;font-weight:700;cursor:pointer;width:100%}
+.ok{background:#0f8a4a;color:#fff;font-size:16px}
+.nav{display:flex;gap:8px;margin-top:10px}
+.nav button{flex:1;padding:10px;font-size:13px;font-weight:600;background:#fff;color:#4b5563;border:1px solid #ddd}
+.done{background:#eafaf1;border:1px solid #c8ecd9;border-radius:10px;padding:12px;text-align:center;color:#215e3f;font-weight:700;margin-top:12px}
 .empty{text-align:center;padding:40px;color:#6b7280}
+.loginbox{max-width:320px;margin:70px auto;background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.loginbox input{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font:inherit;box-sizing:border-box}
+.loginbox button{background:#0f8a4a;color:#fff}
+.err{background:#fdeaea;color:#7f1d1d;padding:8px 10px;border-radius:8px;font-size:13px;margin-bottom:10px}
+.rota{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);text-decoration:none;display:block;color:inherit}
 </style>
 </head>
 <body>
+
+<div id="tela-login" class="loginbox" hidden>
+  <h3 style="margin-top:0">Entrar</h3>
+  <div id="erroLogin"></div>
+  <input id="lTel" type="tel" placeholder="seu telefone" autocomplete="username">
+  <input id="lPin" type="tel" inputmode="numeric" placeholder="seu PIN" autocomplete="current-password">
+  <button id="btnLogin" style="width:100%">Entrar</button>
+</div>
+
+<div id="tela-app" hidden>
 <header>
   <h1 id="titulo">Carregando…</h1>
   <p id="sub"></p>
+  <div class="prog"><i id="bar"></i></div>
+  <button id="btnSair" style="position:absolute;top:12px;right:14px;width:auto;padding:6px 10px;font-size:12px;background:#ffffff30;color:#fff">Sair</button>
 </header>
 <main id="lista"></main>
+</div>
 
 <script>
-const id = location.pathname.split('/').filter(Boolean).pop();
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const id = location.pathname.replace(/^\/separacao\/?/, '').trim() || null;
+let rom = null, ordemCarregamento = [], passo = 0;
 
+async function api(url, opt){
+  const token = localStorage.getItem('equipeToken');
+  opt = opt || {};
+  opt.headers = Object.assign({}, opt.headers, token ? { Authorization: 'Bearer ' + token } : {});
+  const r = await fetch(url, opt);
+  const j = await r.json().catch(()=>({erro:'resposta inválida'}));
+  if(!r.ok) throw new Error(j.erro || ('HTTP '+r.status));
+  return j;
+}
+
+function checarSessao(){
+  if(localStorage.getItem('equipeToken')){ document.getElementById('tela-login').hidden = true; document.getElementById('tela-app').hidden = false; iniciar(); }
+  else { document.getElementById('tela-login').hidden = false; document.getElementById('tela-app').hidden = true; }
+}
+document.getElementById('btnLogin').onclick = async () => {
+  const telefone = document.getElementById('lTel').value.trim(), pin = document.getElementById('lPin').value.trim();
+  document.getElementById('erroLogin').innerHTML = '';
+  try{
+    const r = await api('/.netlify/functions/equipe-login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ telefone, pin }) });
+    localStorage.setItem('equipeToken', r.token);
+    checarSessao();
+  }catch(e){ document.getElementById('erroLogin').innerHTML = '<div class="err">'+esc(e.message)+'</div>'; }
+};
+document.getElementById('btnSair').onclick = () => { localStorage.removeItem('equipeToken'); checarSessao(); };
+
+async function iniciar(){
+  if(id){ await carregar(); } else { await carregarLista(); }
+}
+
+async function carregarLista(){
+  document.getElementById('titulo').textContent = 'Separação — todas as rotas';
+  document.getElementById('sub').textContent = '';
+  try{
+    const rotas = await api('/.netlify/functions/minhas-rotas');
+    document.getElementById('lista').innerHTML = rotas.length ? rotas.map(r => `
+      <a class="rota" href="/separacao/${r.id}">
+        <span class="n">${esc(r.codigo)}</span> <span class="n">${esc(r.data||'')}</span>
+        <h3>${esc(r.freteiroNome||'sem freteiro')}</h3>
+        <div class="cli">${r.totalParadas} parada(s)</div>
+      </a>`).join('') : '<div class="empty">Nenhuma rota encontrada.</div>';
+  }catch(e){ document.getElementById('lista').innerHTML = '<div class="empty">'+esc(e.message)+'</div>'; }
+}
+
+// Carregar o caminhão é o CONTRÁRIO da ordem de entrega: quem sai primeiro do caminhão
+// tem que ter entrado por último. Por isso mostramos a rota de trás pra frente aqui.
 async function carregar(){
-  const r = await fetch('/.netlify/functions/romaneio-publico?id='+id);
-  if(!r.ok){ document.getElementById('lista').innerHTML = '<div class="empty">Romaneio não encontrado.</div>'; return; }
-  const rom = await r.json();
-  render(rom);
+  try{
+    rom = await api('/.netlify/functions/romaneio-publico?id='+id);
+    ordemCarregamento = [...rom.paradas].reverse();
+    passo = ordemCarregamento.findIndex(p => !p.separado);
+    if(passo === -1) passo = ordemCarregamento.length; // tudo já separado
+    document.getElementById('titulo').textContent = 'Separação — Romaneio ' + rom.codigo;
+    await avancarSeSemVolume();
+    render();
+  }catch(e){
+    document.getElementById('titulo').textContent = 'Erro';
+    document.getElementById('lista').innerHTML = '<div class="empty">'+esc(e.message)+'</div>';
+  }
 }
 
-function render(rom){
-  const totalVol = rom.paradas.reduce((s,p)=>s+(p.volumes||0),0);
-  document.getElementById('titulo').textContent = 'Separação — Romaneio ' + rom.codigo;
-  document.getElementById('sub').textContent =
-    rom.data + ' · ' + rom.paradas.length + ' pedido(s) · ' + totalVol + ' volume(s) no total';
+// Parada sem volume (ex: assistência sem peça) não tem o que confirmar — marca
+// como separada sozinho e pula pra próxima, sem exigir clique.
+async function avancarSeSemVolume(){
+  while(passo < ordemCarregamento.length && (Number(ordemCarregamento[passo].volumes) || 0) === 0 && !ordemCarregamento[passo].separado){
+    try{
+      const atualizada = await api('/.netlify/functions/parada-separar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId: ordemCarregamento[passo].id }) });
+      ordemCarregamento[passo] = { ...ordemCarregamento[passo], ...atualizada };
+    }catch(e){ break; }
+    passo++;
+  }
+}
 
-  document.getElementById('lista').innerHTML = rom.paradas.map((p,i)=>{
-    const c = p.cliente || {};
-    const cid = [c.cidade, c.estado].filter(Boolean).join('/');
-    const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}</div>`).join('');
-    const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
-    return `<div class="p">
-      <span class="n">${i+1} de ${rom.paradas.length}</span>
+function render(){
+  const total = ordemCarregamento.length;
+  const feitas = ordemCarregamento.filter(p=>p.separado).length;
+  document.getElementById('sub').textContent = rom.data + ' · ' + feitas + '/' + total + ' separadas · carregando de trás pra frente';
+  document.getElementById('bar').style.width = (total ? feitas/total*100 : 0) + '%';
+
+  if(!total){ document.getElementById('lista').innerHTML = '<div class="empty">Sem paradas.</div>'; return; }
+  if(passo >= total){
+    document.getElementById('lista').innerHTML = '<div class="done">✓ Caminhão carregado — todas as paradas separadas!</div>';
+    return;
+  }
+
+  const p = ordemCarregamento[passo];
+  const posicaoOriginal = rom.paradas.indexOf(p) + 1;
+  const totalRota = rom.paradas.length;
+  let aviso;
+  if(posicaoOriginal === totalRota) aviso = { txt: 'ÚLTIMA entrega da rota — carregue esta AGORA, primeiro de todas', cls: 'ultima' };
+  else if(posicaoOriginal === 1) aviso = { txt: 'PRIMEIRA entrega da rota — carregue por ÚLTIMO, vai ficar na frente pra tirar primeiro', cls: 'primeira' };
+  else aviso = { txt: `Entrega ${posicaoOriginal} de ${totalRota} da rota`, cls: 'meio' };
+
+  const c = p.cliente || {};
+  const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}</div>`).join('');
+  const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
+  const total_vol = Number(p.volumes) || 0;
+  const confirmados = Math.min(p.volumes_confirmados || 0, total_vol);
+  const fotos = (p.fotos||[]).map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}"></a>`).join('');
+
+  document.getElementById('lista').innerHTML = `
+    <div class="p">
+      <span class="n">Carregando ${passo+1} de ${total}</span>
       <span class="n">${rotulo}${p.numero?' '+esc(p.numero):''}</span>
+      <div class="aviso ${aviso.cls}">${aviso.txt}</div>
       <h3>${esc(c.nome||'(sem cliente)')}</h3>
-      ${cid?`<div class="cli">${esc(cid)}</div>`:''}
+      ${[c.cidade,c.estado].filter(Boolean).length?`<div class="cli">${esc([c.cidade,c.estado].filter(Boolean).join('/'))}</div>`:''}
       ${itens?`<div class="itens">${itens}</div>`:''}
-      <div class="vol"><b>${p.volumes||0}</b><span>volume(s) a separar</span></div>
+      ${p.cor?`<div class="cordestaque"><b>${esc(p.cor)}</b><span>cor do móvel — confira antes de carregar</span></div>`:''}
       ${p.observacao?`<div class="obs">Obs: ${esc(p.observacao)}</div>`:''}
+      <div class="fotos">${fotos}</div>
+      <button class="btnfoto" onclick="document.getElementById('foto-${p.id}').click()">📷 Enviar foto</button>
+      <input type="file" id="foto-${p.id}" accept="image/*" capture="environment" style="display:none" onchange="enviarFoto('${p.id}', this.files[0])">
+      ${total_vol > 0 ? `
+        <div class="vol"><b>${confirmados} / ${total_vol}</b><span>volumes confirmados</span></div>
+        ${confirmados < total_vol
+          ? `<button class="ok" style="margin-top:10px" onclick="confirmarVolume('${p.id}')">Confirmei o volume ${confirmados+1} de ${total_vol}</button>`
+          : `<div class="done">✓ Separado</div>`}
+      ` : `<div class="done" style="margin-top:10px">Sem volumes pra confirmar nessa parada</div>`}
+      <div class="nav">
+        <button onclick="irPara(${passo-1})" ${passo===0?'disabled':''}>◀ Anterior</button>
+        <button onclick="irPara(${passo+1})">Pular ▶</button>
+      </div>
     </div>`;
-  }).join('') || '<div class="empty">Sem paradas.</div>';
 }
 
-carregar();
+async function irPara(i){
+  if(i < 0) return;
+  passo = i;
+  await avancarSeSemVolume();
+  render();
+}
+
+async function confirmarVolume(paradaId){
+  try{
+    const atualizada = await api('/.netlify/functions/parada-separar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId }) });
+    const i = ordemCarregamento.findIndex(x=>x.id===paradaId);
+    if(i>=0) ordemCarregamento[i] = { ...ordemCarregamento[i], ...atualizada };
+    if(atualizada.separado){ passo++; await avancarSeSemVolume(); }
+    render();
+  }catch(e){ alert('Falha ao salvar: ' + e.message); }
+}
+function redimensionarImagem(file, maxLado){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let { width, height } = img;
+      if(width > height && width > maxLado){ height = Math.round(height * maxLado/width); width = maxLado; }
+      else if(height > maxLado){ width = Math.round(width * maxLado/height); height = maxLado; }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+async function enviarFoto(paradaId, file){
+  if(!file) return;
+  try{
+    const imagemBase64 = await redimensionarImagem(file, 1280);
+    await api('/.netlify/functions/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64 }) });
+    await carregar();
+  }catch(e){ alert('Falha ao enviar a foto: ' + e.message); }
+}
+
+window.irPara = irPara;
+window.confirmarVolume = confirmarVolume;
+window.enviarFoto = enviarFoto;
+
+checarSessao();
 </script>
 </body>
 </html>

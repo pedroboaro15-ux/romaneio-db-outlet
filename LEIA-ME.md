@@ -90,7 +90,7 @@ Abre em `http://localhost:8888`.
 2. Aba **Buscar pedido** — digite o número do pedido de venda e clique em Buscar. O app já traz os produtos e o endereço do cliente.
 3. Digite a **quantidade de volumes** e clique em **Adicionar ao romaneio**. Repita pra cada pedido que vai na mesma rota.
 4. Escolha o **freteiro** e a **data**, clique em **Gerar romaneio**.
-5. Na aba **Romaneios**, copie o **Link do freteiro** (mande no WhatsApp dele) e o **Link de separação** (mande pro estoquista). Nenhum dos dois precisa de senha — quem tem o link, acessa aquele romaneio.
+5. Na aba **Romaneios**, use o botão **Mandar no WhatsApp** (ou copie o **Link do freteiro**/**Link de separação**). A pessoa precisa estar cadastrada com telefone+PIN (aba Freteiros) pra conseguir entrar.
 
 ---
 
@@ -108,6 +108,23 @@ A Omie devolve nomes de campo um pouco diferentes conforme a conta/versão. Use 
   - **Ordenar pela melhor rota** — sugere uma ordem mais eficiente; só grava se você clicar em "Confirmar".
   - O ponto de partida usado pra calcular a rota é uma constante `LOJA_LAT`/`LOJA_LNG` no topo do `<script>` de `public/index.html` (hoje aponta pro centro de João Pessoa) — troque pelas coordenadas reais do seu depósito quando souber.
 
+## Freteiros e estoquistas fazem login por telefone + PIN
+
+Não é e-mail/senha, e não é Supabase Auth — é um login próprio do app, bem mais simples pro dia a dia da equipe:
+
+1. No painel, aba **Freteiros**, cadastre cada freteiro com **telefone** e um **PIN** (um número de 4 a 6 dígitos que você escolhe). O mesmo vale pra "Cadastrar estoquista".
+2. Mande pra pessoa o endereço `seusite.netlify.app/entrega` (freteiro) ou `/separacao` (estoquista) — ela entra com o telefone e o PIN e já vê as rotas dela (freteiro só vê as próprias; estoquista vê todas).
+3. Os links de um romaneio específico (`/entrega/<código>`) continuam funcionando, mas também pedem esse login — e um freteiro só consegue abrir romaneio que for dele.
+4. **Sobre segurança**: um PIN de 4-6 dígitos é bem mais fraco que uma senha de verdade — é uma troca consciente pra facilitar o uso no celular de 7-8 pessoas. Não coloque nada além do trabalho de vocês nesse app, e se desconfiar que alguém de fora descobriu um PIN, é só trocar no cadastro.
+
+## Endereço fixo da loja e do estoque
+
+O freteiro sempre passa por dois lugares fixos antes de entregar: a **loja** (pegar a nota) e o **estoque** (pegar os móveis, que é onde fica a maior parte). Isso já está fixo no código (`LOJA` e `ESTOQUE`, no topo do `<script>` de `public/index.html` e `public/entrega.html`) — se esses endereços mudarem um dia, é só editar os dois arquivos.
+
+> **Confira**: assumi que a loja (Rua Presidente Venceslau Braz, 1013) fica em **João Pessoa/PB**, já que o estoque é ali perto em Cabedelo — você não tinha dito a cidade. Se estiver errado, me avisa que eu corrijo o endereço no código.
+
+Em cada romaneio agora tem um botão **"Rota no Maps"** (painel) / **"Abrir rota completa no Google Maps"** (página do freteiro) que já monta a rota inteira: loja → estoque → cada entrega, na ordem. O **Waze não aceita várias paradas de uma vez** — essa opção existe só no Google Maps; pra cada parada individual ainda dá pra abrir separado.
+
 ## Mais novidades
 
 - **Assistência técnica**: na aba Buscar pedido → "Assistência técnica", dá pra adicionar uma parada que não vem da Omie — você digita nome, endereço e o que vai ser feito. Entra no romaneio junto com os pedidos normais.
@@ -115,7 +132,20 @@ A Omie devolve nomes de campo um pouco diferentes conforme a conta/versão. Use 
 - **Registrar problema**: em Romaneios → "Ver paradas", cada linha agora tem um jeito de marcar "houve problema" e escolher de quem é a culpa (vendedores, estoque ou freteiro), com um campo de observação. Fica salvo por parada.
 - **Relatório por freteiro**: aba **Relatórios** — mostra quantas paradas cada freteiro levou num período e qual % delas teve problema atribuído a ele. O histórico fica guardado indefinidamente no banco; o período ali é só um filtro de visualização (o padrão é olhar os últimos 30 dias, mas dá pra escolher qualquer intervalo, inclusive mais antigo).
 
-Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as colunas novas (é seguro, só adiciona o que falta).
+- **Assistência técnica ficou mais rápida**: agora você digita o número do pedido (igual à busca normal) e só complementa com o tipo de problema — Cor, Defeito na peça ou Esquecimento. Não precisa mais digitar endereço na mão.
+- **Em rota / Conferido**: em Romaneios → Ver paradas, dá pra marcar uma parada como "em rota" antes do freteiro confirmar a entrega, e depois que ele confirma (entregue/não entregue) você pode marcar como "conferido" — um jeito de dizer "eu revisei essa entrega e está tudo certo". O que exatamente foi conferido (pagamento, reclamação do cliente etc.) fica de fora do app de propósito, é só uma marcação sua.
+- **Datas**: na busca por período e no relatório, o campo "até" não aceita mais uma data anterior ao "de".
+- **Editar romaneio já criado**: ao montar um romaneio novo, o campo "Adicionar a" deixa escolher um romaneio existente em vez de criar um novo — as paradas novas entram no final da rota dele. E cada parada agora tem um botão **Remover**, pra tirar sem precisar excluir o romaneio inteiro.
+- **Mandar no WhatsApp com 1 clique**: cada romaneio tem um botão "Mandar no WhatsApp" que já abre a conversa com o freteiro (usa o telefone cadastrado) com a mensagem e o link prontos — só falta clicar em Enviar. Não é automático de verdade (isso exigiria a API paga do WhatsApp Business), mas tira o trabalho de copiar/colar.
+- **Exportar relatório em CSV**: na aba Relatórios, depois de buscar um período, aparece um botão "Exportar CSV" — abre certinho no Excel/Google Sheets.
+- **Separação por volume, na ordem de carregar o caminhão**: a página do estoquista (`/separacao`) virou um passo a passo. Ela mostra as paradas **de trás pra frente** (a última entrega da rota aparece primeiro) — assim o que for carregado primeiro no caminhão é o que sai por último, e a primeira entrega fica na frente pra tirar mais fácil. Pra cada parada, o estoquista confirma **um volume de cada vez** (ex: 2 módulos de sofá = 2 confirmações) até bater o total, e o app já avança pra próxima sozinho.
+- **Cor do móvel**: ao adicionar um pedido (busca por número ou na lista de rascunho), agora tem um campo de cor com sugestões (Branco, Off, Amadeirado) mas você pode digitar qualquer outra. O estoquista vê essa cor em destaque na tela de separação, pra conferir antes de carregar.
+- **Fotos**: freteiro e estoquista têm um botão "📷 Enviar foto" em cada parada (usa a câmera do celular direto). As fotos ficam guardadas no Storage do Supabase e aparecem tanto pra eles quanto pra você, no painel, em "Ver paradas" (miniaturas clicáveis).
+- **Páginas do freteiro e do estoquista ficaram maiores e mais visuais**: nome do cliente bem grande, e dois botões grandes com ícone — 📍 **Mapa** (abre o endereço no Google Maps) e 📞 **Ligar** (liga direto pro cliente) — pensados pra quem não tem facilidade de leitura.
+
+> **Um passo a mais no Supabase**: o `schema.sql` agora também cria um "bucket" de Storage chamado `fotos` (público, mas com caminhos por código aleatório — ninguém acha uma foto sem o link exato). Isso já vem dentro do próprio script, não precisa mexer em nada separado — só rodar o `schema.sql` de novo.
+
+Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas novas (é seguro, só adiciona o que falta).
 
 ## Arquivos
 
@@ -128,9 +158,14 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as colunas novas (�
 | `netlify/functions/reordenar-paradas.js` | Grava a nova ordem das paradas de um romaneio |
 | `netlify/functions/parada-problema.js` | Registra problema numa parada e de quem é a culpa |
 | `netlify/functions/relatorio.js` | Estatísticas por freteiro num período |
+| `netlify/functions/minhas-rotas.js` | Lista as rotas de quem logou (freteiro/estoquista/gerente) |
+| `netlify/functions/equipe-login.js` | Login por telefone+PIN (freteiro/estoquista) |
+| `netlify/functions/parada-separar.js` | Estoquista confirma volume a volume |
+| `netlify/functions/foto-upload.js` | Recebe foto do freteiro/estoquista e guarda no Storage |
+| `netlify/functions/estoquistas.js` | Cadastro de estoquistas |
 | `netlify/functions/freteiros.js` | Cadastro de freteiros |
 | `netlify/functions/romaneios.js` | Criar/listar/excluir romaneios |
-| `netlify/functions/romaneio-publico.js` | Dados do romaneio pra `entrega.html` e `separacao.html` (sem login) |
+| `netlify/functions/romaneio-publico.js` | Dados do romaneio pra `entrega.html` e `separacao.html` |
 | `netlify/functions/parada-status.js` | Freteiro marca entregue/não entregue |
 | `netlify/functions/romaneio-imprimir.js` | Folha A4 de impressão |
 | `netlify/functions/omie-raw.js` | Diagnóstico — chama qualquer método da Omie |

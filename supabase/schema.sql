@@ -3,10 +3,12 @@
 --
 -- RLS fica ligado e SEM policies de propósito: só as Netlify Functions (com a
 -- service role key) leem/escrevem essas tabelas. O navegador nunca fala direto
--- com o Supabase pra buscar dados — nem o painel, nem o link do freteiro/estoquista.
+-- com o Supabase pra buscar dados — nem o painel, nem as páginas de freteiro/estoquista.
 -- Isso impede que alguém, só por ver a chave pública no código do site, liste
--- todos os seus romaneios/clientes — ele só vê o que a Function deixa (1 romaneio
--- por vez, pelo id imprevisível do link).
+-- todos os seus romaneios/clientes.
+--
+-- Freteiros e estoquistas fazem login por TELEFONE + PIN (não é Supabase Auth,
+-- é uma sessão própria guardada em "sessoes_equipe"). Só o gerente usa Supabase Auth.
 
 create extension if not exists "pgcrypto";
 
@@ -19,6 +21,31 @@ create table if not exists public.freteiros (
   criado_em timestamptz default now()
 );
 alter table public.freteiros add column if not exists criado_em timestamptz default now();
+alter table public.freteiros add column if not exists email text default ''; -- não usado mais pro login, deixado por segurança
+alter table public.freteiros add column if not exists pin text default '';
+
+-- Estoquistas fazem login igual ao freteiro, mas não pertencem a um romaneio
+-- específico: quem loga aqui vê todas as rotas (pra separar o que precisar).
+create table if not exists public.estoquistas (
+  id uuid primary key default gen_random_uuid(),
+  nome text not null,
+  email text default '',
+  criado_em timestamptz default now()
+);
+alter table public.estoquistas enable row level security;
+alter table public.estoquistas add column if not exists telefone text default '';
+alter table public.estoquistas add column if not exists pin text default '';
+
+-- Sessão criada no login por telefone+PIN (token opaco, sem relação com Supabase Auth).
+create table if not exists public.sessoes_equipe (
+  token text primary key,
+  tipo text not null, -- 'freteiro' | 'estoquista'
+  pessoa_id uuid not null,
+  nome text default '',
+  criado_em timestamptz default now(),
+  expira_em timestamptz not null
+);
+alter table public.sessoes_equipe enable row level security;
 
 create sequence if not exists public.romaneio_seq;
 
@@ -73,7 +100,38 @@ alter table public.paradas add column if not exists problema boolean default fal
 alter table public.paradas add column if not exists problema_responsavel text default ''; -- 'vendedores' | 'estoque' | 'freteiro'
 alter table public.paradas add column if not exists problema_obs text default '';
 
+-- status agora também aceita 'em_rota' (pedido saiu pra entrega), além de
+-- 'pendente' | 'entregue' | 'falhou'. conferido = você revisou depois que o
+-- freteiro confirmou (pagamento/reclamação ficam fora do app de propósito).
+alter table public.paradas add column if not exists conferido boolean default false;
+
+-- Separação por volume: o estoquista confirma volume a volume (ex: 2 módulos de sofá =
+-- 2 confirmações) até bater com "volumes"; aí a parada fica "separado" e o app avança.
+alter table public.paradas add column if not exists volumes_confirmados int default 0;
+alter table public.paradas add column if not exists separado boolean default false;
+alter table public.paradas add column if not exists separado_em timestamptz;
+
+-- Cor do móvel: 'branco' | 'off' | 'amadeirado' | qualquer texto livre digitado por você.
+alter table public.paradas add column if not exists cor text default '';
+
 create index if not exists paradas_romaneio_idx on public.paradas(romaneio_id);
+
+-- Fotos que o freteiro/estoquista mandam de uma parada (ida pro Storage do Supabase).
+create table if not exists public.parada_fotos (
+  id uuid primary key default gen_random_uuid(),
+  parada_id uuid not null references public.paradas(id) on delete cascade,
+  url text not null,
+  enviado_por text default '',
+  criado_em timestamptz default now()
+);
+alter table public.parada_fotos enable row level security;
+create index if not exists parada_fotos_parada_idx on public.parada_fotos(parada_id);
+
+-- Bucket de Storage pras fotos. Público (mas os caminhos usam uuid, então não são
+-- adivinháveis) pra não precisar gerenciar link assinado com validade.
+insert into storage.buckets (id, name, public)
+values ('fotos', 'fotos', true)
+on conflict (id) do nothing;
 
 create table if not exists public.geo_cache (
   chave text primary key,

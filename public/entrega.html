@@ -13,71 +13,173 @@ header p{margin:3px 0 0;font-size:13px;opacity:.85}
 .prog{height:5px;background:#ffffff40;border-radius:3px;margin-top:10px;overflow:hidden}
 .prog i{display:block;height:100%;background:#fff;width:0;transition:.3s}
 main{padding:12px}
-.p{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
-.p.done{opacity:.6}
-.p .n{display:inline-block;background:#eef1f5;color:#6b7280;font-weight:700;font-size:12px;padding:2px 8px;border-radius:20px}
-.p h3{margin:8px 0 2px;font-size:16px}
-.p .end{color:#5b6270;font-size:13px}
-.p .itens{margin:10px 0;padding:8px 10px;background:#f7f8fa;border-radius:8px;font-size:13px}
-.acoes{display:flex;gap:8px;margin-top:10px}
-button{flex:1;padding:11px;border:0;border-radius:9px;font:inherit;font-weight:600;cursor:pointer}
+.p{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.p.done{opacity:.65}
+.p .n{display:inline-block;background:#eef1f5;color:#6b7280;font-weight:700;font-size:13px;padding:3px 10px;border-radius:20px}
+.p h3{margin:10px 0 4px;font-size:24px;line-height:1.2}
+.p .end{color:#5b6270;font-size:15px}
+.p .itens{margin:10px 0;padding:10px 12px;background:#f7f8fa;border-radius:8px;font-size:14px}
+.acoes{display:flex;gap:8px;margin-top:12px}
+button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:700;cursor:pointer;font-size:15px}
 .ok{background:#0f8a4a;color:#fff}
-.no{background:#fff;color:#b91c1c;border:1px solid #f0c9c9}
-.map{background:#fff;color:#1f6feb;border:1px solid #cddffb;text-decoration:none;display:block;text-align:center;padding:11px;border-radius:9px;margin-top:8px;font-weight:600}
-.status{margin-top:10px;font-size:13px;font-weight:600}
+.no{background:#fff;color:#b91c1c;border:2px solid #f0c9c9}
+.contatos{display:flex;gap:10px;margin-top:12px}
+.botaogrande{flex:1;text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:16px 8px;border-radius:12px;font-weight:700;font-size:15px;color:#fff}
+.botaogrande .emoji{font-size:28px}
+.bmapa{background:#1f6feb}
+.btel{background:#0f8a4a}
+.maprota{background:#7c3aed;color:#fff;text-decoration:none;display:block;text-align:center;padding:14px;border-radius:10px;margin:0 12px 12px;font-weight:700;font-size:15px}
+.status{margin-top:10px;font-size:15px;font-weight:700}
 .status.ok{background:none;color:#0f8a4a}
 .status.no{background:none;color:#b91c1c;border:0}
 .empty{text-align:center;padding:40px;color:#6b7280}
+.fotos{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.fotos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #ddd}
+.btnfoto{background:#7c3aed;color:#fff;margin-top:10px}
+.loginbox{max-width:320px;margin:70px auto;background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.loginbox input{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font:inherit;box-sizing:border-box}
+.loginbox button{background:#1f6feb;color:#fff}
+.err{background:#fdeaea;color:#7f1d1d;padding:8px 10px;border-radius:8px;font-size:13px;margin-bottom:10px}
+.rota{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);text-decoration:none;display:block;color:inherit}
 </style>
 </head>
 <body>
+
+<div id="tela-login" class="loginbox" hidden>
+  <h3 style="margin-top:0">Entrar</h3>
+  <div id="erroLogin"></div>
+  <input id="lTel" type="tel" placeholder="seu telefone" autocomplete="username">
+  <input id="lPin" type="tel" inputmode="numeric" placeholder="seu PIN" autocomplete="current-password">
+  <button id="btnLogin" style="width:100%">Entrar</button>
+</div>
+
+<div id="tela-app" hidden>
 <header>
   <h1 id="titulo">Carregando…</h1>
   <p id="sub"></p>
   <div class="prog"><i id="bar"></i></div>
+  <button id="btnSair" style="position:absolute;top:12px;right:14px;width:auto;flex:none;padding:6px 10px;font-size:12px;background:#ffffff30;color:#fff">Sair</button>
 </header>
+<div id="rotaCompleta"></div>
 <main id="lista"></main>
+</div>
 
 <script>
-const id = location.pathname.split('/').filter(Boolean).pop();
+const LOJA = { nome: 'Loja — Outlet dos Móveis DB', endereco: 'Rua Presidente Venceslau Braz, 1013' };
+const ESTOQUE = { nome: 'Estoque', endereco: 'R. Márcia Travassos, 660 - Jardim Jerico, Cabedelo - PB, 58103-718' };
+
+const id = location.pathname.replace(/^\/entrega\/?/, '').trim() || null;
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let rom = null;
 
+async function api(url, opt){
+  const token = localStorage.getItem('equipeToken');
+  opt = opt || {};
+  opt.headers = Object.assign({}, opt.headers, token ? { Authorization: 'Bearer ' + token } : {});
+  const r = await fetch(url, opt);
+  const j = await r.json().catch(()=>({erro:'resposta inválida'}));
+  if(!r.ok) throw new Error(j.erro || ('HTTP '+r.status));
+  return j;
+}
+
+function checarSessao(){
+  if(localStorage.getItem('equipeToken')){ document.getElementById('tela-login').hidden = true; document.getElementById('tela-app').hidden = false; iniciar(); }
+  else { document.getElementById('tela-login').hidden = false; document.getElementById('tela-app').hidden = true; }
+}
+document.getElementById('btnLogin').onclick = async () => {
+  const telefone = document.getElementById('lTel').value.trim(), pin = document.getElementById('lPin').value.trim();
+  document.getElementById('erroLogin').innerHTML = '';
+  try{
+    const r = await api('/.netlify/functions/equipe-login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ telefone, pin }) });
+    localStorage.setItem('equipeToken', r.token);
+    checarSessao();
+  }catch(e){ document.getElementById('erroLogin').innerHTML = '<div class="err">'+esc(e.message)+'</div>'; }
+};
+
+document.getElementById('btnSair').onclick = () => { localStorage.removeItem('equipeToken'); checarSessao(); };
+
+async function iniciar(){
+  if(id){ await carregar(); }
+  else { await carregarLista(); }
+}
+
+async function carregarLista(){
+  document.getElementById('titulo').textContent = 'Minhas rotas';
+  document.getElementById('sub').textContent = '';
+  try{
+    const rotas = await api('/.netlify/functions/minhas-rotas');
+    document.getElementById('lista').innerHTML = rotas.length ? rotas.map(r => `
+      <a class="rota" href="/entrega/${r.id}">
+        <span class="n">${esc(r.codigo)}</span> <span class="n">${esc(r.data||'')}</span>
+        <h3>${esc(r.freteiroNome||'')}</h3>
+        <div class="end">${r.entregues}/${r.totalParadas} entregues</div>
+      </a>`).join('') : '<div class="empty">Nenhuma rota encontrada.</div>';
+  }catch(e){ document.getElementById('lista').innerHTML = '<div class="empty">'+esc(e.message)+'</div>'; }
+}
+
 async function carregar(){
-  const r = await fetch('/.netlify/functions/romaneio-publico?id='+id);
-  if(!r.ok){ document.getElementById('lista').innerHTML = '<div class="empty">Romaneio não encontrado.</div>'; return; }
-  rom = await r.json();
-  render();
+  try{
+    rom = await api('/.netlify/functions/romaneio-publico?id='+id);
+    render();
+  }catch(e){
+    document.getElementById('titulo').textContent = 'Erro';
+    document.getElementById('lista').innerHTML = '<div class="empty">'+esc(e.message)+'</div>';
+  }
+}
+
+function linkRotaCompleta(){
+  const enderecos = rom.paradas.map(p => {
+    const c = p.cliente || {};
+    return [c.endereco, c.complemento, c.bairro, c.cidade, c.estado, c.cep].filter(Boolean).join(', ');
+  }).filter(Boolean);
+  if(!enderecos.length) return '';
+  const destino = enderecos[enderecos.length-1];
+  const waypoints = [ESTOQUE.endereco, ...enderecos.slice(0, -1)].map(encodeURIComponent).join('|');
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(LOJA.endereco)}&destination=${encodeURIComponent(destino)}&waypoints=${waypoints}`;
 }
 
 function render(){
-  const ok = rom.paradas.filter(p=>p.status!=='pendente').length;
+  const ok = rom.paradas.filter(p=>p.status==='entregue'||p.status==='falhou').length;
   document.getElementById('titulo').textContent = 'Romaneio ' + rom.codigo;
   document.getElementById('sub').textContent =
     (rom.freteiro ? rom.freteiro.nome + ' · ' : '') + rom.data + ' · ' + ok + '/' + rom.paradas.length + ' concluídas';
   document.getElementById('bar').style.width = (rom.paradas.length ? ok/rom.paradas.length*100 : 0) + '%';
+
+  const rotaLink = linkRotaCompleta();
+  document.getElementById('rotaCompleta').innerHTML = rotaLink
+    ? `<a class="maprota" target="_blank" href="${rotaLink}">Abrir rota completa no Google Maps (loja → estoque → entregas)</a>
+       <div style="text-align:center;font-size:12px;color:#6b7280;margin:-6px 0 12px">O Waze não aceita várias paradas de uma vez — use o Google Maps pra rota completa.</div>`
+    : '';
 
   document.getElementById('lista').innerHTML = rom.paradas.map((p,i)=>{
     const c = p.cliente || {};
     const end = [c.endereco, c.complemento, c.bairro].filter(Boolean).join(', ');
     const cid = [c.cidade, c.estado].filter(Boolean).join('/');
     const q = encodeURIComponent([end, cid, c.cep].filter(Boolean).join(', '));
+    const telLimpo = (c.telefone||'').replace(/\D/g,'');
     const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.descricao)}</div>`).join('');
-    const feito = p.status !== 'pendente';
+    const feito = p.status === 'entregue' || p.status === 'falhou';
     const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
+    const fotos = (p.fotos||[]).map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}"></a>`).join('');
     return `<div class="p ${feito?'done':''}">
       <span class="n">${i+1} de ${rom.paradas.length}</span>
-      <span class="n">${rotulo}${p.numero?' '+esc(p.numero):''} · ${p.volumes||0} vol.</span>
+      <span class="n">${rotulo}${p.numero?' '+esc(p.numero):''} · ${p.volumes||0} vol.${p.cor?' · '+esc(p.cor):''}</span>
+      ${p.status==='em_rota'?'<span class="n">Em rota</span>':''}
       <h3>${esc(c.nome||'(sem cliente)')}</h3>
       <div class="end">${esc(end||'endereço não informado')}${cid?' · '+esc(cid):''}${c.cep?' · '+esc(c.cep):''}</div>
-      ${c.telefone?`<div class="end">Tel: <a href="tel:${esc(c.telefone.replace(/\\D/g,''))}">${esc(c.telefone)}</a></div>`:''}
       ${itens?`<div class="itens">${itens}</div>`:''}
-      ${end?`<a class="map" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${q}">Abrir rota no mapa</a>`:''}
+      <div class="contatos">
+        ${end?`<a class="botaogrande bmapa" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${q}"><span class="emoji">📍</span>Mapa</a>`:''}
+        ${telLimpo?`<a class="botaogrande btel" href="tel:${telLimpo}"><span class="emoji">📞</span>Ligar</a>`:''}
+      </div>
+      <div class="fotos">${fotos}</div>
+      <button class="btnfoto" onclick="document.getElementById('foto-${p.id}').click()">📷 Enviar foto</button>
+      <input type="file" id="foto-${p.id}" accept="image/*" capture="environment" style="display:none" onchange="enviarFoto('${p.id}', this.files[0])">
       ${feito
         ? `<div class="status ${p.status==='entregue'?'ok':'no'}">${p.status==='entregue'?'✓ Entregue':'✕ Não entregue'}${p.recebedor?' — '+esc(p.recebedor):''}${p.motivo?' — '+esc(p.motivo):''}<br><small>${p.entregue_em?new Date(p.entregue_em).toLocaleString('pt-BR'):''}</small></div>`
         : `<div class="acoes">
-             <button class="ok" onclick="marcar(${i},'entregue')">Entreguei</button>
-             <button class="no" onclick="marcar(${i},'falhou')">Não entreguei</button>
+             <button class="ok" onclick="marcar(${i},'entregue')">✓ Entreguei</button>
+             <button class="no" onclick="marcar(${i},'falhou')">✕ Não entreguei</button>
            </div>`}
     </div>`;
   }).join('') || '<div class="empty">Sem paradas.</div>';
@@ -106,14 +208,42 @@ async function marcar(i, status){
   }
   const g = await geo();
   if(g){ body.lat = g.lat; body.lng = g.lng; }
-  const r = await fetch('/.netlify/functions/parada-status', {
-    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+  try{
+    await api('/.netlify/functions/parada-status', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    await carregar();
+  }catch(e){ alert('Falha ao salvar: ' + e.message); }
+}
+function redimensionarImagem(file, maxLado){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let { width, height } = img;
+      if(width > height && width > maxLado){ height = Math.round(height * maxLado/width); width = maxLado; }
+      else if(height > maxLado){ width = Math.round(width * maxLado/height); height = maxLado; }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = reject;
+    img.src = url;
   });
-  if(r.ok){ await carregar(); }
-  else alert('Falha ao salvar. Verifique a conexão.');
 }
 
-carregar();
+async function enviarFoto(paradaId, file){
+  if(!file) return;
+  try{
+    const imagemBase64 = await redimensionarImagem(file, 1280);
+    await api('/.netlify/functions/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64 }) });
+    await carregar();
+  }catch(e){ alert('Falha ao enviar a foto: ' + e.message); }
+}
+window.marcar = marcar;
+window.enviarFoto = enviarFoto;
+
+checarSessao();
 </script>
 </body>
 </html>

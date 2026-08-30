@@ -171,37 +171,33 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
         </div>
       </div>
 
-      <!-- --- assistência técnica (não vem da Omie, você digita) --- -->
+      <!-- --- assistência técnica (usa o mesmo pedido, você só complementa o motivo) --- -->
       <div id="modo-assistencia" hidden>
-        <h2>Adicionar uma assistência técnica</h2>
-        <p class="mut" style="margin-top:-6px">Pra visitas que não são um pedido de venda — você preenche o endereço na mão.</p>
+        <h2>Assistência técnica de um pedido já vendido</h2>
+        <p class="mut" style="margin-top:-6px">Digite o número do pedido — os dados do cliente e do produto vêm iguaizinho à busca por número. Você só diz qual foi o problema.</p>
         <div class="row">
-          <div><label>Nome do cliente</label><input id="aNome"></div>
-          <div><label>Referência / nº da OS (opcional)</label><input id="aRef"></div>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <div style="flex:2"><label>Endereço</label><input id="aEndereco" placeholder="Rua, número"></div>
-          <div><label>Complemento</label><input id="aCompl"></div>
-          <div><label>Bairro</label><input id="aBairro"></div>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <div><label>Cidade</label><input id="aCidade"></div>
-          <div><label>Estado</label><input id="aEstado" maxlength="2" style="text-transform:uppercase"></div>
-          <div><label>CEP</label><input id="aCep"></div>
-          <div><label>Telefone</label><input id="aTel"></div>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <div style="flex:2"><label>O que será feito (opcional)</label><input id="aDescricao"></div>
-          <div class="auto"><button class="btn" id="addAssistencia">Adicionar ao romaneio</button></div>
+          <div><label>Número do pedido</label><input id="numAssist" placeholder="Ex: 1234"></div>
+          <div class="auto"><button class="btn" id="buscarAssistencia">Buscar</button></div>
         </div>
       </div>
     </div>
 
     <div class="card" id="cardResultado" hidden>
-      <h2>Pedido encontrado</h2>
+      <h2 id="tituloResultado">Pedido encontrado</h2>
       <div id="resultado"></div>
       <div class="row" style="margin-top:12px">
-        <div><label>Quantidade de volumes</label><input id="rVolumes" type="number" min="0" value="0"></div>
+        <div id="wTipoProblema" hidden><label>Tipo de problema</label>
+          <select id="rTipoProblema">
+            <option value="cor">Cor</option>
+            <option value="defeito">Defeito na peça</option>
+            <option value="esquecimento">Esquecimento</option>
+          </select>
+        </div>
+        <div id="wVolumes"><label>Quantidade de volumes</label><input id="rVolumes" type="number" min="0" value="0"></div>
+        <div><label>Cor do móvel</label>
+          <input id="rCor" list="coresPadrao" placeholder="Branco, Off, Amadeirado...">
+          <datalist id="coresPadrao"><option value="Branco"><option value="Off"><option value="Amadeirado"></datalist>
+        </div>
         <div style="flex:2"><label>Observação (opcional)</label><input id="rObs"></div>
         <div class="auto"><button class="btn" id="addRascunho">Adicionar ao romaneio</button></div>
       </div>
@@ -213,12 +209,17 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
         <span class="mut" id="contagem" style="margin-left:auto"></span>
       </div>
       <div style="overflow-x:auto"><table>
-        <thead><tr><th>Doc.</th><th>Cliente</th><th>Destino</th><th class="center">Vol.</th><th class="right">Valor</th><th></th></tr></thead>
+        <thead><tr><th>Doc.</th><th>Cliente</th><th>Destino</th><th class="center">Vol.</th><th>Cor</th><th class="right">Valor</th><th></th></tr></thead>
         <tbody id="tabRascunho"></tbody>
       </table></div>
       <div style="padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-        <div style="min-width:180px"><label>Freteiro</label><select id="frSel"></select></div>
-        <div style="min-width:150px"><label>Data da rota</label><input type="date" id="dataRota"></div>
+        <div style="min-width:200px"><label>Adicionar a</label>
+          <select id="romDestino">
+            <option value="">— novo romaneio —</option>
+          </select>
+        </div>
+        <div style="min-width:180px" id="wFrSel"><label>Freteiro</label><select id="frSel"></select></div>
+        <div style="min-width:150px" id="wDataRota"><label>Data da rota</label><input type="date" id="dataRota"></div>
         <button class="btn" id="gerar">Gerar romaneio</button>
       </div>
     </div>
@@ -233,16 +234,32 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
   <section id="t-fret" hidden>
     <div class="card">
       <h2>Cadastrar freteiro</h2>
+      <p class="mut" style="margin-top:-6px">O freteiro loga em /entrega com o telefone e o PIN que você definir aqui.</p>
       <div class="row">
         <div><label>Nome</label><input id="fNome" placeholder="João Silva"></div>
+        <div><label>Telefone (login)</label><input id="fTel" placeholder="(11) 99999-0000"></div>
+        <div><label>PIN (login)</label><input id="fPin" placeholder="4 a 6 números" maxlength="6"></div>
         <div><label>Veículo</label><input id="fVeic" placeholder="Fiorino"></div>
         <div><label>Placa</label><input id="fPlaca" placeholder="ABC1D23"></div>
-        <div><label>Telefone</label><input id="fTel" placeholder="(11) 99999-0000"></div>
         <div class="auto"><button class="btn" id="addFr">Adicionar</button></div>
       </div>
     </div>
     <div class="card" style="padding:0"><div style="overflow-x:auto"><table id="tabFr">
-      <thead><tr><th>Nome</th><th>Veículo</th><th>Placa</th><th>Telefone</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>Telefone</th><th>PIN</th><th>Veículo</th><th>Placa</th><th></th></tr></thead>
+      <tbody></tbody></table></div></div>
+
+    <div class="card">
+      <h2>Cadastrar estoquista</h2>
+      <p class="mut" style="margin-top:-6px">Estoquista loga em /separacao com telefone + PIN e vê todas as rotas (não precisa vincular a um romaneio específico).</p>
+      <div class="row">
+        <div><label>Nome</label><input id="eNome" placeholder="Maria"></div>
+        <div><label>Telefone (login)</label><input id="eTel" placeholder="(11) 99999-0000"></div>
+        <div><label>PIN (login)</label><input id="ePin" placeholder="4 a 6 números" maxlength="6"></div>
+        <div class="auto"><button class="btn" id="addEs">Adicionar</button></div>
+      </div>
+    </div>
+    <div class="card" style="padding:0"><div style="overflow-x:auto"><table id="tabEs">
+      <thead><tr><th>Nome</th><th>Telefone</th><th>PIN</th><th></th></tr></thead>
       <tbody></tbody></table></div></div>
   </section>
 
@@ -257,6 +274,7 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
         <div class="auto"><button class="btn" id="relBuscar">Buscar</button></div>
       </div>
       <div id="relResumo" class="mut" style="margin-top:12px"></div>
+      <div style="margin-top:10px"><button class="btn ghost sm" id="relExportar" hidden>Exportar CSV</button></div>
       <div style="overflow-x:auto;margin-top:12px"><table>
         <thead><tr><th>Freteiro</th><th class="center">Paradas</th><th class="center">Entregues</th><th class="center">Falharam</th><th class="center">Com problema</th><th class="center">% problema do freteiro</th></tr></thead>
         <tbody id="tabRel"><tr><td colspan="6"><div class="empty">Escolha um período e clique em Buscar.</div></td></tr></tbody>
@@ -289,15 +307,19 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
 const SUPABASE_URL = 'https://teaymabvqynopsbnnuwp.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_rE-fSECVdd8sThPSQReZAg_GDjilRcu';
 
-// Ponto usado como "loja" pra sugerir a ordem da rota (vizinho mais próximo).
-// Ajuste pras coordenadas reais do seu depósito quando souber.
-const LOJA_LAT = -7.1195, LOJA_LNG = -34.8450;
+// Endereços fixos: freteiro pega a nota na loja e os móveis no estoque, antes de sair pra entregar.
+// As coordenadas são no nível da cidade (o OpenStreetMap não tem o endereço exato mapeado) —
+// servem só pra centralizar o mapa e sugerir a ordem da rota. Pra navegação de verdade o app usa
+// o endereço por texto, que o Google Maps resolve com muito mais precisão.
+const LOJA = { nome: 'Loja — Outlet dos Móveis DB', endereco: 'Rua Presidente Venceslau Braz, 1013', lat: -7.1215981, lng: -34.8820280 };
+const ESTOQUE = { nome: 'Estoque (móveis)', endereco: 'R. Márcia Travassos, 660 - Jardim Jerico, Cabedelo - PB, 58103-718', lat: -6.9732400, lng: -34.8351609 };
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 let freteiros = [], romaneios = [], rascunho = [], pedidoAtual = null, resultadosPeriodo = [], selPeriodo = new Set();
+let modoBusca = 'pedido';
 let mapas = {};
 
 const money = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -333,6 +355,8 @@ function mostrarLogin(){ $('#tela-login').hidden = false; $('#tela-app').hidden 
 function mostrarApp(){
   $('#tela-login').hidden = true; $('#tela-app').hidden = false;
   carregarFreteiros().catch(e=>erro(e.message));
+  carregarEstoquistas().catch(e=>erro(e.message));
+  carregarRomaneios().catch(e=>erro(e.message));
   statusHoje();
 }
 $('#btnLogin').onclick = async () => {
@@ -363,19 +387,23 @@ $('#pTipo').onchange = () => {
   $('#wTipoData').style.display = nf ? 'none' : '';
   $('#wEtapa').style.display = nf ? 'none' : '';
 };
+$('#pDe').onchange = () => { $('#pAte').min = $('#pDe').value; };
+$('#relDe').onchange = () => { $('#relAte').min = $('#relDe').value; };
 
-/* ---------------- buscar pedido (por número) ---------------- */
-$('#buscarPedido').onclick = async () => {
-  const numero = $('#numPedido').value.trim();
+/* ---------------- buscar pedido (por número / assistência) ---------------- */
+async function buscarPorNumero(numero, btn, modo){
   if(!numero) return toast('Informe o número do pedido');
-  const b = $('#buscarPedido'); b.disabled = true; const t0 = b.textContent; b.innerHTML = '<span class="spin"></span> Buscando…';
+  btn.disabled = true; const t0 = btn.textContent; btn.innerHTML = '<span class="spin"></span> Buscando…';
   erro('');
   try{
     pedidoAtual = await api('/.netlify/functions/pedido?numero=' + encodeURIComponent(numero));
+    modoBusca = modo;
     renderResultado();
   }catch(e){ erro(e.message); $('#cardResultado').hidden = true; }
-  finally{ b.disabled=false; b.textContent = t0; }
-};
+  finally{ btn.disabled=false; btn.textContent = t0; }
+}
+$('#buscarPedido').onclick = () => buscarPorNumero($('#numPedido').value.trim(), $('#buscarPedido'), 'pedido');
+$('#buscarAssistencia').onclick = () => buscarPorNumero($('#numAssist').value.trim(), $('#buscarAssistencia'), 'assistencia');
 
 function renderResultado(){
   const p = pedidoAtual, c = p.cliente || {};
@@ -392,18 +420,34 @@ function renderResultado(){
     ${itens?`<div class="itens">${itens}</div>`:''}
     <div class="mut" style="margin-top:6px">Valor: ${money(p.valor)}${p.peso?` · ${p.peso} kg`:''}${p.volumesOmie?` · Omie indica ${p.volumesOmie} volume(s) — confira e digite abaixo`:''}</div>
   `;
+  const assist = modoBusca === 'assistencia';
+  $('#tituloResultado').textContent = assist ? 'Pedido encontrado — registrar assistência' : 'Pedido encontrado';
+  $('#wTipoProblema').hidden = !assist;
+  $('#wVolumes').hidden = assist;
+  $('#addRascunho').textContent = assist ? 'Adicionar como assistência' : 'Adicionar ao romaneio';
   $('#rVolumes').value = 0;
-  $('#rObs').value = p.observacao || '';
+  $('#rCor').value = '';
+  $('#rObs').value = assist ? '' : (p.observacao || '');
   $('#cardResultado').hidden = false;
 }
 
 $('#addRascunho').onclick = () => {
   if(!pedidoAtual) return;
-  const volumes = Number($('#rVolumes').value) || 0;
-  rascunho.push({ ...pedidoAtual, volumes, observacao: $('#rObs').value || '' });
+  const cor = $('#rCor').value.trim();
+  if(modoBusca === 'assistencia'){
+    const motivos = { cor: 'Cor', defeito: 'Defeito na peça', esquecimento: 'Esquecimento' };
+    const motivo = motivos[$('#rTipoProblema').value] || '';
+    const obsExtra = $('#rObs').value.trim();
+    rascunho.push({ ...pedidoAtual, tipo: 'assistencia', volumes: 0, cor,
+      observacao: 'Assistência — ' + motivo + (obsExtra ? ': ' + obsExtra : '') });
+    $('#numAssist').value = '';
+  } else {
+    const volumes = Number($('#rVolumes').value) || 0;
+    rascunho.push({ ...pedidoAtual, volumes, cor, observacao: $('#rObs').value || '' });
+    $('#numPedido').value = '';
+  }
   pedidoAtual = null;
   $('#cardResultado').hidden = true;
-  $('#numPedido').value = '';
   renderRascunho();
   toast('Adicionado ao romaneio em montagem');
 };
@@ -412,6 +456,7 @@ $('#addRascunho').onclick = () => {
 $('#buscarPeriodo').onclick = async () => {
   const de = $('#pDe').value, ate = $('#pAte').value;
   if(!de || !ate) return toast('Informe o período');
+  if(ate < de) return toast('A data "até" não pode ser antes da data "de"');
   const nf = $('#pTipo').value === 'nfs';
   const b = $('#buscarPeriodo'); b.disabled = true; const t0 = b.textContent; b.innerHTML = '<span class="spin"></span> Buscando…';
   erro('');
@@ -453,7 +498,7 @@ $('#pTodos').onchange = e => {
 };
 $('#addSelecionados').onclick = () => {
   if(!selPeriodo.size) return toast('Selecione ao menos um documento');
-  [...selPeriodo].forEach(i => rascunho.push({ ...resultadosPeriodo[i], volumes: 0, observacao: resultadosPeriodo[i].observacao || '' }));
+  [...selPeriodo].forEach(i => rascunho.push({ ...resultadosPeriodo[i], volumes: 0, cor: '', observacao: resultadosPeriodo[i].observacao || '' }));
   selPeriodo.clear(); renderPeriodo(); renderRascunho();
   toast('Adicionados ao romaneio em montagem — confira os volumes de cada um');
 };
@@ -463,31 +508,6 @@ $('#buscarHoje').onclick = () => {
   $('#pTipo').value = 'pedidos'; $('#pTipo').dispatchEvent(new Event('change'));
   $('#pDe').value = hoje; $('#pAte').value = hoje;
   $('#buscarPeriodo').click();
-};
-
-/* ---------------- assistência técnica ---------------- */
-$('#addAssistencia').onclick = () => {
-  if(!$('#aNome').value.trim() && !$('#aEndereco').value.trim()) return toast('Informe ao menos o nome ou o endereço');
-  rascunho.push({
-    tipo: 'assistencia',
-    numero: $('#aRef').value.trim(),
-    docId: '', data: '', volumes: 0, valor: 0, peso: 0,
-    observacao: $('#aDescricao').value.trim(),
-    cliente: {
-      nome: $('#aNome').value.trim() || '(assistência sem nome)',
-      doc: '',
-      endereco: $('#aEndereco').value.trim(),
-      complemento: $('#aCompl').value.trim(),
-      bairro: $('#aBairro').value.trim(),
-      cidade: $('#aCidade').value.trim(),
-      estado: $('#aEstado').value.trim().toUpperCase(),
-      cep: $('#aCep').value.trim(),
-      telefone: $('#aTel').value.trim()
-    }
-  });
-  ['aNome','aRef','aEndereco','aCompl','aBairro','aCidade','aEstado','aCep','aTel','aDescricao'].forEach(id => $('#'+id).value = '');
-  renderRascunho();
-  toast('Assistência adicionada ao romaneio em montagem');
 };
 
 /* ---------------- rascunho ---------------- */
@@ -504,6 +524,7 @@ function renderRascunho(){
       <td>${esc(c.nome||'(sem cliente)')}</td>
       <td class="mut">${esc(dest||'—')}${cid?`<div>${esc(cid)}</div>`:''}</td>
       <td class="center"><input class="volinput" type="number" min="0" value="${d.volumes||0}" onchange="atualizarVolume(${i}, this.value)"></td>
+      <td><input list="coresPadrao" style="min-width:110px" value="${esc(d.cor||'')}" onchange="atualizarCor(${i}, this.value)"></td>
       <td class="right">${money(d.valor)}</td>
       <td class="right"><button class="btn ghost sm danger" onclick="removerRascunho(${i})">Remover</button></td>
     </tr>`;
@@ -511,16 +532,31 @@ function renderRascunho(){
 }
 function removerRascunho(i){ rascunho.splice(i,1); renderRascunho(); }
 function atualizarVolume(i, v){ rascunho[i].volumes = Number(v)||0; }
+function atualizarCor(i, v){ rascunho[i].cor = v; }
+
+function atualizarRomDestino(){
+  const atual = $('#romDestino').value;
+  $('#romDestino').innerHTML = '<option value="">— novo romaneio —</option>' +
+    romaneios.filter(r=>r.status!=='concluido').map(r=>`<option value="${r.id}">${esc(r.codigo)} — ${esc(r.freteiroNome||'sem freteiro')} (${esc(r.data_rota||'')})</option>`).join('');
+  $('#romDestino').value = atual && romaneios.some(r=>r.id===atual) ? atual : '';
+}
+$('#romDestino').onchange = () => {
+  const existe = !!$('#romDestino').value;
+  $('#wFrSel').hidden = existe;
+  $('#wDataRota').hidden = existe;
+};
 
 $('#gerar').onclick = async () => {
   if(!rascunho.length) return;
+  const destino = $('#romDestino').value;
   try{
-    const r = await api('/.netlify/functions/romaneios', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ freteiroId: $('#frSel').value || null, dataRota: $('#dataRota').value || null, paradas: rascunho })
-    });
+    const url = destino ? '/.netlify/functions/romaneios?id='+destino : '/.netlify/functions/romaneios';
+    const body = destino
+      ? { paradas: rascunho }
+      : { freteiroId: $('#frSel').value || null, dataRota: $('#dataRota').value || null, paradas: rascunho };
+    const r = await api(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
     rascunho = []; renderRascunho();
-    toast('Romaneio ' + r.codigo + ' criado');
+    toast(destino ? 'Adicionado ao romaneio ' + r.codigo : 'Romaneio ' + r.codigo + ' criado');
     $$('nav button').find(b=>b.dataset.t==='rom').click();
   }catch(e){ erro(e.message); }
 };
@@ -530,6 +566,7 @@ async function carregarRomaneios(){
   try{
     romaneios = await api('/.netlify/functions/romaneios');
     mapas = {}; // os mapas antigos já saem da tela quando o HTML é reconstruído abaixo
+    atualizarRomDestino();
     const el = $('#listaRom');
     if(!romaneios.length){ el.innerHTML = '<div class="empty">Nenhum romaneio criado ainda.</div>'; return; }
     el.innerHTML = romaneios.map(r => {
@@ -537,6 +574,9 @@ async function carregarRomaneios(){
       const falhou = r.paradas.filter(p=>p.status==='falhou').length;
       const linkEntrega = location.origin + '/entrega/' + r.id;
       const linkSeparacao = location.origin + '/separacao/' + r.id;
+      const fr = freteiros.find(f=>f.nome===r.freteiroNome);
+      const telFr = fr ? fr.telefone.replace(/\D/g,'') : '';
+      const msgWpp = encodeURIComponent(`Oi! Segue o link da sua rota (${r.codigo}): ${linkEntrega}`);
       return `<div class="rm">
         <div class="top">
           <span class="cod">${esc(r.codigo)}</span>
@@ -547,21 +587,32 @@ async function carregarRomaneios(){
             <button class="btn ghost sm" onclick="window.open('/romaneio/${r.id}/imprimir','_blank')">Imprimir</button>
             <button class="btn ghost sm" onclick="copiar('${linkEntrega}')">Link do freteiro</button>
             <button class="btn ghost sm" onclick="copiar('${linkSeparacao}')">Link de separação</button>
+            ${telFr?`<button class="btn ghost sm" onclick="window.open('https://wa.me/55${telFr}?text=${msgWpp}','_blank')">Mandar no WhatsApp</button>`:''}
             <button class="btn ghost sm" onclick="toggleMapa('${r.id}')">Ver mapa</button>
+            <button class="btn ghost sm" onclick="abrirRotaCompleta('${r.id}')">Rota no Maps</button>
             <button class="btn ghost sm danger" onclick="excluirRom('${r.id}')">Excluir</button>
           </span>
         </div>
         <details><summary>Ver paradas</summary>
-          <table style="margin-top:8px"><thead><tr><th>#</th><th>Cliente</th><th>Pedido</th><th class="center">Vol.</th><th>Status</th><th>Recebedor</th><th>Problema</th></tr></thead><tbody>
+          <table style="margin-top:8px"><thead><tr><th>#</th><th>Cliente</th><th>Pedido</th><th class="center">Vol.</th><th>Status</th><th>Recebedor</th><th>Problema</th><th></th></tr></thead><tbody>
           ${r.paradas.map((p,i)=>{
             const c=p.cliente||{};
-            const cls = p.status==='entregue'?'ok':p.status==='falhou'?'falhou':'pend';
+            const cls = p.status==='entregue'?'ok':p.status==='falhou'?'falhou':p.status==='em_rota'?'alt':'pend';
             const tipoLabel = p.tipo==='assistencia'?'Assist.':(p.tipo==='nf'?'NF':'Ped.');
+            const finalizado = p.status==='entregue' || p.status==='falhou';
             return `<tr><td>${i+1}</td>
               <td>${esc(c.nome||'—')}<div class="mut">${esc([c.endereco,c.cidade].filter(Boolean).join(' - '))}</div></td>
-              <td>${tipoLabel} ${esc(p.numero||'')}</td>
+              <td>${tipoLabel} ${esc(p.numero||'')}${p.cor?`<div class="mut">Cor: ${esc(p.cor)}</div>`:''}
+                ${(p.fotos&&p.fotos.length)?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${p.fotos.map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--line)"></a>`).join('')}</div>`:''}
+              </td>
               <td class="center">${p.volumes||0}</td>
-              <td><span class="tag ${cls}">${esc(p.status)}</span>${p.entregue_em?`<div class="mut">${new Date(p.entregue_em).toLocaleString('pt-BR')}</div>`:''}</td>
+              <td>
+                <span class="tag ${cls}">${esc(p.status)}</span>${p.entregue_em?`<div class="mut">${new Date(p.entregue_em).toLocaleString('pt-BR')}</div>`:''}
+                ${p.status==='pendente'?`<div style="margin-top:4px"><button class="btn ghost sm" style="padding:3px 8px;font-size:11px" onclick="marcarEmRota('${p.id}')">Marcar em rota</button></div>`:''}
+                ${finalizado?`<label style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:400;text-transform:none;color:var(--ink);margin-top:4px">
+                  <input type="checkbox" style="width:auto" ${p.conferido?'checked':''} onchange="salvarConferido('${p.id}', this.checked)"> conferido
+                </label>`:''}
+              </td>
               <td class="mut">${esc(p.recebedor||'—')}${(p.lat&&p.lng)?`<div><a href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank">local da confirmação</a></div>`:''}</td>
               <td style="min-width:150px">
                 <label style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:400;text-transform:none;color:var(--ink)">
@@ -576,6 +627,7 @@ async function carregarRomaneios(){
                 <input id="obs-${p.id}" placeholder="obs (opcional)" value="${esc(p.problema_obs||'')}" style="margin-top:4px;font-size:11px;padding:3px">
                 <button class="btn ghost sm" style="margin-top:4px;padding:3px 8px;font-size:11px" onclick="salvarProblema('${p.id}')">Salvar</button>
               </td>
+              <td><button class="btn ghost sm danger" style="padding:3px 8px;font-size:11px" onclick="removerParada('${p.id}')">Remover</button></td>
             </tr>`;}).join('')}
           </tbody></table>
         </details>
@@ -590,6 +642,45 @@ async function excluirRom(id){
   carregarRomaneios();
 }
 function copiar(t){ navigator.clipboard.writeText(t).then(()=>toast('Link copiado: '+t)); }
+
+async function removerParada(paradaId){
+  if(!confirm('Remover esta parada do romaneio?')) return;
+  try{
+    await api('/.netlify/functions/parada-status?id='+paradaId, { method:'DELETE' });
+    toast('Parada removida');
+    carregarRomaneios();
+  }catch(e){ erro(e.message); }
+}
+
+function abrirRotaCompleta(id){
+  const r = romaneios.find(x=>x.id===id);
+  if(!r) return;
+  const enderecos = r.paradas.map(p => {
+    const c = p.cliente || {};
+    return [c.endereco, c.complemento, c.bairro, c.cidade, c.estado, c.cep].filter(Boolean).join(', ');
+  }).filter(Boolean);
+  if(!enderecos.length) return toast('Nenhuma parada com endereço');
+  const destino = enderecos[enderecos.length-1];
+  const waypoints = [ESTOQUE.endereco, ...enderecos.slice(0,-1)].map(encodeURIComponent).join('|');
+  window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(LOJA.endereco)}&destination=${encodeURIComponent(destino)}&waypoints=${waypoints}`, '_blank');
+}
+
+async function marcarEmRota(paradaId){
+  try{
+    await api('/.netlify/functions/parada-status', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ paradaId, status: 'em_rota' }) });
+    toast('Marcado como em rota');
+    carregarRomaneios();
+  }catch(e){ erro(e.message); }
+}
+
+async function salvarConferido(paradaId, valor){
+  try{
+    await api('/.netlify/functions/parada-status', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ paradaId, conferido: valor }) });
+    toast(valor ? 'Marcado como conferido' : 'Desmarcado');
+  }catch(e){ erro(e.message); carregarRomaneios(); }
+}
 
 async function salvarProblema(paradaId){
   const problema = document.getElementById('prob-'+paradaId).checked;
@@ -632,8 +723,12 @@ function desenharMapa(id){
   mapas[id] = map;
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
+  const iconFixo = (letra, cor) => L.divIcon({ className:'', html:`<div class="pin" style="background:${cor}">${letra}</div>`, iconSize:[26,26] });
+  L.marker([LOJA.lat, LOJA.lng], { icon: iconFixo('L','#6b7280') }).addTo(map).bindPopup(`<strong>${esc(LOJA.nome)}</strong><br>${esc(LOJA.endereco)}<br><small>Pegar a nota</small>`);
+  L.marker([ESTOQUE.lat, ESTOQUE.lng], { icon: iconFixo('E','#6b7280') }).addTo(map).bindPopup(`<strong>${esc(ESTOQUE.nome)}</strong><br>${esc(ESTOQUE.endereco)}<br><small>Pegar os móveis</small>`);
+
   if(!comGeo.length){
-    map.setView([LOJA_LAT, LOJA_LNG], 12);
+    map.setView([ESTOQUE.lat, ESTOQUE.lng], 11);
   } else {
     const pontos = comGeo.map(p => [p.geo_lat, p.geo_lng]);
     comGeo.forEach((p,i) => {
@@ -693,7 +788,7 @@ function sugerirOrdem(id){
 
   const restantes = [...comGeo];
   const ordenado = [];
-  let atual = [LOJA_LAT, LOJA_LNG];
+  let atual = [ESTOQUE.lat, ESTOQUE.lng];
   while(restantes.length){
     restantes.sort((a,b) => distanciaKm(atual,[a.geo_lat,a.geo_lng]) - distanciaKm(atual,[b.geo_lat,b.geo_lng]));
     const prox = restantes.shift();
@@ -726,34 +821,57 @@ async function confirmarOrdem(id, ordemIds){
 async function carregarFreteiros(){
   freteiros = await api('/.netlify/functions/freteiros');
   $('#tabFr tbody').innerHTML = freteiros.length ? freteiros.map(f=>`<tr>
-    <td><strong>${esc(f.nome)}</strong></td><td>${esc(f.veiculo||'—')}</td>
-    <td>${esc(f.placa||'—')}</td><td>${esc(f.telefone||'—')}</td>
+    <td><strong>${esc(f.nome)}</strong></td><td>${esc(f.telefone||'—')}</td><td>${esc(f.pin||'—')}</td>
+    <td>${esc(f.veiculo||'—')}</td><td>${esc(f.placa||'—')}</td>
     <td class="right"><button class="btn ghost sm danger" onclick="delFr('${f.id}')">Remover</button></td>
-  </tr>`).join('') : '<tr><td colspan="5"><div class="empty">Nenhum freteiro cadastrado.</div></td></tr>';
+  </tr>`).join('') : '<tr><td colspan="6"><div class="empty">Nenhum freteiro cadastrado.</div></td></tr>';
   $('#frSel').innerHTML = '<option value="">— escolher freteiro —</option>' +
     freteiros.map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join('');
 }
 $('#addFr').onclick = async () => {
   if(!$('#fNome').value.trim()) return toast('Informe o nome');
+  if(!$('#fPin').value.trim()) return toast('Defina um PIN');
   await api('/.netlify/functions/freteiros',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({nome:$('#fNome').value,veiculo:$('#fVeic').value,placa:$('#fPlaca').value,telefone:$('#fTel').value})});
-  ['#fNome','#fVeic','#fPlaca','#fTel'].forEach(s=>$(s).value='');
+    body:JSON.stringify({nome:$('#fNome').value,telefone:$('#fTel').value,pin:$('#fPin').value,veiculo:$('#fVeic').value,placa:$('#fPlaca').value})});
+  ['#fNome','#fTel','#fPin','#fVeic','#fPlaca'].forEach(s=>$(s).value='');
   carregarFreteiros(); toast('Freteiro cadastrado');
 };
 async function delFr(id){ await api('/.netlify/functions/freteiros?id='+id,{method:'DELETE'}); carregarFreteiros(); }
+
+/* ---------------- estoquistas ---------------- */
+async function carregarEstoquistas(){
+  const lista = await api('/.netlify/functions/estoquistas');
+  $('#tabEs tbody').innerHTML = lista.length ? lista.map(e=>`<tr>
+    <td><strong>${esc(e.nome)}</strong></td><td>${esc(e.telefone||'—')}</td><td>${esc(e.pin||'—')}</td>
+    <td class="right"><button class="btn ghost sm danger" onclick="delEs('${e.id}')">Remover</button></td>
+  </tr>`).join('') : '<tr><td colspan="4"><div class="empty">Nenhum estoquista cadastrado.</div></td></tr>';
+}
+$('#addEs').onclick = async () => {
+  if(!$('#eNome').value.trim()) return toast('Informe o nome');
+  if(!$('#ePin').value.trim()) return toast('Defina um PIN');
+  await api('/.netlify/functions/estoquistas',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({nome:$('#eNome').value,telefone:$('#eTel').value,pin:$('#ePin').value})});
+  ['#eNome','#eTel','#ePin'].forEach(s=>$(s).value='');
+  carregarEstoquistas(); toast('Estoquista cadastrado');
+};
+async function delEs(id){ await api('/.netlify/functions/estoquistas?id='+id,{method:'DELETE'}); carregarEstoquistas(); }
 
 /* ---------------- relatórios ---------------- */
 $('#relBuscar').onclick = async () => {
   const de = $('#relDe').value, ate = $('#relAte').value;
   if(!de || !ate) return toast('Informe o período');
+  if(ate < de) return toast('A data "até" não pode ser antes da data "de"');
   try{
     const r = await api('/.netlify/functions/relatorio?de='+de+'&ate='+ate);
     renderRelatorio(r);
   }catch(e){ erro(e.message); }
 };
+let relatorioAtual = null;
 function renderRelatorio(r){
+  relatorioAtual = r;
   const s = r.resumoResponsaveis;
   $('#relResumo').innerHTML = `Problemas registrados no período — <strong>vendedores:</strong> ${s.vendedores} · <strong>estoque:</strong> ${s.estoque} · <strong>freteiro:</strong> ${s.freteiro}`;
+  $('#relExportar').hidden = !r.porFreteiro.length;
   $('#tabRel').innerHTML = r.porFreteiro.length ? r.porFreteiro.map(f => `<tr>
     <td>${esc(f.nome)}</td>
     <td class="center">${f.totalParadas}</td>
@@ -763,6 +881,18 @@ function renderRelatorio(r){
     <td class="center">${f.percProblemaFreteiro}%</td>
   </tr>`).join('') : '<tr><td colspan="6"><div class="empty">Nenhum romaneio nesse período.</div></td></tr>';
 }
+$('#relExportar').onclick = () => {
+  if(!relatorioAtual) return;
+  const linhas = [['Freteiro','Paradas','Entregues','Falharam','Com problema','% problema do freteiro']];
+  relatorioAtual.porFreteiro.forEach(f => linhas.push([f.nome, f.totalParadas, f.entregues, f.falharam, f.comProblema, f.percProblemaFreteiro+'%']));
+  const csv = linhas.map(l => l.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  const blob = new Blob(['﻿'+csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `relatorio_${relatorioAtual.periodo.de}_a_${relatorioAtual.periodo.ate}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
 
 /* ---------------- diagnóstico ---------------- */
 $('#dGo').onclick = async () => {
@@ -786,14 +916,20 @@ function statusHoje(){
 }
 window.removerRascunho = removerRascunho;
 window.atualizarVolume = atualizarVolume;
+window.atualizarCor = atualizarCor;
 window.excluirRom = excluirRom;
 window.copiar = copiar;
 window.delFr = delFr;
+window.delEs = delEs;
 window.toggleMapa = toggleMapa;
+window.abrirRotaCompleta = abrirRotaCompleta;
 window.recalcularGeo = recalcularGeo;
 window.sugerirOrdem = sugerirOrdem;
 window.confirmarOrdem = confirmarOrdem;
 window.salvarProblema = salvarProblema;
+window.marcarEmRota = marcarEmRota;
+window.salvarConferido = salvarConferido;
+window.removerParada = removerParada;
 
 checarSessao();
 </script>
