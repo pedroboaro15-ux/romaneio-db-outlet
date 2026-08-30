@@ -92,7 +92,8 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
 <header><div class="hrow">
   <div class="logo">Romaneio<span>Omie</span></div>
   <nav>
-    <button data-t="pedido" class="on">Buscar pedido</button>
+    <button data-t="painel" class="on">Painel</button>
+    <button data-t="pedido">Buscar pedido</button>
     <button data-t="rom">Romaneios</button>
     <button data-t="revisao">Revisão</button>
     <button data-t="fret">Freteiros</button>
@@ -105,12 +106,23 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
 <main>
   <div id="erro"></div>
 
+  <!-- ===================== PAINEL DO DIA ===================== -->
+  <section id="t-painel">
+    <div class="card">
+      <h2>Como está o dia de hoje</h2>
+      <div id="painelResumo"></div>
+    </div>
+    <div class="card">
+      <h2>Rotas de hoje</h2>
+      <div id="painelRotas"></div>
+    </div>
+  </section>
+
   <!-- ===================== BUSCAR PEDIDO ===================== -->
-  <section id="t-pedido">
+  <section id="t-pedido" hidden>
     <div class="card">
       <div class="subnav">
         <button data-m="numero" class="on">Por número</button>
-        <button data-m="periodo">Por período</button>
         <button data-m="assistencia">Assistência técnica</button>
       </div>
 
@@ -120,55 +132,6 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
         <div class="row">
           <div><label>Número do pedido</label><input id="numPedido" placeholder="Ex: 1234"></div>
           <div class="auto"><button class="btn" id="buscarPedido">Buscar</button></div>
-        </div>
-      </div>
-
-      <!-- --- por período --- -->
-      <div id="modo-periodo" hidden>
-        <h2>Buscar vários de uma vez, por período</h2>
-        <div class="row">
-          <div><label>Tipo</label>
-            <select id="pTipo">
-              <option value="pedidos">Pedidos de venda</option>
-              <option value="nfs">Notas fiscais</option>
-            </select>
-          </div>
-          <div><label>De</label><input type="date" id="pDe"></div>
-          <div><label>Até</label><input type="date" id="pAte"></div>
-          <div id="wTipoData"><label>Filtrar por</label>
-            <select id="pTipoData">
-              <option value="previsao">Previsão de entrega</option>
-              <option value="inclusao">Inclusão/alteração</option>
-            </select>
-          </div>
-          <div id="wEtapa"><label>Etapa (opcional)</label>
-            <select id="pEtapa">
-              <option value="">Todas</option>
-              <option value="10">10 · Não faturar</option>
-              <option value="20">20 · Aguardando aprovação</option>
-              <option value="30">30 · Aprovado</option>
-              <option value="40">40 · Separação de estoque</option>
-              <option value="50">50 · Faturamento</option>
-              <option value="60">60 · Faturado</option>
-            </select>
-          </div>
-          <div class="auto"><button class="btn ghost" id="buscarHoje" title="Busca os pedidos de hoje na hora">Pedidos de hoje</button></div>
-          <div class="auto"><button class="btn" id="buscarPeriodo">Buscar</button></div>
-        </div>
-
-        <div style="margin-top:14px;border:1px solid var(--line);border-radius:8px;overflow:hidden" id="wResultadoPeriodo" hidden>
-          <div style="padding:10px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px">
-            <input type="checkbox" id="pTodos" style="width:auto">
-            <label for="pTodos" style="margin:0;cursor:pointer">Selecionar todos</label>
-            <span class="mut" id="pContagem" style="margin-left:auto"></span>
-          </div>
-          <div style="overflow-x:auto"><table>
-            <thead><tr><th></th><th>Doc.</th><th>Data</th><th>Cliente</th><th>Destino</th><th class="right">Valor</th></tr></thead>
-            <tbody id="tabPeriodo"></tbody>
-          </table></div>
-          <div style="padding:10px 14px;border-top:1px solid var(--line)">
-            <button class="btn" id="addSelecionados">Adicionar selecionados ao romaneio</button>
-          </div>
         </div>
       </div>
 
@@ -185,6 +148,7 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
 
     <div class="card" id="cardResultado" hidden>
       <h2 id="tituloResultado">Pedido encontrado</h2>
+      <div id="historicoCliente"></div>
       <div id="resultado"></div>
       <div class="row" style="margin-top:12px">
         <div id="wTipoProblema" hidden><label>Tipo de problema</label>
@@ -194,7 +158,7 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
             <option value="esquecimento">Esquecimento</option>
           </select>
         </div>
-        <div id="wVolumes"><label>Quantidade de volumes</label><input id="rVolumes" type="number" min="0" value="0"></div>
+        <div><label>Total de volumes</label><input id="rVolumesTotal" disabled value="0" style="background:#f4f6f8;font-weight:700"></div>
         <div style="flex:2"><label>Observação (opcional)</label><input id="rObs"></div>
         <div class="auto"><button class="btn" id="addRascunho">Adicionar ao romaneio</button></div>
       </div>
@@ -316,7 +280,10 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
 </main>
 </div>
 
-<datalist id="coresPadrao"><option value="Branco"><option value="Off"><option value="Amadeirado"></datalist>
+<datalist id="coresPadrao">
+  <option value="Branco"><option value="Off"><option value="Nature">
+  <option value="Nature/Off"><option value="Off/Nature">
+</datalist>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -335,7 +302,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-let freteiros = [], romaneios = [], rascunho = [], pedidoAtual = null, resultadosPeriodo = [], selPeriodo = new Set();
+let freteiros = [], romaneios = [], rascunho = [], pedidoAtual = null;
 let modoBusca = 'pedido';
 let mapas = {};
 
@@ -374,6 +341,7 @@ function mostrarApp(){
   carregarFreteiros().catch(e=>erro(e.message));
   carregarEstoquistas().catch(e=>erro(e.message));
   carregarRomaneios().catch(e=>erro(e.message));
+  carregarPainelDia().catch(e=>erro(e.message));
   statusHoje();
 }
 $('#btnLogin').onclick = async () => {
@@ -388,8 +356,9 @@ $('#sair').onclick = async () => { await sb.auth.signOut(); mostrarLogin(); };
 /* ---------------- navegação ---------------- */
 $$('nav button').forEach(b => b.onclick = () => {
   $$('nav button').forEach(x=>x.classList.toggle('on', x===b));
-  ['pedido','rom','revisao','fret','rel','diag'].forEach(t => $('#t-'+t).hidden = t !== b.dataset.t);
+  ['painel','pedido','rom','revisao','fret','rel','diag'].forEach(t => $('#t-'+t).hidden = t !== b.dataset.t);
   erro('');
+  if(b.dataset.t==='painel') carregarPainelDia();
   if(b.dataset.t==='rom') carregarRomaneios();
   if(b.dataset.t==='revisao') carregarRevisoes();
   if(b.dataset.t==='rel') $('#relBuscar').click();
@@ -397,7 +366,6 @@ $$('nav button').forEach(b => b.onclick = () => {
 $$('#t-pedido .subnav button').forEach(b => b.onclick = () => {
   $$('#t-pedido .subnav button').forEach(x=>x.classList.toggle('on', x===b));
   $('#modo-numero').hidden = b.dataset.m !== 'numero';
-  $('#modo-periodo').hidden = b.dataset.m !== 'periodo';
   $('#modo-assistencia').hidden = b.dataset.m !== 'assistencia';
 });
 let filtroRom = 'ativos';
@@ -406,12 +374,6 @@ $$('#filtroRom button').forEach(b => b.onclick = () => {
   filtroRom = b.dataset.filtro;
   renderListaRom();
 });
-$('#pTipo').onchange = () => {
-  const nf = $('#pTipo').value === 'nfs';
-  $('#wTipoData').style.display = nf ? 'none' : '';
-  $('#wEtapa').style.display = nf ? 'none' : '';
-};
-$('#pDe').onchange = () => { $('#pAte').min = $('#pDe').value; };
 $('#relDe').onchange = () => { $('#relAte').min = $('#relDe').value; };
 
 /* ---------------- buscar pedido (por número / assistência) ---------------- */
@@ -429,13 +391,45 @@ async function buscarPorNumero(numero, btn, modo){
 $('#buscarPedido').onclick = () => buscarPorNumero($('#numPedido').value.trim(), $('#buscarPedido'), 'pedido');
 $('#buscarAssistencia').onclick = () => buscarPorNumero($('#numAssist').value.trim(), $('#buscarAssistencia'), 'assistencia');
 
+// Cor "de verdade" (mostrinha colorida) em vez de só a palavra escrita.
+function corParaSwatch(nome){
+  const n = (nome||'').trim().toLowerCase();
+  if(n==='branco') return '#ffffff';
+  if(n==='off') return '#efe6d3';
+  if(n==='nature') return '#a3744f';
+  if(n==='nature/off') return 'linear-gradient(135deg,#a3744f 60%,#efe6d3 60%)';
+  if(n==='off/nature') return 'linear-gradient(135deg,#a3744f 40%,#efe6d3 40%)';
+  return n ? '#cbd5e1' : 'transparent';
+}
+function atualizarSwatch(i){
+  const cor = document.getElementById('itemCor-'+i);
+  const sw = document.getElementById('swatch-'+i);
+  if(cor && sw) sw.style.background = corParaSwatch(cor.value);
+}
+function atualizarTotalVolumes(){
+  const itens = (pedidoAtual && pedidoAtual.itens) || [];
+  let total = 0;
+  itens.forEach((it,i) => { const v = document.getElementById('itemVol-'+i); total += v ? (Number(v.value)||0) : 0; });
+  $('#rVolumesTotal').value = total;
+}
+function alternarEdicaoDesc(i){
+  const txt = document.getElementById('descTxt-'+i), edit = document.getElementById('descEdit-'+i);
+  const entrando = edit.hidden;
+  edit.hidden = !entrando; txt.hidden = entrando;
+  if(entrando) edit.focus();
+}
+
 function renderResultado(){
   const p = pedidoAtual, c = p.cliente || {};
   const end = [c.endereco, c.complemento, c.bairro].filter(Boolean).join(' - ');
   const cid = [c.cidade, c.estado].filter(Boolean).join('/');
-  const itens = (p.itens||[]).map((it,i)=>`<div class="row" style="align-items:center;gap:6px;margin-top:4px">
-    <span style="flex:2">${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}</span>
-    <input list="coresPadrao" placeholder="cor" style="max-width:130px" id="itemCor-${i}" value="${esc(it.cor||'')}">
+  const itens = (p.itens||[]).map((it,i)=>`<div class="row" style="align-items:center;gap:6px;margin-top:6px">
+    <span class="swatch" id="swatch-${i}" style="width:20px;height:20px;border-radius:5px;border:1px solid var(--line);flex:0 0 auto;background:${corParaSwatch(it.cor)}"></span>
+    <span style="flex:2" id="descTxt-${i}">${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}</span>
+    <input id="descEdit-${i}" hidden style="flex:2" value="${esc(it.descricao||'')}">
+    <button type="button" class="btn ghost sm" style="flex:0 0 auto" title="Editar nome do produto" onclick="alternarEdicaoDesc(${i})">✏️</button>
+    <input list="coresPadrao" placeholder="cor" style="max-width:110px" id="itemCor-${i}" value="${esc(it.cor||'')}" oninput="atualizarSwatch(${i})">
+    <input type="number" min="0" placeholder="vol" style="max-width:64px" id="itemVol-${i}" value="${it.volumes!=null?it.volumes:''}" oninput="atualizarTotalVolumes()">
   </div>`).join('');
   $('#resultado').innerHTML = `
     <strong>Pedido ${esc(p.numero)}</strong> ${p.etapaLabel?`<span class="tag">${esc(p.etapaLabel)}</span>`:''}
@@ -444,99 +438,58 @@ function renderResultado(){
     <div style="margin-top:8px"><strong>${esc(c.nome||'(sem cliente)')}</strong>${c.doc?` <span class="mut">${esc(c.doc)}</span>`:''}</div>
     <div class="mut">${esc(end||'(endereço não informado)')}${cid?' · '+esc(cid):''}${c.cep?' · CEP '+esc(c.cep):''}</div>
     ${c.telefone?`<div class="mut">Tel: ${esc(c.telefone)}</div>`:''}
-    ${itens?`<div class="itens">${itens}<div class="mut" style="margin-top:4px">Informe a cor de cada item — o estoquista vai ver isso na hora de separar.</div></div>`:''}
-    <div class="mut" style="margin-top:6px">Valor: ${money(p.valor)}${p.peso?` · ${p.peso} kg`:''}${p.volumesOmie?` · Omie indica ${p.volumesOmie} volume(s) — confira e digite abaixo`:''}</div>
+    ${itens?`<div class="itens">${itens}<div class="mut" style="margin-top:4px">Cor e volumes de cada item — clique no lápis ✏️ pra deixar o nome do produto mais claro pro estoquista.</div></div>`:''}
+    <div class="mut" style="margin-top:6px">Valor: ${money(p.valor)}${p.peso?` · ${p.peso} kg`:''}${p.volumesOmie?` · Omie indica ${p.volumesOmie} volume(s) no total — confira item a item`:''}</div>
   `;
   const assist = modoBusca === 'assistencia';
   $('#tituloResultado').textContent = assist ? 'Pedido encontrado — registrar assistência' : 'Pedido encontrado';
   $('#wTipoProblema').hidden = !assist;
-  $('#wVolumes').hidden = assist;
-  $('#addRascunho').textContent = assist ? 'Adicionar como assistência' : 'Adicionar ao romaneio';
-  $('#rVolumes').value = 0;
   $('#rObs').value = assist ? '' : (p.observacao || '');
+  $('#addRascunho').textContent = assist ? 'Adicionar como assistência' : 'Adicionar ao romaneio';
+  atualizarTotalVolumes();
   $('#cardResultado').hidden = false;
+  $('#historicoCliente').innerHTML = '';
+  if(c.codigo) carregarHistoricoCliente(c.codigo);
+}
+
+async function carregarHistoricoCliente(codigo){
+  try{
+    const h = await api('/.netlify/functions/historico-cliente?codigo=' + encodeURIComponent(codigo));
+    if(!h.totalProblemas) return;
+    $('#historicoCliente').innerHTML = `<div class="err" style="background:#fef3e2;border-color:#fbe0b0;color:#7a5416">
+      ⚠️ Esse cliente já teve ${h.totalProblemas} problema(s) registrado(s) antes${h.historico[0]&&h.historico[0].motivo?': "'+esc(h.historico[0].motivo)+'"':''}.
+    </div>`;
+  }catch(e){ /* não trava a busca por causa disso */ }
 }
 
 $('#addRascunho').onclick = () => {
   if(!pedidoAtual) return;
-  const itensComCor = (pedidoAtual.itens||[]).map((it,i)=>{
-    const campo = document.getElementById('itemCor-'+i);
-    return { ...it, cor: campo ? campo.value.trim() : (it.cor||'') };
+  const itensComCorEVolume = (pedidoAtual.itens||[]).map((it,i)=>{
+    const campoCor = document.getElementById('itemCor-'+i);
+    const campoVol = document.getElementById('itemVol-'+i);
+    const campoDesc = document.getElementById('descEdit-'+i);
+    return {
+      ...it,
+      descricao: campoDesc ? (campoDesc.value.trim() || it.descricao) : it.descricao,
+      cor: campoCor ? campoCor.value.trim() : (it.cor||''),
+      volumes: campoVol ? (Number(campoVol.value)||0) : (it.volumes||0)
+    };
   });
   if(modoBusca === 'assistencia'){
     const motivos = { cor: 'Cor', defeito: 'Defeito na peça', esquecimento: 'Esquecimento' };
     const motivo = motivos[$('#rTipoProblema').value] || '';
     const obsExtra = $('#rObs').value.trim();
-    rascunho.push({ ...pedidoAtual, tipo: 'assistencia', volumes: 0, itens: itensComCor,
+    rascunho.push({ ...pedidoAtual, tipo: 'assistencia', itens: itensComCorEVolume,
       observacao: 'Assistência — ' + motivo + (obsExtra ? ': ' + obsExtra : '') });
     $('#numAssist').value = '';
   } else {
-    const volumes = Number($('#rVolumes').value) || 0;
-    rascunho.push({ ...pedidoAtual, volumes, itens: itensComCor, observacao: $('#rObs').value || '' });
+    rascunho.push({ ...pedidoAtual, itens: itensComCorEVolume, observacao: $('#rObs').value || '' });
     $('#numPedido').value = '';
   }
   pedidoAtual = null;
   $('#cardResultado').hidden = true;
   renderRascunho();
   toast('Adicionado ao romaneio em montagem');
-};
-
-/* ---------------- buscar por período ---------------- */
-$('#buscarPeriodo').onclick = async () => {
-  const de = $('#pDe').value, ate = $('#pAte').value;
-  if(!de || !ate) return toast('Informe o período');
-  if(ate < de) return toast('A data "até" não pode ser antes da data "de"');
-  const nf = $('#pTipo').value === 'nfs';
-  const b = $('#buscarPeriodo'); b.disabled = true; const t0 = b.textContent; b.innerHTML = '<span class="spin"></span> Buscando…';
-  erro('');
-  try{
-    const qs = new URLSearchParams({ de, ate });
-    if(!nf){ qs.set('tipoData', $('#pTipoData').value); if($('#pEtapa').value) qs.set('etapa', $('#pEtapa').value); }
-    resultadosPeriodo = await api('/.netlify/functions/' + (nf?'nfs-periodo':'pedidos-periodo') + '?' + qs);
-    selPeriodo.clear();
-    renderPeriodo();
-    toast(resultadosPeriodo.length + ' documento(s) encontrado(s)');
-  }catch(e){ erro(e.message); }
-  finally{ b.disabled=false; b.textContent = t0; }
-};
-
-function renderPeriodo(){
-  $('#wResultadoPeriodo').hidden = false;
-  $('#pContagem').textContent = resultadosPeriodo.length ? resultadosPeriodo.length + ' documento(s)' : '';
-  if(!resultadosPeriodo.length){ $('#tabPeriodo').innerHTML = '<tr><td colspan="6"><div class="empty">Nada encontrado no período.</div></td></tr>'; return; }
-  $('#tabPeriodo').innerHTML = resultadosPeriodo.map((d,i)=>{
-    const c = d.cliente || {};
-    const dest = [c.endereco, c.bairro].filter(Boolean).join(' - ');
-    const cid = [c.cidade, c.estado].filter(Boolean).join('/');
-    return `<tr>
-      <td><input type="checkbox" data-i="${i}" ${selPeriodo.has(i)?'checked':''} style="width:auto"></td>
-      <td><span class="tag">${d.tipo==='nf'?'NF':'PED'}</span> <strong>${esc(d.numero)}</strong>${d.etapaLabel?`<div class="mut">${esc(d.etapaLabel)}</div>`:''}</td>
-      <td class="mut">${esc(d.data||'—')}</td>
-      <td>${esc(c.nome||'(sem cliente)')}</td>
-      <td class="mut">${esc(dest||'—')}${cid?`<div>${esc(cid)}</div>`:''}</td>
-      <td class="right">${money(d.valor)}</td>
-    </tr>`;
-  }).join('');
-  $$('#tabPeriodo input[type=checkbox]').forEach(cb => cb.onchange = () => {
-    const i = +cb.dataset.i; cb.checked ? selPeriodo.add(i) : selPeriodo.delete(i);
-  });
-}
-$('#pTodos').onchange = e => {
-  selPeriodo = e.target.checked ? new Set(resultadosPeriodo.map((_,i)=>i)) : new Set();
-  renderPeriodo();
-};
-$('#addSelecionados').onclick = () => {
-  if(!selPeriodo.size) return toast('Selecione ao menos um documento');
-  [...selPeriodo].forEach(i => rascunho.push({ ...resultadosPeriodo[i], volumes: 0, observacao: resultadosPeriodo[i].observacao || '' }));
-  selPeriodo.clear(); renderPeriodo(); renderRascunho();
-  toast('Adicionados ao romaneio em montagem — confira os volumes de cada um');
-};
-
-$('#buscarHoje').onclick = () => {
-  const hoje = new Date().toISOString().slice(0,10);
-  $('#pTipo').value = 'pedidos'; $('#pTipo').dispatchEvent(new Event('change'));
-  $('#pDe').value = hoje; $('#pAte').value = hoje;
-  $('#buscarPeriodo').click();
 };
 
 /* ---------------- rascunho ---------------- */
@@ -548,19 +501,20 @@ function renderRascunho(){
     const dest = [c.endereco, c.bairro].filter(Boolean).join(' - ');
     const cid = [c.cidade, c.estado].filter(Boolean).join('/');
     const tagTipo = d.tipo==='assistencia' ? '<span class="tag alt">assist.</span> ' : (d.tipo==='nf' ? '<span class="tag">NF</span> ' : '');
+    const totalVol = (d.itens||[]).reduce((s,it)=>s+(Number(it.volumes)||0), 0) || d.volumes || 0;
+    const coresLista = (d.itens||[]).filter(it=>it.cor).map(it=>esc(it.cor)).join(', ') || '—';
     return `<tr>
       <td>${tagTipo}<strong>${esc(d.numero||'—')}</strong></td>
       <td>${esc(c.nome||'(sem cliente)')}</td>
       <td class="mut">${esc(dest||'—')}${cid?`<div>${esc(cid)}</div>`:''}</td>
-      <td class="center"><input class="volinput" type="number" min="0" value="${d.volumes||0}" onchange="atualizarVolume(${i}, this.value)"></td>
-      <td class="mut">${(d.itens||[]).filter(it=>it.cor).map(it=>esc(it.cor)).join(', ') || '—'}</td>
+      <td class="center">${totalVol}</td>
+      <td class="mut">${coresLista}</td>
       <td class="right">${money(d.valor)}</td>
       <td class="right"><button class="btn ghost sm danger" onclick="removerRascunho(${i})">Remover</button></td>
     </tr>`;
   }).join('');
 }
 function removerRascunho(i){ rascunho.splice(i,1); renderRascunho(); }
-function atualizarVolume(i, v){ rascunho[i].volumes = Number(v)||0; }
 
 function atualizarRomDestino(){
   const atual = $('#romDestino').value;
@@ -608,22 +562,20 @@ function renderListaRom(){
   el.innerHTML = lista.map(r => {
       const ok = r.paradas.filter(p=>p.status==='entregue').length;
       const falhou = r.paradas.filter(p=>p.status==='falhou').length;
-      const linkEntrega = location.origin + '/entrega/' + r.id;
-      const linkSeparacao = location.origin + '/separacao/' + r.id;
       const fr = freteiros.find(f=>f.nome===r.freteiroNome);
       const telFr = fr ? fr.telefone.replace(/\D/g,'') : '';
-      const msgWpp = encodeURIComponent(`Oi! Segue o link da sua rota (${r.codigo}): ${linkEntrega}`);
+      const msgWpp = encodeURIComponent(`Oi! Sua rota de hoje (${r.codigo}) já está pronta — abre em ${location.origin}/equipe`);
       return `<div class="rm">
         <div class="top">
           <span class="cod">${esc(r.codigo)}</span>
           <span class="tag">${esc(r.freteiroNome || 'sem freteiro')}</span>
           <span class="mut">${esc(r.data_rota||'')} · ${r.paradas.length} parada(s)</span>
-          <span class="tag ${ok===r.paradas.length && r.paradas.length?'ok':'pend'}">${ok}/${r.paradas.length} entregues${falhou?` · ${falhou} falha(s)`:''}</span>
+          <span class="tag ${ok===r.paradas.length && r.paradas.length?'ok':'pend'}">${ok}/${r.paradas.length} entregues</span>
+          ${falhou?`<span class="tag falhou">⚠️ ${falhou} não realizada${falhou>1?'s':''}</span>`:''}
+          ${r.carregamento_confirmado?`<span class="tag ok">✓ carregamento conferido</span>`:''}
           <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn ghost sm" onclick="window.open('/romaneio/${r.id}/imprimir','_blank')">Imprimir</button>
-            <button class="btn ghost sm" onclick="copiar('${linkEntrega}')">Link do freteiro</button>
-            <button class="btn ghost sm" onclick="copiar('${linkSeparacao}')">Link de separação</button>
-            ${telFr?`<button class="btn ghost sm" onclick="window.open('https://wa.me/55${telFr}?text=${msgWpp}','_blank')">Mandar no WhatsApp</button>`:''}
+            ${telFr?`<button class="btn ghost sm" onclick="window.open('https://wa.me/55${telFr}?text=${msgWpp}','_blank')">Avisar no WhatsApp</button>`:''}
             <button class="btn ghost sm" onclick="toggleMapa('${r.id}')">Ver mapa</button>
             <button class="btn ghost sm" onclick="abrirRotaCompleta('${r.id}')">Rota no Maps</button>
             <button class="btn ghost sm danger" onclick="excluirRom('${r.id}')">Excluir</button>
@@ -644,7 +596,7 @@ function renderListaRom(){
             </td>
               <td>${esc(c.nome||'—')}<div class="mut">${esc([c.endereco,c.cidade].filter(Boolean).join(' - '))}</div></td>
               <td>${tipoLabel} ${esc(p.numero||'')}
-                ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut">${esc(it.descricao||'')}: ${esc(it.cor)}</div>`).join('')}
+                ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut" style="display:flex;align-items:center;gap:4px"><span style="width:11px;height:11px;border-radius:3px;border:1px solid var(--line);display:inline-block;background:${corParaSwatch(it.cor)}"></span>${esc(it.descricao||'')}${it.volumes?' ('+it.volumes+' vol.)':''}: ${esc(it.cor)}</div>`).join('')}
                 ${(!((p.itens||[]).some(it=>it.cor)) && p.cor)?`<div class="mut">Cor: ${esc(p.cor)}</div>`:''}
                 ${(p.fotos&&p.fotos.length)?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${p.fotos.map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--line)" title="${f.tipo==='carro'?'foto do carro':'foto do produto'}"></a>`).join('')}</div>`:''}
               </td>
@@ -680,6 +632,30 @@ function renderListaRom(){
     }).join('');
   lista.forEach(r => r.paradas.forEach(p => atualizarMotivos(p.id)));
 }
+
+/* ---------------- painel do dia ---------------- */
+async function carregarPainelDia(){
+  try{
+    const p = await api('/.netlify/functions/painel-dia');
+    const partes = [];
+    if(p.totalFalhasHoje) partes.push(`<span class="tag falhou">⚠️ ${p.totalFalhasHoje} entrega(s) não realizada(s) hoje</span>`);
+    if(p.revisoesAtrasadas) partes.push(`<span class="tag pend">📞 ${p.revisoesAtrasadas} revisão(ões) atrasada(s)</span>`);
+    partes.push(`<span class="tag">${p.problemas30dias} problema(s) nos últimos 30 dias</span>`);
+    $('#painelResumo').innerHTML = partes.join(' ') || '<div class="empty">Tudo tranquilo.</div>';
+
+    $('#painelRotas').innerHTML = p.rotasHoje.length ? p.rotasHoje.map(r => `
+      <div class="rm">
+        <div class="top">
+          <span class="cod">${esc(r.codigo)}</span>
+          <span class="tag">${esc(r.freteiroNome||'sem freteiro')}</span>
+          <span class="mut">${r.entregues}/${r.total} entregues · ${r.pendentes} pendente(s)</span>
+          ${r.falharam?`<span class="tag falhou">⚠️ ${r.falharam} não realizada(s)</span>`:''}
+          ${r.carregado?'<span class="tag ok">✓ carregado</span>':'<span class="tag pend">carregamento pendente</span>'}
+        </div>
+      </div>`).join('') : '<div class="empty">Nenhuma rota criada pra hoje ainda.</div>';
+  }catch(e){ erro(e.message); }
+}
+
 /* ---------------- revisão pós-entrega ---------------- */
 async function carregarRevisoes(){
   try{
@@ -720,7 +696,6 @@ async function excluirRom(id){
   await api('/.netlify/functions/romaneios?id='+id, {method:'DELETE'});
   carregarRomaneios();
 }
-function copiar(t){ navigator.clipboard.writeText(t).then(()=>toast('Link copiado: '+t)); }
 
 async function removerParada(paradaId){
   if(!confirm('Remover esta parada do romaneio?')) return;
@@ -1042,15 +1017,14 @@ function statusHoje(){
   const iso = d => d.toISOString().slice(0,10);
   const hoje = new Date();
   $('#dataRota').value = iso(hoje);
-  const semana = new Date(hoje); semana.setDate(hoje.getDate()+7);
-  $('#pDe').value = iso(hoje); $('#pAte').value = iso(semana);
   const trintaDiasAtras = new Date(hoje); trintaDiasAtras.setDate(hoje.getDate()-30);
   $('#relDe').value = iso(trintaDiasAtras); $('#relAte').value = iso(hoje);
 }
 window.removerRascunho = removerRascunho;
-window.atualizarVolume = atualizarVolume;
+window.atualizarSwatch = atualizarSwatch;
+window.atualizarTotalVolumes = atualizarTotalVolumes;
+window.alternarEdicaoDesc = alternarEdicaoDesc;
 window.excluirRom = excluirRom;
-window.copiar = copiar;
 window.delFr = delFr;
 window.delEs = delEs;
 window.editarFr = editarFr;

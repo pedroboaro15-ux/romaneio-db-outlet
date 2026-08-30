@@ -63,6 +63,11 @@ alter table public.romaneios add column if not exists data_rota date default cur
 alter table public.romaneios add column if not exists observacao text default '';
 alter table public.romaneios add column if not exists criado_em timestamptz default now();
 
+-- Revisão final do estoquista: ele confirma todos os volumes de todas as paradas,
+-- vê um resumo de tudo que carregou, e toca em "Confirmar carregamento".
+alter table public.romaneios add column if not exists carregamento_confirmado boolean default false;
+alter table public.romaneios add column if not exists carregamento_confirmado_em timestamptz;
+
 create table if not exists public.paradas (
   id uuid primary key default gen_random_uuid(),
   romaneio_id uuid not null references public.romaneios(id) on delete cascade,
