@@ -1,5 +1,6 @@
-// POST /.netlify/functions/foto-upload  { paradaId, imagemBase64 }
+// POST /.netlify/functions/foto-upload  { paradaId, imagemBase64, tipo? }
 // Freteiro ou estoquista manda uma foto (já reduzida no navegador) de uma parada.
+// tipo: 'produto' (padrão) ou 'carro'.
 const { identificar } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');

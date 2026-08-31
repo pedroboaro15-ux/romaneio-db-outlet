@@ -3,71 +3,89 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>Separação — Romaneio</title>
+<title>Separação — Outlet dos Móveis DB</title>
+<link rel="icon" href="/logo.svg">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:#f4f5f7;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#15181d;padding-bottom:30px}
-header{background:#0f8a4a;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5}
-header h1{font-size:17px;margin:0}
-header p{margin:3px 0 0;font-size:13px;opacity:.85}
-.prog{height:5px;background:#ffffff40;border-radius:3px;margin-top:10px;overflow:hidden}
-.prog i{display:block;height:100%;background:#fff;width:0;transition:.3s}
+body{margin:0;background:#f4f4f0;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#14140F;padding-bottom:30px}
+header{background:#14140F;color:#fff;padding:12px 14px;position:sticky;top:0;z-index:5}
+.hcima{display:flex;align-items:center;gap:10px}
+.hcima img{width:36px;height:36px;border-radius:7px;flex:0 0 auto}
+header h1{font-size:17px;margin:0;flex:1;min-width:0}
+header p{margin:6px 0 0;font-size:13px;color:#c9c9bd}
+.prog{height:6px;background:#ffffff26;border-radius:3px;margin-top:9px;overflow:hidden}
+.prog i{display:block;height:100%;background:#F2F250;width:0;transition:.3s}
 main{padding:12px}
-.p{background:#fff;border-radius:12px;padding:16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
-.p .n{display:inline-block;background:#eef1f5;color:#6b7280;font-weight:700;font-size:12px;padding:2px 8px;border-radius:20px}
-.p h3{margin:8px 0 2px;font-size:18px}
-.p .cli{color:#5b6270;font-size:13px}
-.p .itens{margin:10px 0;padding:8px 10px;background:#f7f8fa;border-radius:8px;font-size:13px}
-.aviso{border-radius:10px;padding:10px 12px;margin:10px 0;font-size:13px;font-weight:600}
+.p{background:#fff;border-radius:14px;padding:16px;margin-bottom:10px;border:1px solid #e2e2d9}
+.p .n{display:inline-block;background:#efefe6;color:#6f6f66;font-weight:700;font-size:12px;padding:3px 9px;border-radius:20px}
+
+/* Número do pedido é a informação que o estoquista cruza com a nota na mão — destaque total. */
+.pedidodest{display:inline-block;background:#F2F250;color:#14140F;font-weight:900;font-size:23px;line-height:1.2;padding:7px 15px;border-radius:10px;margin:10px 0 2px;letter-spacing:-.01em}
+
+/* ---- COR: a informação mais errada de se errar. Fundo preto, cor em amarelo, ---- */
+/* ---- mostrinha grande com borda branca. Dá pra ler de longe e no escuro.     ---- */
+.corbox{margin:14px 0 10px;background:#14140F;border-radius:15px;padding:16px}
+.corlinha{display:flex;align-items:center;gap:15px}
+.corbox .swbig{width:88px;height:88px;border-radius:13px;border:3px solid #fff;flex:0 0 auto}
+.corbox .txt{flex:1;min-width:0}
+.corbox .rot{font-size:11px;color:#b9b9ae;text-transform:uppercase;letter-spacing:.09em;font-weight:700}
+.corbox .nome{font-size:29px;font-weight:900;color:#F2F250;text-transform:uppercase;line-height:1.1;word-break:break-word;margin-top:3px}
+.corbox .semcor{font-size:19px;font-weight:800;color:#b9b9ae;text-transform:none;margin-top:3px}
+.btnouvircor{margin-top:13px;width:100%;background:#ffffff26;color:#fff;font-size:14px;font-weight:700;padding:12px;border-radius:9px}
+.misturado{background:#fdeaea;border:2px solid #eba9a9;color:#7f1d1d;border-radius:11px;padding:11px 13px;font-size:14px;font-weight:800;margin-bottom:4px}
+
+/* Lista de itens do pedido, cada um com sua cor bem visível. */
+.itemlinha{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #eeeee4}
+.itemlinha:last-child{border-bottom:0}
+.itemlinha .swmed{width:32px;height:32px;border-radius:8px;border:2px solid #9a9a8e;flex:0 0 auto}
+.itemlinha .desc{flex:1;min-width:0;font-size:14px;font-weight:600}
+.itemlinha .corpill{font-weight:800;font-size:12px;text-transform:uppercase;background:#F2F250;color:#14140F;padding:3px 9px;border-radius:7px;white-space:nowrap;flex:0 0 auto}
+.itemlinha .corpill.vazio{background:#efefe6;color:#8a8a7e}
+.blocoitens{margin:12px 0;padding:4px 12px;background:#fafaf4;border:1px solid #eaeadf;border-radius:11px}
+.tituloitens{font-size:11px;color:#6f6f66;text-transform:uppercase;letter-spacing:.08em;font-weight:700;padding:9px 0 0}
+
+.aviso{border-radius:10px;padding:11px 13px;margin:10px 0;font-size:14px;font-weight:700}
 .aviso.ultima{background:#fdeaea;color:#7f1d1d}
 .aviso.primeira{background:#eafaf1;color:#215e3f}
-.aviso.meio{background:#eef1f5;color:#4b5563}
-.vol{margin-top:12px;background:#eafaf1;border:1px solid #c8ecd9;border-radius:9px;padding:16px 12px;text-align:center}
-.vol b{display:block;font-size:30px;color:#0f8a4a;line-height:1.2}
-.vol span{font-size:12px;color:#4a7a63;text-transform:uppercase;letter-spacing:.04em}
-.volitem{text-align:center;font-size:14px;font-weight:700;margin-top:6px;color:#15181d}
-.swatch{display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid #ccc;vertical-align:-2px;margin-right:4px}
-.obs{margin-top:8px;font-size:13px;font-style:italic;color:#5b6270}
-.cordestaque{margin-top:10px;background:#eef1f5;border-radius:10px;padding:12px;text-align:center}
-.cordestaque b{display:block;font-size:22px;color:#15181d}
-.cordestaque span{font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em}
+.aviso.meio{background:#efefe6;color:#57574e}
+.vol{margin-top:12px;background:#fafaf4;border:2px solid #e2e2d9;border-radius:11px;padding:15px 12px;text-align:center}
+.vol b{display:block;font-size:32px;line-height:1.15;font-weight:900}
+.vol span{font-size:11px;color:#6f6f66;text-transform:uppercase;letter-spacing:.07em;font-weight:700}
+.volitem{text-align:center;font-size:15px;font-weight:800;margin-top:8px}
+.obs{margin-top:10px;font-size:14px;background:#fff8e1;border:1px solid #f0e0a8;border-radius:9px;padding:10px 12px;font-weight:600}
 .fotos{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .fotos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #ddd}
-.btnfoto{background:#7c3aed;color:#fff;margin-top:10px}
-button{padding:14px;border:0;border-radius:9px;font:inherit;font-weight:700;cursor:pointer;width:100%}
+.btnfoto{background:#fff;color:#14140F;border:2px solid #14140F;margin-top:10px}
+button{padding:14px;border:0;border-radius:10px;font:inherit;font-weight:700;cursor:pointer;width:100%}
 button:disabled{opacity:.5}
 .ok{background:#0f8a4a;color:#fff;font-size:16px}
+.amarelo{background:#F2F250;color:#14140F;font-size:16px;font-weight:800}
 .nav{display:flex;gap:8px;margin-top:10px}
-.nav button{flex:1;padding:10px;font-size:13px;font-weight:600;background:#fff;color:#4b5563;border:1px solid #ddd}
-.done{background:#eafaf1;border:1px solid #c8ecd9;border-radius:10px;padding:12px;text-align:center;color:#215e3f;font-weight:700;margin-top:12px}
-.empty{text-align:center;padding:40px;color:#6b7280}
-.loginbox{max-width:320px;margin:70px auto;background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
-.loginbox input{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font:inherit;box-sizing:border-box}
-.loginbox button{background:#0f8a4a;color:#fff}
+.nav button{flex:1;padding:11px;font-size:13px;font-weight:700;background:#fff;color:#57574e;border:1px solid #ddd}
+.done{background:#eafaf1;border:1px solid #c8ecd9;border-radius:10px;padding:12px;text-align:center;color:#215e3f;font-weight:800;margin-top:12px}
+.empty{text-align:center;padding:40px;color:#6f6f66}
 .err{background:#fdeaea;color:#7f1d1d;padding:8px 10px;border-radius:8px;font-size:13px;margin-bottom:10px}
-.rota{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);text-decoration:none;display:block;color:inherit}
+.rota{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid #e2e2d9;border-left:5px solid #F2F250;text-decoration:none;display:block;color:inherit}
 .avisoOffline{background:#7a5416;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:600}
-.resumoLinha{border-bottom:1px solid #eee;padding:8px 0;font-size:13px}
-.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#15181d;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:99;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center}
+.resumoLinha{border-bottom:1px solid #eeeee4;padding:12px 0}
+.resumoLinha:last-of-type{border-bottom:0}
+.mut{color:#6f6f66;font-size:12px}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#14140F;color:#F2F250;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:600;z-index:99;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center}
 .toast.show{opacity:1}
 </style>
 </head>
 <body>
 
-<div id="tela-login" class="loginbox" hidden>
-  <h3 style="margin-top:0">Entrar — Estoquista</h3>
-  <div id="erroLogin"></div>
-  <input id="lTel" type="tel" placeholder="seu telefone" autocomplete="tel">
-  <button id="btnLogin" style="width:100%">Entrar</button>
-</div>
-
 <div id="tela-app" hidden>
 <div id="avisoOffline" class="avisoOffline" hidden></div>
 <header>
-  <h1 id="titulo">Carregando…</h1>
+  <div class="hcima">
+    <img src="/logo.svg" alt="Outlet dos Móveis DB">
+    <h1 id="titulo">Carregando…</h1>
+    <button id="btnSair" style="width:auto;flex:none;padding:7px 11px;font-size:12px;background:#ffffff26;color:#fff">Sair</button>
+  </div>
   <p id="sub"></p>
   <div class="prog"><i id="bar"></i></div>
-  <button id="btnSair" style="position:absolute;top:12px;right:14px;width:auto;padding:6px 10px;font-size:12px;background:#ffffff30;color:#fff">Sair</button>
 </header>
 <main id="lista"></main>
 </div>
@@ -89,6 +107,19 @@ function corParaSwatch(nome){
   return n ? '#cbd5e1' : 'transparent';
 }
 
+// Fala em voz alta (a cor, principalmente) — ajuda quem tem dificuldade de leitura.
+function falar(texto){
+  if(!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(texto);
+  u.lang = 'pt-BR'; u.rate = .85;
+  speechSynthesis.speak(u);
+}
+// Guarda a cor da tela atual numa variável em vez de embutir no onclick — assim nome de
+// cor com aspas/acento nunca quebra o botão.
+let corAtual = '';
+function ouvirCorAtual(){ falar(corAtual ? ('A cor é ' + corAtual) : 'Esse item está sem cor cadastrada'); }
+
 class ErroOffline extends Error {}
 async function api(url, opt){
   const token = localStorage.getItem('equipeToken');
@@ -97,6 +128,13 @@ async function api(url, opt){
   let r;
   try{ r = await fetch(url, opt); }
   catch(e){ throw new ErroOffline('sem conexão'); }
+  // Sessão morreu (login removido do cadastro, por ex.): volta pro início em vez de
+  // deixar a pessoa presa numa tela de erro que ela não sabe resolver.
+  if(r.status === 401){
+    localStorage.removeItem('equipeToken'); localStorage.removeItem('equipeTipo');
+    location.href = '/equipe';
+    throw new Error('sessão expirada');
+  }
   const j = await r.json().catch(()=>({erro:'resposta inválida'}));
   if(!r.ok) throw new Error(j.erro || ('HTTP '+r.status));
   return j;
@@ -125,47 +163,44 @@ async function processarFila(){
 }
 window.addEventListener('online', processarFila);
 
+// Sem token? Manda pra /equipe, que é a única porta de entrada da equipe.
 function checarSessao(){
-  if(localStorage.getItem('equipeToken')){ document.getElementById('tela-login').hidden = true; document.getElementById('tela-app').hidden = false; atualizarAvisoOffline(); processarFila(); iniciar(); }
-  else { document.getElementById('tela-login').hidden = false; document.getElementById('tela-app').hidden = true; }
+  if(!localStorage.getItem('equipeToken')){ location.href = '/equipe'; return; }
+  document.getElementById('tela-app').hidden = false;
+  atualizarAvisoOffline(); processarFila(); iniciar();
 }
-document.getElementById('btnLogin').onclick = async () => {
-  const telefone = document.getElementById('lTel').value.trim();
-  document.getElementById('erroLogin').innerHTML = '';
-  try{
-    const r = await api('/.netlify/functions/equipe-login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ telefone, tipo: 'estoquista' }) });
-    localStorage.setItem('equipeToken', r.token);
-    localStorage.setItem('equipeTipo', 'estoquista');
-    checarSessao();
-  }catch(e){ document.getElementById('erroLogin').innerHTML = '<div class="err">'+esc(e.message)+'</div>'; }
-};
 document.getElementById('btnSair').onclick = () => {
+  if(!confirm('Sair do app?')) return;
   localStorage.removeItem('equipeToken'); localStorage.removeItem('equipeTipo');
   location.href = '/equipe';
 };
 
-// Estoquista só vê a(s) rota(s) de HOJE — nada de lista com meses de romaneios antigos.
-async function iniciar(){
+// Estoquista vê a(s) rota(s) de HOJE EM DIANTE — não some se já tiver rota criada pra depois.
+// forcarLista = veio do botão "Voltar": mostra a lista mesmo tendo só uma rota, senão
+// o botão parecia não fazer nada (reabria a mesma rota na hora).
+async function iniciar(forcarLista){
   try{
     const rotas = await api('/.netlify/functions/minhas-rotas');
     if(!rotas.length){
-      document.getElementById('titulo').textContent = 'Sem rota hoje';
+      document.getElementById('titulo').textContent = 'Sem rota';
       document.getElementById('sub').textContent = '';
-      document.getElementById('lista').innerHTML = '<div class="empty">Nenhuma rota criada pra hoje ainda. Fale com o gerente.</div>';
+      document.getElementById('lista').innerHTML = '<div class="empty">Nenhuma rota criada ainda. Fale com o gerente.</div>';
       return;
     }
-    if(rotas.length === 1){ idAtual = rotas[0].id; await carregar(); return; }
-    document.getElementById('titulo').textContent = 'Rotas de hoje';
-    document.getElementById('sub').textContent = 'Mais de uma rota hoje — escolha uma:';
+    if(rotas.length === 1 && !forcarLista){ idAtual = rotas[0].id; await carregar(); return; }
+    document.getElementById('titulo').textContent = rotas.length === 1 ? 'Sua rota' : 'Rotas';
+    document.getElementById('sub').textContent = rotas.length === 1 ? 'Só essa rota por enquanto:' : 'Escolha qual rota separar:';
+    document.getElementById('bar').style.width = '0%';
     document.getElementById('lista').innerHTML = rotas.map(r => `
       <a class="rota" href="#" onclick="abrirRota('${r.id}');return false;">
         <span class="n">${esc(r.codigo)}</span>
-        <h3>${esc(r.freteiroNome||'sem freteiro')}</h3>
-        <div class="cli">${r.totalParadas} parada(s)</div>
+        ${r.carregado?'<span class="n" style="background:#eafaf1;color:#215e3f">✓ já carregada</span>':''}
+        <div style="font-size:18px;font-weight:800;margin-top:7px">${esc(r.freteiroNome||'sem freteiro')}</div>
+        <div class="mut">${esc(r.data||'')} · ${r.totalParadas} parada(s)</div>
       </a>`).join('');
   }catch(e){
     document.getElementById('titulo').textContent = 'Sem internet';
-    document.getElementById('lista').innerHTML = '<div class="empty">Não deu pra carregar a rota de hoje. Assim que voltar o sinal, tente de novo.</div>';
+    document.getElementById('lista').innerHTML = '<div class="empty">Não deu pra carregar a rota agora. Assim que voltar o sinal, tente de novo.</div>';
   }
 }
 function abrirRota(id){ idAtual = id; carregar(); }
@@ -238,29 +273,54 @@ function render(){
   else if(posicaoOriginal === 1) aviso = { txt: 'PRIMEIRA entrega da rota — carregue por ÚLTIMO, vai ficar na frente pra tirar primeiro', cls: 'primeira' };
   else aviso = { txt: `Entrega ${posicaoOriginal} de ${totalRota} da rota`, cls: 'meio' };
 
-  const c = p.cliente || {};
-  const itens = (p.itens||[]).map(it=>`<div><span class="swatch" style="background:${corParaSwatch(it.cor)}"></span>${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}${it.cor?` — <b>${esc(it.cor)}</b>`:''}</div>`).join('');
-  const temCorPorItem = (p.itens||[]).some(it=>it.cor);
   const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
   const total_vol = Number(p.volumes) || 0;
   const confirmados = Math.min(p.volumes_confirmados || 0, total_vol);
   const fotos = (p.fotos||[]).map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}"></a>`).join('');
   const proximoItem = total_vol > 0 && confirmados < total_vol ? itemDoVolume(p, confirmados) : null;
 
+  // A cor mostrada em destaque é a do volume que ele vai pegar AGORA. Se não der pra saber
+  // qual item é, cai pra cor da parada (campo legado) — nunca deixa a tela sem essa informação.
+  const corAgora = proximoItem ? (proximoItem.item.cor || '') : (p.cor || '');
+  corAtual = corAgora;
+  const coresDoPedido = [...new Set((p.itens||[]).map(it=>(it.cor||'').trim()).filter(Boolean))];
+
   document.getElementById('lista').innerHTML = `
     <div class="p">
       <span class="n">Carregando ${passo+1} de ${total}</span>
-      <span class="n">${rotulo}${p.numero?' '+esc(p.numero):''}</span>
       <div class="aviso ${aviso.cls}">${aviso.txt}</div>
-      <h3>${esc(c.nome||'(sem cliente)')}</h3>
-      ${[c.cidade,c.estado].filter(Boolean).length?`<div class="cli">${esc([c.cidade,c.estado].filter(Boolean).join('/'))}</div>`:''}
-      ${itens?`<div class="itens">${itens}</div>`:''}
-      ${(p.cor && !temCorPorItem)?`<div class="cordestaque"><b>${esc(p.cor)}</b><span>cor do móvel — confira antes de carregar</span></div>`:''}
-      ${p.observacao?`<div class="obs">Obs do gerente: ${esc(p.observacao)}</div>`:''}
+      <div class="pedidodest">${rotulo} ${esc(p.numero||'—')}</div>
+
+      ${coresDoPedido.length > 1 ? `<div class="misturado">⚠️ ATENÇÃO: esse pedido tem ${coresDoPedido.length} cores diferentes — confira uma por uma</div>` : ''}
+
+      <div class="corbox">
+        <div class="corlinha">
+          <span class="swbig" style="background:${corParaSwatch(corAgora)}"></span>
+          <div class="txt">
+            <div class="rot">Cor deste volume</div>
+            ${corAgora
+              ? `<div class="nome">${esc(corAgora)}</div>`
+              : `<div class="semcor">Sem cor cadastrada</div>`}
+          </div>
+        </div>
+        <button class="btnouvircor" onclick="ouvirCorAtual()">🔊 Ouvir a cor</button>
+      </div>
+
+      ${proximoItem?`<div class="volitem">Pegue agora: ${esc(proximoItem.item.descricao||'')}${proximoItem.totalItem>1?' — parte '+proximoItem.unidade+' de '+proximoItem.totalItem:''}</div>`:''}
+
+      ${(p.itens||[]).length ? `<div class="blocoitens">
+        <div class="tituloitens">Tudo desse pedido</div>
+        ${(p.itens||[]).map(it=>`<div class="itemlinha">
+          <span class="swmed" style="background:${corParaSwatch(it.cor)}"></span>
+          <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}${it.volumes?` <span class="mut">(${it.volumes} vol.)</span>`:''}</span>
+          <span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>
+        </div>`).join('')}
+      </div>` : ''}
+
+      ${p.observacao?`<div class="obs">📌 Recado do gerente: ${esc(p.observacao)}</div>`:''}
       ${fotos?`<div class="fotos">${fotos}</div>`:''}
       ${total_vol > 0 ? `
         <div class="vol"><b>${confirmados} / ${total_vol}</b><span>volumes confirmados</span></div>
-        ${proximoItem?`<div class="volitem">Próximo: ${esc(proximoItem.item.descricao||'')}${proximoItem.totalItem>1?' — parte '+proximoItem.unidade+' de '+proximoItem.totalItem:''}</div>`:''}
         ${confirmados < total_vol
           ? `<button class="ok" id="btnvol" style="margin-top:10px" onclick="confirmarVolume('${p.id}')">Confirmei o volume ${confirmados+1} de ${total_vol}</button>`
           : `<div class="done">✓ Separado</div>`}
@@ -274,21 +334,35 @@ function render(){
 
 function renderResumoFinal(jaConfirmado){
   const linhas = rom.paradas.map((p,i) => {
-    const c = p.cliente || {};
-    const cores = (p.itens||[]).filter(it=>it.cor).map(it=>it.cor).join(', ');
-    return `<div class="resumoLinha"><strong>${i+1}. ${esc(c.nome||'(sem cliente)')}</strong> — ${esc(p.numero||'')}
-      ${cores?` · cores: ${esc(cores)}`:''} · ${p.volumes||0} volume(s)</div>`;
+    const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
+    const itens = (p.itens||[]).length
+      ? (p.itens||[]).map(it=>`<div class="itemlinha">
+          <span class="swmed" style="background:${corParaSwatch(it.cor)}"></span>
+          <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}</span>
+          <span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>
+        </div>`).join('')
+      : '<div class="mut" style="padding:8px 0">Sem itens cadastrados nesse pedido.</div>';
+    return `<div class="resumoLinha">
+      <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+        <span class="pedidodest" style="font-size:18px;margin:0;padding:5px 11px">${rotulo} ${esc(p.numero||'—')}</span>
+        <span class="n">${p.volumes||0} volume(s)</span>
+      </div>
+      ${itens}
+    </div>`;
   }).join('');
   document.getElementById('lista').innerHTML = `
     <div class="p">
-      <h3 style="text-align:center">${jaConfirmado?'✓ Carregamento já confirmado':'✓ Tudo separado!'}</h3>
-      <p style="text-align:center;color:#5b6270">${jaConfirmado?'Confira se ficou tudo certo:':'Dá uma última conferida antes de fechar:'}</p>
+      <h3 style="text-align:center;font-size:20px;margin:0 0 4px">${jaConfirmado?'✓ Carregamento já confirmado':'✓ Tudo separado!'}</h3>
+      <p style="text-align:center;color:#57574e;margin:0 0 10px">${jaConfirmado?'Confira se ficou tudo certo:':'Confira produto por produto antes de fechar o caminhão:'}</p>
       ${linhas}
       ${jaConfirmado
-        ? `<div class="done" style="margin-top:14px">Carregamento confirmado ✓</div>`
+        ? `<div class="done" style="margin-top:14px">Carregamento confirmado ✓</div>
+           <button style="margin-top:10px;background:#fff;border:2px solid #14140F;color:#14140F" onclick="voltarParaRotas()">◀ Voltar — ver outras rotas</button>`
         : `<button class="ok" style="margin-top:14px" onclick="confirmarCarregamento()">Confirmar carregamento</button>`}
     </div>`;
 }
+
+function voltarParaRotas(){ idAtual = null; rom = null; iniciar(true); }
 
 async function confirmarCarregamento(){
   try{
@@ -339,11 +413,12 @@ async function confirmarVolume(paradaId){
 function renderDialogoFoto(p){
   document.getElementById('lista').innerHTML = `
     <div class="p">
-      <h3 style="text-align:center">✓ ${esc(p.numero?('Pedido '+p.numero):'Parada')} separado!</h3>
-      <p style="text-align:center;color:#5b6270">Quer mandar uma foto?</p>
+      <h3 style="text-align:center;font-size:20px;margin:0 0 4px">✓ Separado!</h3>
+      <div style="text-align:center"><span class="pedidodest">${esc(p.numero?('Pedido '+p.numero):'Parada')}</span></div>
+      <p style="text-align:center;color:#57574e">Quer mandar uma foto?</p>
       <button class="ok" style="margin-bottom:10px" onclick="escolherTipoFoto('${p.id}','produto')">📦 Foto do produto</button>
-      <button class="btnfoto" style="margin-bottom:10px" onclick="escolherTipoFoto('${p.id}','carro')">🚚 Foto do carro</button>
-      <button style="background:#fff;border:1px solid #ddd;color:#6b7280" onclick="pularFoto()">Pular</button>
+      <button class="btnfoto" style="margin-bottom:10px;margin-top:0" onclick="escolherTipoFoto('${p.id}','carro')">🚚 Foto do carro</button>
+      <button style="background:#fff;border:1px solid #ddd;color:#6f6f66" onclick="pularFoto()">Pular</button>
       <input type="file" id="fotoDialogo" accept="image/*" capture="environment" style="display:none">
     </div>`;
 }
@@ -395,6 +470,8 @@ window.escolherTipoFoto = escolherTipoFoto;
 window.pularFoto = pularFoto;
 window.abrirRota = abrirRota;
 window.confirmarCarregamento = confirmarCarregamento;
+window.voltarParaRotas = voltarParaRotas;
+window.ouvirCorAtual = ouvirCorAtual;
 
 checarSessao();
 </script>

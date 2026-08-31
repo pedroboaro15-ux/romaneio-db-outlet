@@ -1,5 +1,5 @@
 // GET /.netlify/functions/painel-dia
-// Resumo do dia: rotas de hoje, entregas que falharam, revisões atrasadas, problemas recentes.
+// Resumo do dia: rotas de hoje, entregas que falharam, conferências pendentes, problemas recentes.
 const { requireAdmin } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
@@ -33,9 +33,9 @@ exports.handler = async event => {
     };
   });
 
-  const { count: revisoesAtrasadas } = await sb
+  const { count: conferenciasPendentes } = await sb
     .from('paradas').select('id', { count: 'exact', head: true })
-    .eq('status', 'entregue').eq('revisao_feita', false).lte('revisao_em', hoje);
+    .eq('status', 'entregue').eq('conferido', false);
 
   const ha30dias = new Date(); ha30dias.setDate(ha30dias.getDate() - 30);
   const { count: problemas30dias } = await sb
@@ -46,7 +46,7 @@ exports.handler = async event => {
     hoje,
     rotasHoje,
     totalFalhasHoje: rotasHoje.reduce((s, r) => s + r.falharam, 0),
-    revisoesAtrasadas: revisoesAtrasadas || 0,
+    conferenciasPendentes: conferenciasPendentes || 0,
     problemas30dias: problemas30dias || 0
   });
 };

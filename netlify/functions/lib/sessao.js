@@ -1,4 +1,4 @@
-// Sessão própria pro login de freteiro/estoquista por telefone+PIN (não usa Supabase Auth).
+// Sessão própria pro login de freteiro/estoquista por telefone (não usa Supabase Auth).
 const crypto = require('crypto');
 const { admin } = require('./supabase');
 

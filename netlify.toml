@@ -30,8 +30,9 @@
   to = "/separacao.html"
   status = 200
 
-# Folha de impressão: /romaneio/<id>/imprimir
+# Página de entrada única da equipe (freteiro/estoquista escolhem quem são e entram
+# só com o telefone). É pra cá que as telas mandam quem chega sem sessão.
 [[redirects]]
-  from = "/romaneio/:id/imprimir"
-  to = "/.netlify/functions/romaneio-imprimir?id=:id"
+  from = "/equipe"
+  to = "/equipe.html"
   status = 200

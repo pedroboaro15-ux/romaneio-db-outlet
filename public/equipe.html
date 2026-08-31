@@ -3,36 +3,44 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>Entrar — Romaneio</title>
+<title>Entrar — Outlet dos Móveis DB</title>
+<link rel="icon" href="/logo.svg">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:#f4f5f7;font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#15181d;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.box{max-width:340px;width:100%;background:#fff;border-radius:16px;padding:28px 22px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
-h1{font-size:20px;text-align:center;margin:0 0 22px}
-.papel{display:flex;flex-direction:column;gap:14px;width:100%;padding:22px;border:2px solid #e3e6ea;border-radius:14px;background:#fff;margin-bottom:14px;cursor:pointer;text-align:center;font-size:18px;font-weight:700;color:#15181d}
-.papel .emoji{font-size:40px;display:block}
-.papel:active{background:#f4f6f8}
-input{width:100%;padding:14px;border:1px solid #ddd;border-radius:10px;font:inherit;margin-bottom:12px;box-sizing:border-box;font-size:17px}
-button.entrar{width:100%;padding:15px;border:0;border-radius:10px;font:inherit;font-weight:700;font-size:17px;cursor:pointer;background:#1f6feb;color:#fff}
-.voltar{background:none;border:0;color:#6b7280;font-size:14px;margin-bottom:14px;cursor:pointer;padding:0}
-.err{background:#fdeaea;color:#7f1d1d;padding:10px 12px;border-radius:8px;font-size:14px;margin-bottom:12px}
+body{margin:0;background:#14140F;font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#14140F;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.box{max-width:360px;width:100%}
+.marca{text-align:center;margin-bottom:20px}
+.marca img{width:110px;height:110px;border-radius:16px;display:inline-block}
+.painel{background:#fff;border-radius:18px;padding:24px 20px}
+h1{font-size:19px;text-align:center;margin:0 0 20px}
+.papel{display:block;width:100%;padding:20px;border:2px solid #14140F;border-radius:14px;background:#fff;margin-bottom:12px;cursor:pointer;text-align:center;font-size:19px;font-weight:800;color:#14140F;font-family:inherit}
+.papel .emoji{font-size:42px;display:block;margin-bottom:6px}
+.papel:active{background:#F2F250}
+input{width:100%;padding:15px;border:2px solid #d8d8cd;border-radius:11px;font:inherit;margin-bottom:12px;font-size:17px;color:#14140F}
+input:focus{outline:none;border-color:#14140F}
+button.entrar{width:100%;padding:16px;border:0;border-radius:11px;font:inherit;font-weight:800;font-size:17px;cursor:pointer;background:#F2F250;color:#14140F}
+.voltar{background:none;border:0;color:#6f6f66;font-size:14px;margin-bottom:14px;cursor:pointer;padding:0;font-family:inherit}
+.err{background:#fdeaea;color:#7f1d1d;padding:11px 12px;border-radius:9px;font-size:14px;margin-bottom:12px;font-weight:600}
 </style>
 </head>
 <body>
 
 <div class="box">
-  <div id="tela1">
-    <h1>Você é...</h1>
-    <button class="papel" onclick="escolher('freteiro')"><span class="emoji">🚚</span>Freteiro</button>
-    <button class="papel" onclick="escolher('estoquista')"><span class="emoji">📦</span>Estoquista</button>
-  </div>
+  <div class="marca"><img src="/logo.svg" alt="Outlet dos Móveis DB"></div>
+  <div class="painel">
+    <div id="tela1">
+      <h1>Você é...</h1>
+      <button class="papel" onclick="escolher('freteiro')"><span class="emoji">🚚</span>Freteiro</button>
+      <button class="papel" onclick="escolher('estoquista')"><span class="emoji">📦</span>Estoquista</button>
+    </div>
 
-  <div id="tela2" hidden>
-    <button class="voltar" onclick="voltar()">◀ Voltar</button>
-    <h1 id="tituloPapel"></h1>
-    <div id="erro"></div>
-    <input id="telefone" type="tel" placeholder="Seu telefone" autocomplete="tel">
-    <button class="entrar" id="btnEntrar">Entrar</button>
+    <div id="tela2" hidden>
+      <button class="voltar" onclick="voltar()">◀ Voltar</button>
+      <h1 id="tituloPapel"></h1>
+      <div id="erro"></div>
+      <input id="telefone" type="tel" placeholder="Seu telefone" autocomplete="tel">
+      <button class="entrar" id="btnEntrar">Entrar</button>
+    </div>
   </div>
 </div>
 
@@ -54,10 +62,12 @@ function voltar(){
   document.getElementById('tela2').hidden = true;
 }
 
-document.getElementById('btnEntrar').onclick = async () => {
+async function entrar(){
+  const btn = document.getElementById('btnEntrar');
   const telefone = document.getElementById('telefone').value.trim();
   document.getElementById('erro').innerHTML = '';
   if(!telefone){ document.getElementById('erro').innerHTML = '<div class="err">Digite o telefone</div>'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando…';
   try{
     const r = await fetch('/.netlify/functions/equipe-login', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -68,8 +78,14 @@ document.getElementById('btnEntrar').onclick = async () => {
     localStorage.setItem('equipeToken', j.token);
     localStorage.setItem('equipeTipo', papel);
     location.href = papel === 'freteiro' ? '/entrega' : '/separacao';
-  }catch(e){ document.getElementById('erro').innerHTML = '<div class="err">'+esc(e.message)+'</div>'; }
-};
+  }catch(e){
+    document.getElementById('erro').innerHTML = '<div class="err">'+esc(e.message)+'</div>';
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
+}
+document.getElementById('btnEntrar').onclick = entrar;
+// Teclado do celular: o "ir/enter" também entra, sem precisar achar o botão.
+document.getElementById('telefone').addEventListener('keydown', e => { if(e.key === 'Enter') entrar(); });
 
 // Já logado antes (token salvo)? Vai direto pra área certa, sem perguntar de novo.
 (function autoRedireciona(){
