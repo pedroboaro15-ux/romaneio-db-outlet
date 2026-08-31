@@ -142,7 +142,7 @@ create table if not exists public.parada_fotos (
   id uuid primary key default gen_random_uuid(),
   parada_id uuid not null references public.paradas(id) on delete cascade,
   url text not null,
-  tipo text default 'produto', -- 'produto' | 'carro'
+  tipo text default 'produto', -- 'produto' | 'carro' | 'vidro' | 'assinatura'
   enviado_por text default '',
   criado_em timestamptz default now()
 );

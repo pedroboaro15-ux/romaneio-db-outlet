@@ -5,6 +5,18 @@
 
 ## O QUE MUDOU AGORA
 
+### Foto do vidro + assinatura do cliente, obrigatórias (novo)
+Pra qualquer parada com item marcado "🔴 vidro", o freteiro **não consegue** tocar em "Entreguei" (o botão nasce cinza e travado) até fazer duas coisas:
+
+1. **📷 Tirar foto do vidro** — abre a câmera do celular, a foto fica guardada na parada.
+2. **✍️ Colher assinatura do cliente** — abre um quadro na tela onde o cliente desenha a assinatura com o dedo (como assinar num app de entrega). Vira uma imagem e fica salva junto.
+
+Só depois das duas o botão "Entreguei" fica verde e libera. **É tudo de graça** — a assinatura é só um desenho em tela (recurso nativo do navegador, sem nenhuma biblioteca paga), e a foto usa o mesmo Storage que as fotos de produto/carro já usam.
+
+O servidor também confere isso por trás — mesmo que alguém tentasse pular a tela, a entrega de um pedido com vidro é recusada sem as duas provas guardadas.
+
+Você vê as duas fotos (vidro e assinatura) no painel, na tabela "Ver paradas" de cada romaneio, junto com as fotos de produto/carro que já apareciam ali.
+
 ### Aviso de vidro / frágil (novo)
 Na hora de revisar o pedido, cada item ganhou uma marcação **"🔴 vidro"**. Marque nos que levam vidro, espelho ou são frágeis. É só um campo de texto no banco — **não custa nada**.
 

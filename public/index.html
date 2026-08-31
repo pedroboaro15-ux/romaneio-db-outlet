@@ -640,7 +640,7 @@ function renderListaRom(){
               <td>${tipoLabel} ${esc(p.numero||'')}${(p.itens||[]).some(it=>it.fragil)?' <span class="tag fragil">🔴 vidro</span>':''}
                 ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut" style="display:flex;align-items:center;gap:5px"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span>${esc(it.descricao||'')}${it.volumes?' ('+it.volumes+' vol.)':''}: <strong>${esc(it.cor)}</strong></div>`).join('')}
                 ${(!((p.itens||[]).some(it=>it.cor)) && p.cor)?`<div class="mut">Cor: ${esc(p.cor)}</div>`:''}
-                ${(p.fotos&&p.fotos.length)?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${p.fotos.map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--line)" title="${f.tipo==='carro'?'foto do carro':'foto do produto'}"></a>`).join('')}</div>`:''}
+                ${(p.fotos&&p.fotos.length)?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${p.fotos.map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--line)" title="${f.tipo==='carro'?'foto do carro':f.tipo==='vidro'?'foto do vidro':f.tipo==='assinatura'?'assinatura do cliente':'foto do produto'}"></a>`).join('')}</div>`:''}
               </td>
               <td class="center">${p.volumes||0}</td>
               <td>

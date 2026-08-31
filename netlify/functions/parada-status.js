@@ -35,7 +35,7 @@ exports.handler = async event => {
   const sb = admin();
   const { data: parada, error: eBusca } = await sb
     .from('paradas')
-    .select('id, romaneio_id, status, romaneios(freteiro_id, freteiros(nome))')
+    .select('id, romaneio_id, status, itens, romaneios(freteiro_id, freteiros(nome))')
     .eq('id', b.paradaId)
     .maybeSingle();
   if (eBusca) return json(500, { erro: eBusca.message });
@@ -60,6 +60,20 @@ exports.handler = async event => {
     }
     patch = { status: 'pendente', entregue_em: null, recebedor: '', motivo: '', conferido: false };
   } else {
+    // Item com vidro: só aceita a entrega depois de ter a foto do vidro E a assinatura
+    // do cliente guardadas — confere aqui de novo (o app já bloqueia o botão, isso é
+    // só pra não dar pra pular a exigência mexendo direto na chamada).
+    if (b.status === 'entregue' && quem.role === 'freteiro') {
+      const temVidro = (parada.itens || []).some(it => it.fragil);
+      if (temVidro) {
+        const { data: fotos } = await sb.from('parada_fotos').select('tipo').eq('parada_id', b.paradaId);
+        const temFotoVidro = (fotos || []).some(f => f.tipo === 'vidro');
+        const temAssinatura = (fotos || []).some(f => f.tipo === 'assinatura');
+        if (!temFotoVidro || !temAssinatura) {
+          return json(400, { erro: 'esse pedido tem vidro — tire a foto do vidro e colha a assinatura do cliente antes de confirmar a entrega' });
+        }
+      }
+    }
     if (b.status) patch.status = b.status;
     if (b.status === 'entregue') {
       patch.entregue_em = new Date().toISOString();
