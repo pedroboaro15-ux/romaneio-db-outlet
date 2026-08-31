@@ -5,6 +5,16 @@
 
 ## O QUE MUDOU AGORA
 
+### Aviso de vidro / frágil (novo)
+Na hora de revisar o pedido, cada item ganhou uma marcação **"🔴 vidro"**. Marque nos que levam vidro, espelho ou são frágeis. É só um campo de texto no banco — **não custa nada**.
+
+O que acontece quando você marca:
+- **O freteiro vê um aviso vermelho grande** na parada: *"🔴 VAI COM VIDRO — cuidado no transporte e na descida"*, com o nome da peça.
+- **O estoquista vê** o mesmo aviso na hora exata de pegar aquele volume, e o selo 🔴 VIDRO na lista de itens.
+- **O item passa a ir por cima** na visão geral da carga, mesmo que o nome não diga "vidro". Isso resolve um caso que o app não tinha como adivinhar sozinho: uma "MESA JANTAR 6 LUGARES" iria embaixo pelo nome, mas se ela tem tampo de vidro, tem que ir por cima. Agora você diz isso pro app.
+
+**Também corrigi uma falha junto:** o campo **"Observação"** que você já digitava aparecia só pro estoquista — o freteiro nunca via. Agora ele também vê, como *"📌 Recado do gerente"*. Então dá pra escrever qualquer recado ali (portaria, horário, cuidado especial) que o motorista lê.
+
 ### Visão geral da carga (novo)
 Antes de começar a separar, o estoquista vê **tudo que vai no caminhão de uma vez**, do mais caro pro mais barato, com cor, pedido e volumes. Você vê a mesma tela no painel, pelo botão **"Ver a carga"** de cada romaneio.
 

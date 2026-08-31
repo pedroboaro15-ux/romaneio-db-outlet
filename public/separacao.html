@@ -52,6 +52,7 @@ main{padding:12px}
 .posicao{font-size:11px;font-weight:800;padding:4px 9px;border-radius:7px;white-space:nowrap;flex:0 0 auto}
 .posicao.cima{background:#fdeaea;color:#7f1d1d}
 .posicao.baixo{background:#e8eef7;color:#1c3d73}
+.selovidro{display:inline-block;background:#fdeaea;color:#7f1d1d;font-size:11px;font-weight:800;padding:2px 7px;border-radius:6px;white-space:nowrap}
 .blocoitens{margin:12px 0;padding:4px 12px;background:#fafaf4;border:1px solid #eaeadf;border-radius:11px}
 .tituloitens{font-size:11px;color:#6f6f66;text-transform:uppercase;letter-spacing:.08em;font-weight:700;padding:9px 0 0}
 
@@ -127,8 +128,9 @@ function corParaSwatch(nome){
 const VAI_POR_CIMA = ['COLCHAO','ESPELHO','VIDRO','TAMPO','LUMINARIA','ABAJUR','QUADRO','PUFF','ALMOFADA','CABECEIRA'];
 const VAI_EMBAIXO  = ['GUARDA','ROUPEIRO','ARMARIO','BASE','CAMA','RACK','BALCAO','BUFFET','COMODA','ESTANTE','MESA','SOFA','BANCADA','PAINEL','GELADEIRA','FOGAO'];
 const semAcento = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-function ondeVai(descricao){
-  const d = semAcento(descricao);
+function ondeVai(item){
+  if(item && item.fragil) return 'cima'; // marcado "🔴 vidro" na mão: manda no nome do produto
+  const d = semAcento(item && item.descricao);
   if(VAI_POR_CIMA.some(x=>d.includes(x))) return 'cima';
   if(VAI_EMBAIXO.some(x=>d.includes(x))) return 'baixo';
   return '';
@@ -319,6 +321,7 @@ function render(){
 
       ${coresDoPedido.length > 1 ? `<div class="misturado">⚠️ ATENÇÃO: esse pedido tem ${coresDoPedido.length} cores diferentes — confira uma por uma</div>` : ''}
       ${trocouProduto ? `<div class="trocou produto">🔄 Mudou de produto! Os volumes de <b>${esc(itemAnterior.item.descricao||'')}</b> acabaram. Agora é <b>${esc(proximoItem.item.descricao||'')}</b> — confira a cor de novo.</div>` : ''}
+      ${(proximoItem && proximoItem.item.fragil) ? `<div class="misturado">🔴 ESTE VAI COM VIDRO — pegue com cuidado e deixe por cima de tudo</div>` : ''}
 
       <div class="corcard">
         <div class="corchip" style="background:${corParaSwatch(corAgora)}"></div>
@@ -336,7 +339,7 @@ function render(){
         <div class="tituloitens">Tudo desse pedido</div>
         ${(p.itens||[]).map(it=>`<div class="itemlinha">
           <span class="swmed" style="background:${corParaSwatch(it.cor)}"></span>
-          <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}${it.volumes?` <span class="mut">(${it.volumes} vol.)</span>`:''}</span>
+          <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}${it.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}${it.volumes?` <span class="mut">(${it.volumes} vol.)</span>`:''}</span>
           <span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>
         </div>`).join('')}
       </div>` : ''}
@@ -376,7 +379,8 @@ function itensDaCarga(){
         pedido: p.numero || '',
         entrega: i + 1,
         posCarregamento,
-        onde: ondeVai(it.descricao)
+        onde: ondeVai(it),
+        fragil: !!it.fragil
       });
     });
   });
@@ -395,7 +399,7 @@ function renderVisaoGeral(){
   const linhas = itens.map(it => `
     <div class="itemlinha">
       <span class="swmed" style="background:${corParaSwatch(it.cor)}"></span>
-      <span class="desc">${esc(it.descricao)}
+      <span class="desc">${esc(it.descricao)}${it.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}
         <div class="mut">Pedido ${esc(it.pedido)} · entrega ${it.entrega} de ${rom.paradas.length}${it.volumes?' · '+it.volumes+' vol.':''}${it.valor?' · '+money(it.valor):''}</div>
       </span>
       ${it.onde==='cima' ? '<span class="posicao cima">⬆ por cima</span>'
@@ -433,7 +437,7 @@ function renderResumoFinal(jaConfirmado){
     const itens = (p.itens||[]).length
       ? (p.itens||[]).map(it=>`<div class="itemlinha">
           <span class="swmed" style="background:${corParaSwatch(it.cor)}"></span>
-          <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}</span>
+          <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}${it.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}</span>
           <span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>
         </div>`).join('')
       : '<div class="mut" style="padding:8px 0">Sem itens cadastrados nesse pedido.</div>';

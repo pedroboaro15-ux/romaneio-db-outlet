@@ -81,6 +81,9 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
 .editrom{background:#fbfbf4;border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:8px}
 /* Mostrinha de cor: sempre com borda escura, senão "Branco" some no fundo branco. */
 .sw{display:inline-block;border-radius:4px;border:1.5px solid #9a9a8e;flex:0 0 auto}
+.fragilcheck{display:flex;align-items:center;gap:4px;flex:0 0 auto;margin:0;font-size:12px;font-weight:600;color:var(--ink);text-transform:none;white-space:nowrap;cursor:pointer}
+.fragilcheck input{width:auto;margin:0}
+.tag.fragil{background:#fdeaea;color:var(--bad)}
 @media(max-width:640px){
   .grid2{grid-template-columns:1fr}
   .hrow{height:auto;padding:10px 0;flex-wrap:wrap}
@@ -458,6 +461,9 @@ function renderResultado(){
     <button type="button" class="btn ghost sm" style="flex:0 0 auto" title="Editar nome do produto" onclick="alternarEdicaoDesc(${i})">✏️</button>
     <input list="coresPadrao" placeholder="cor" style="max-width:110px" id="itemCor-${i}" value="${esc(it.cor||'')}" oninput="atualizarSwatch(${i})">
     <input type="number" min="0" placeholder="vol" style="max-width:64px" id="itemVol-${i}" value="${it.volumes!=null?it.volumes:''}" oninput="atualizarTotalVolumes()">
+    <label class="fragilcheck" title="Tem vidro/espelho ou é frágil — avisa o freteiro e o estoquista, e manda ir por cima">
+      <input type="checkbox" id="itemFragil-${i}" ${it.fragil?'checked':''}> 🔴 vidro
+    </label>
   </div>`).join('');
   $('#resultado').innerHTML = `
     <strong>Pedido ${esc(p.numero)}</strong> ${p.etapaLabel?`<span class="tag">${esc(p.etapaLabel)}</span>`:''}
@@ -496,11 +502,13 @@ $('#addRascunho').onclick = () => {
     const campoCor = document.getElementById('itemCor-'+i);
     const campoVol = document.getElementById('itemVol-'+i);
     const campoDesc = document.getElementById('descEdit-'+i);
+    const campoFragil = document.getElementById('itemFragil-'+i);
     return {
       ...it,
       descricao: campoDesc ? (campoDesc.value.trim() || it.descricao) : it.descricao,
       cor: campoCor ? campoCor.value.trim() : (it.cor||''),
-      volumes: campoVol ? (Number(campoVol.value)||0) : (it.volumes||0)
+      volumes: campoVol ? (Number(campoVol.value)||0) : (it.volumes||0),
+      fragil: campoFragil ? campoFragil.checked : !!it.fragil
     };
   });
   if(modoBusca === 'assistencia'){
@@ -629,7 +637,7 @@ function renderListaRom(){
               </div>
             </td>
               <td>${esc(c.nome||'—')}<div class="mut">${esc([c.endereco,c.cidade].filter(Boolean).join(' - '))}</div></td>
-              <td>${tipoLabel} ${esc(p.numero||'')}
+              <td>${tipoLabel} ${esc(p.numero||'')}${(p.itens||[]).some(it=>it.fragil)?' <span class="tag fragil">🔴 vidro</span>':''}
                 ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut" style="display:flex;align-items:center;gap:5px"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span>${esc(it.descricao||'')}${it.volumes?' ('+it.volumes+' vol.)':''}: <strong>${esc(it.cor)}</strong></div>`).join('')}
                 ${(!((p.itens||[]).some(it=>it.cor)) && p.cor)?`<div class="mut">Cor: ${esc(p.cor)}</div>`:''}
                 ${(p.fotos&&p.fotos.length)?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${p.fotos.map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--line)" title="${f.tipo==='carro'?'foto do carro':'foto do produto'}"></a>`).join('')}</div>`:''}
@@ -839,8 +847,9 @@ async function salvarEdicaoRom(id){
 const VAI_POR_CIMA = ['COLCHAO','ESPELHO','VIDRO','TAMPO','LUMINARIA','ABAJUR','QUADRO','PUFF','ALMOFADA','CABECEIRA'];
 const VAI_EMBAIXO  = ['GUARDA','ROUPEIRO','ARMARIO','BASE','CAMA','RACK','BALCAO','BUFFET','COMODA','ESTANTE','MESA','SOFA','BANCADA','PAINEL','GELADEIRA','FOGAO'];
 const semAcento = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-function ondeVai(descricao){
-  const d = semAcento(descricao);
+function ondeVai(item){
+  if(item && item.fragil) return 'cima'; // marcado "🔴 vidro" na mão: manda no nome do produto
+  const d = semAcento(item && item.descricao);
   if(VAI_POR_CIMA.some(x=>d.includes(x))) return 'cima';
   if(VAI_EMBAIXO.some(x=>d.includes(x))) return 'baixo';
   return '';
@@ -859,7 +868,7 @@ function toggleCarga(id){
   r.paradas.forEach((p, i) => (p.itens||[]).forEach(it => itens.push({
     descricao: it.descricao||'(sem descrição)', cor: it.cor||'',
     volumes: Number(it.volumes)||0, valor: Number(it.valorTotal)||0,
-    pedido: p.numero||'', entrega: i+1, onde: ondeVai(it.descricao)
+    pedido: p.numero||'', entrega: i+1, onde: ondeVai(it), fragil: !!it.fragil
   })));
   itens.sort((a,b)=>b.valor-a.valor);
 
@@ -878,7 +887,7 @@ function toggleCarga(id){
       </div>` : ''}
       <table style="margin-top:8px"><thead><tr><th>Produto</th><th>Cor</th><th>Pedido</th><th class="center">Vol.</th><th class="right">Valor</th><th>No caminhão</th></tr></thead><tbody>
       ${itens.length ? itens.map(it=>`<tr>
-        <td><strong>${esc(it.descricao)}</strong><div class="mut">entrega ${it.entrega} de ${total}</div></td>
+        <td><strong>${esc(it.descricao)}</strong>${it.fragil?' <span class="tag fragil">🔴 vidro</span>':''}<div class="mut">entrega ${it.entrega} de ${total}</div></td>
         <td class="mut"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span> ${esc(it.cor||'—')}</td>
         <td class="mut">${esc(it.pedido)}</td>
         <td class="center">${it.volumes||'—'}</td>

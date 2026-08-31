@@ -53,6 +53,10 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 .avisoOffline{background:#7a5416;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:600}
 /* Mostrinha de cor: borda escura sempre, senão "Branco" some no fundo branco. */
 .sw{display:inline-block;width:18px;height:18px;border-radius:5px;border:1.5px solid #9a9a8e;vertical-align:-4px;margin-right:6px}
+/* Vidro/frágil e recado do gerente: o freteiro precisa ver isso ANTES de pegar a peça. */
+.avisovidro{margin-top:11px;background:#fdeaea;border:2px solid #eba9a9;color:#7f1d1d;border-radius:11px;padding:12px 13px;font-size:15px;font-weight:800}
+.avisovidro .quais{font-weight:600;font-size:13px;margin-top:4px}
+.obsfreteiro{margin-top:10px;background:#fff8e1;border:1px solid #f0e0a8;border-radius:9px;padding:11px 12px;font-size:14px;font-weight:600}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#14140F;color:#F2F250;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:600;z-index:99;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center}
 .toast.show{opacity:1}
 </style>
@@ -216,7 +220,8 @@ function render(){
     const cid = [c.cidade, c.estado].filter(Boolean).join('/');
     const q = encodeURIComponent([end, cid, c.cep].filter(Boolean).join(', '));
     const telLimpo = (c.telefone||'').replace(/\D/g,'');
-    const itens = (p.itens||[]).map(it=>`<div>${it.cor?`<span class="sw" style="background:${corParaSwatch(it.cor)}"></span>`:''}${esc(it.quantidade)}x ${esc(it.descricao)}${it.cor?` — <b>${esc(it.cor)}</b>`:''}</div>`).join('');
+    const itens = (p.itens||[]).map(it=>`<div>${it.cor?`<span class="sw" style="background:${corParaSwatch(it.cor)}"></span>`:''}${esc(it.quantidade)}x ${esc(it.descricao)}${it.cor?` — <b>${esc(it.cor)}</b>`:''}${it.fragil?' <b style="color:#b91c1c">🔴 VIDRO</b>':''}</div>`).join('');
+    const comVidro = (p.itens||[]).filter(it=>it.fragil);
     const feito = p.status === 'entregue' || p.status === 'falhou';
     const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
     const fotos = (p.fotos||[]).map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}"></a>`).join('');
@@ -226,7 +231,9 @@ function render(){
       ${p.status==='em_rota'?'<span class="n">Em rota</span>':''}
       <h3>${esc(c.nome||'(sem cliente)')}</h3>
       <div class="end">${esc(end||'endereço não informado')}${cid?' · '+esc(cid):''}${c.cep?' · '+esc(c.cep):''}</div>
+      ${comVidro.length?`<div class="avisovidro">🔴 VAI COM VIDRO — cuidado no transporte e na descida<div class="quais">${comVidro.map(it=>esc(it.descricao)).join(' · ')}</div></div>`:''}
       ${itens?`<div class="itens">${itens}</div>`:''}
+      ${p.observacao?`<div class="obsfreteiro">📌 Recado do gerente: ${esc(p.observacao)}</div>`:''}
       <div class="contatos">
         ${end?`<a class="botaogrande bmapa" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${q}"><span class="emoji">📍</span>Mapa</a>`:''}
         ${telLimpo?`<a class="botaogrande btel" href="tel:${telLimpo}"><span class="emoji">📞</span>Ligar</a>`:''}
