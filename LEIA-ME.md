@@ -5,6 +5,52 @@
 
 ## O QUE MUDOU AGORA
 
+### Foto do vidro + assinatura do cliente, obrigatórias (novo)
+Pra qualquer parada com item marcado "🔴 vidro", o freteiro **não consegue** tocar em "Entreguei" (o botão nasce cinza e travado) até fazer duas coisas:
+
+1. **📷 Tirar foto do vidro** — abre a câmera do celular, a foto fica guardada na parada.
+2. **✍️ Colher assinatura do cliente** — abre um quadro na tela onde o cliente desenha a assinatura com o dedo (como assinar num app de entrega). Vira uma imagem e fica salva junto.
+
+Só depois das duas o botão "Entreguei" fica verde e libera. **É tudo de graça** — a assinatura é só um desenho em tela (recurso nativo do navegador, sem nenhuma biblioteca paga), e a foto usa o mesmo Storage que as fotos de produto/carro já usam.
+
+O servidor também confere isso por trás — mesmo que alguém tentasse pular a tela, a entrega de um pedido com vidro é recusada sem as duas provas guardadas.
+
+Você vê as duas fotos (vidro e assinatura) no painel, na tabela "Ver paradas" de cada romaneio, junto com as fotos de produto/carro que já apareciam ali.
+
+### Aviso de vidro / frágil (novo)
+Na hora de revisar o pedido, cada item ganhou uma marcação **"🔴 vidro"**. Marque nos que levam vidro, espelho ou são frágeis. É só um campo de texto no banco — **não custa nada**.
+
+O que acontece quando você marca:
+- **O freteiro vê um aviso vermelho grande** na parada: *"🔴 VAI COM VIDRO — cuidado no transporte e na descida"*, com o nome da peça.
+- **O estoquista vê** o mesmo aviso na hora exata de pegar aquele volume, e o selo 🔴 VIDRO na lista de itens.
+- **O item passa a ir por cima** na visão geral da carga, mesmo que o nome não diga "vidro". Isso resolve um caso que o app não tinha como adivinhar sozinho: uma "MESA JANTAR 6 LUGARES" iria embaixo pelo nome, mas se ela tem tampo de vidro, tem que ir por cima. Agora você diz isso pro app.
+
+**Também corrigi uma falha junto:** o campo **"Observação"** que você já digitava aparecia só pro estoquista — o freteiro nunca via. Agora ele também vê, como *"📌 Recado do gerente"*. Então dá pra escrever qualquer recado ali (portaria, horário, cuidado especial) que o motorista lê.
+
+### Visão geral da carga (novo)
+Antes de começar a separar, o estoquista vê **tudo que vai no caminhão de uma vez**, do mais caro pro mais barato, com cor, pedido e volumes. Você vê a mesma tela no painel, pelo botão **"Ver a carga"** de cada romaneio.
+
+O ponto principal: o app diz **o que vai por cima e o que vai embaixo**. Como a Omie não manda o peso de cada item (só o peso total do pedido), "mais caro = mais pesado" não fecha — colchão é caro e leve, guarda-roupa é pesado. Então o app usa o **nome do produto**, que é o que diz o que a coisa é de verdade:
+
+- **⬆ por cima**: colchão, espelho, vidro, tampo, luminária, abajur, quadro, puff, almofada, cabeceira
+- **⬇ embaixo**: guarda-roupa, roupeiro, armário, base, cama, rack, balcão, buffet, cômoda, estante, mesa, sofá, bancada, painel, geladeira, fogão
+
+E aí ele cruza isso com a ordem de carregamento, que é o contrário da ordem de entrega — a última entrega entra primeiro e fica no fundo. Quando um colchão é da última entrega, ele **precisa** ir por cima mas **entra** primeiro: é exatamente a briga que você descreveu. O app aponta esse caso com nome e pedido, pra combinar com o freteiro antes de carregar.
+
+> **Se faltar algum produto seu nessas listas, é só me falar que eu acrescento.**
+
+### A cor virou a cara da tela do estoquista
+- **A tela mostra a cor do móvel em tamanho grande, como amostra de tinta** — uma faixa de 132px com a cor de verdade, e o nome logo abaixo em letra grande. A paleta que ele vê É a cor do produto.
+- **Aviso quando muda de produto**: "🔄 Mudou de produto! Os volumes de GUARDA-ROUPA acabaram. Agora é COLCHÃO CASAL — confira a cor de novo."
+- **Aviso quando muda de pedido**: "🔄 Acabou o pedido anterior. Agora é outro pedido:".
+- **Aviso quando o pedido tem cores diferentes**, como já era.
+- Tirei o botão "ouvir a cor" e transformei o "última entrega da rota" numa etiqueta pequena, não mais um bloco colorido grande.
+
+### Freteiro sem caixa de diálogo
+- **"Entreguei" confirma na hora**, sem perguntar nada.
+- **"Não entreguei" abre três botões**: *Cliente não estava em casa*, *Erro da loja*, *Remarcado pra outro dia*. Nada de digitar motivo no celular. (O app confere no servidor que veio um motivo da lista.)
+- O botão do mapa agora se chama só **"Abrir rotas no Maps"** — sumiu o texto sobre o Waze.
+
 ### A cara do app
 - **A logo da loja entrou em todas as telas** e o app adotou o **preto e amarelo da marca**: cabeçalho preto com a logo, botão principal amarelo, barra de progresso amarela. Antes era azul e verde genéricos.
 - **Tela de entrada da equipe (`/equipe`) refeita** com a logo grande e botões maiores.

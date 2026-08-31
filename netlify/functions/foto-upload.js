@@ -1,6 +1,7 @@
 // POST /.netlify/functions/foto-upload  { paradaId, imagemBase64, tipo? }
 // Freteiro ou estoquista manda uma foto (já reduzida no navegador) de uma parada.
-// tipo: 'produto' (padrão) ou 'carro'.
+// tipo: 'produto' (padrão), 'carro', 'vidro' (prova do estado do vidro antes de
+// entregar) ou 'assinatura' (o cliente desenha a assinatura na tela, vira um PNG).
 const { identificar } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
@@ -34,7 +35,7 @@ exports.handler = async event => {
 
   const { data: pub } = sb.storage.from('fotos').getPublicUrl(nomeArquivo);
 
-  const tipo = b.tipo === 'carro' ? 'carro' : 'produto';
+  const tipo = ['carro', 'vidro', 'assinatura'].includes(b.tipo) ? b.tipo : 'produto';
   const { data: foto, error: eIns } = await sb
     .from('parada_fotos')
     .insert({ parada_id: b.paradaId, url: pub.publicUrl, tipo, enviado_por: quem.nome || quem.role })

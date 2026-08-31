@@ -81,6 +81,9 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
 .editrom{background:#fbfbf4;border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:8px}
 /* Mostrinha de cor: sempre com borda escura, senão "Branco" some no fundo branco. */
 .sw{display:inline-block;border-radius:4px;border:1.5px solid #9a9a8e;flex:0 0 auto}
+.fragilcheck{display:flex;align-items:center;gap:4px;flex:0 0 auto;margin:0;font-size:12px;font-weight:600;color:var(--ink);text-transform:none;white-space:nowrap;cursor:pointer}
+.fragilcheck input{width:auto;margin:0}
+.tag.fragil{background:#fdeaea;color:var(--bad)}
 @media(max-width:640px){
   .grid2{grid-template-columns:1fr}
   .hrow{height:auto;padding:10px 0;flex-wrap:wrap}
@@ -458,6 +461,9 @@ function renderResultado(){
     <button type="button" class="btn ghost sm" style="flex:0 0 auto" title="Editar nome do produto" onclick="alternarEdicaoDesc(${i})">✏️</button>
     <input list="coresPadrao" placeholder="cor" style="max-width:110px" id="itemCor-${i}" value="${esc(it.cor||'')}" oninput="atualizarSwatch(${i})">
     <input type="number" min="0" placeholder="vol" style="max-width:64px" id="itemVol-${i}" value="${it.volumes!=null?it.volumes:''}" oninput="atualizarTotalVolumes()">
+    <label class="fragilcheck" title="Tem vidro/espelho ou é frágil — avisa o freteiro e o estoquista, e manda ir por cima">
+      <input type="checkbox" id="itemFragil-${i}" ${it.fragil?'checked':''}> 🔴 vidro
+    </label>
   </div>`).join('');
   $('#resultado').innerHTML = `
     <strong>Pedido ${esc(p.numero)}</strong> ${p.etapaLabel?`<span class="tag">${esc(p.etapaLabel)}</span>`:''}
@@ -496,11 +502,13 @@ $('#addRascunho').onclick = () => {
     const campoCor = document.getElementById('itemCor-'+i);
     const campoVol = document.getElementById('itemVol-'+i);
     const campoDesc = document.getElementById('descEdit-'+i);
+    const campoFragil = document.getElementById('itemFragil-'+i);
     return {
       ...it,
       descricao: campoDesc ? (campoDesc.value.trim() || it.descricao) : it.descricao,
       cor: campoCor ? campoCor.value.trim() : (it.cor||''),
-      volumes: campoVol ? (Number(campoVol.value)||0) : (it.volumes||0)
+      volumes: campoVol ? (Number(campoVol.value)||0) : (it.volumes||0),
+      fragil: campoFragil ? campoFragil.checked : !!it.fragil
     };
   });
   if(modoBusca === 'assistencia'){
@@ -608,13 +616,15 @@ function renderListaRom(){
           <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
             ${telFr?`<button class="btn ghost sm" onclick="window.open('https://wa.me/55${telFr}?text=${msgWpp}','_blank')">Avisar no WhatsApp</button>`:''}
             <button class="btn ghost sm" onclick="abrirRotaCompleta('${r.id}')">Rota no Maps</button>
+            <button class="btn ghost sm" onclick="toggleCarga('${r.id}')">Ver a carga</button>
             <button class="btn ghost sm" onclick="toggleEditRom('${r.id}')">Editar</button>
             <button class="btn ghost sm danger" onclick="excluirRom('${r.id}')">Excluir</button>
           </span>
         </div>
         <div id="editbox-${r.id}"></div>
+        <div id="cargabox-${r.id}"></div>
         <details ${detalhesAbertos.has(r.id)?'open':''} ontoggle="onToggleDetalhes('${r.id}', this.open)"><summary>Ver paradas</summary>
-          <table style="margin-top:8px"><thead><tr><th>#</th><th>Cliente</th><th>Pedido</th><th class="center">Vol.</th><th>Status</th><th>Recebedor</th><th>Problema</th><th></th></tr></thead><tbody>
+          <table style="margin-top:8px"><thead><tr><th>#</th><th>Cliente</th><th>Pedido</th><th class="center">Vol.</th><th>Status</th><th>Confirmação</th><th>Problema</th><th></th></tr></thead><tbody>
           ${r.paradas.map((p,i)=>{
             const c=p.cliente||{};
             const cls = p.status==='entregue'?'ok':p.status==='falhou'?'falhou':p.status==='em_rota'?'alt':'pend';
@@ -627,10 +637,10 @@ function renderListaRom(){
               </div>
             </td>
               <td>${esc(c.nome||'—')}<div class="mut">${esc([c.endereco,c.cidade].filter(Boolean).join(' - '))}</div></td>
-              <td>${tipoLabel} ${esc(p.numero||'')}
+              <td>${tipoLabel} ${esc(p.numero||'')}${(p.itens||[]).some(it=>it.fragil)?' <span class="tag fragil">🔴 vidro</span>':''}
                 ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut" style="display:flex;align-items:center;gap:5px"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span>${esc(it.descricao||'')}${it.volumes?' ('+it.volumes+' vol.)':''}: <strong>${esc(it.cor)}</strong></div>`).join('')}
                 ${(!((p.itens||[]).some(it=>it.cor)) && p.cor)?`<div class="mut">Cor: ${esc(p.cor)}</div>`:''}
-                ${(p.fotos&&p.fotos.length)?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${p.fotos.map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--line)" title="${f.tipo==='carro'?'foto do carro':'foto do produto'}"></a>`).join('')}</div>`:''}
+                ${(p.fotos&&p.fotos.length)?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${p.fotos.map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--line)" title="${f.tipo==='carro'?'foto do carro':f.tipo==='vidro'?'foto do vidro':f.tipo==='assinatura'?'assinatura do cliente':'foto do produto'}"></a>`).join('')}</div>`:''}
               </td>
               <td class="center">${p.volumes||0}</td>
               <td>
@@ -825,6 +835,67 @@ async function salvarEdicaoRom(id){
     document.getElementById('editbox-'+id).dataset.aberto = '0';
     carregarRomaneios();
   }catch(e){ erro(e.message); }
+}
+
+/* ---------------- visão geral da carga ----------------
+   A Omie não manda peso por item (só o peso total do pedido), então o que dá pra usar é o
+   NOME do produto — é ele que diz o que a coisa é de verdade: colchão é caro e leve,
+   guarda-roupa é pesado. Se faltar algum produto seu nessas listas, é só me pedir.
+   O detalhe que importa: carregar é ao contrário de entregar. A última entrega entra
+   primeiro e fica no fundo. Então um colchão da última entrega precisa ir por cima MAS
+   entra primeiro — é aí que dá briga com o freteiro, e é isso que o app aponta. */
+const VAI_POR_CIMA = ['COLCHAO','ESPELHO','VIDRO','TAMPO','LUMINARIA','ABAJUR','QUADRO','PUFF','ALMOFADA','CABECEIRA'];
+const VAI_EMBAIXO  = ['GUARDA','ROUPEIRO','ARMARIO','BASE','CAMA','RACK','BALCAO','BUFFET','COMODA','ESTANTE','MESA','SOFA','BANCADA','PAINEL','GELADEIRA','FOGAO'];
+const semAcento = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+function ondeVai(item){
+  if(item && item.fragil) return 'cima'; // marcado "🔴 vidro" na mão: manda no nome do produto
+  const d = semAcento(item && item.descricao);
+  if(VAI_POR_CIMA.some(x=>d.includes(x))) return 'cima';
+  if(VAI_EMBAIXO.some(x=>d.includes(x))) return 'baixo';
+  return '';
+}
+
+function toggleCarga(id){
+  const box = document.getElementById('cargabox-'+id);
+  if(!box) return;
+  if(box.dataset.aberto === '1'){ box.innerHTML = ''; box.dataset.aberto = '0'; return; }
+  box.dataset.aberto = '1';
+  const r = romaneios.find(x=>x.id===id);
+  if(!r) return;
+
+  const total = r.paradas.length;
+  const itens = [];
+  r.paradas.forEach((p, i) => (p.itens||[]).forEach(it => itens.push({
+    descricao: it.descricao||'(sem descrição)', cor: it.cor||'',
+    volumes: Number(it.volumes)||0, valor: Number(it.valorTotal)||0,
+    pedido: p.numero||'', entrega: i+1, onde: ondeVai(it), fragil: !!it.fragil
+  })));
+  itens.sort((a,b)=>b.valor-a.valor);
+
+  // "Vai por cima" numa entrega que não é a primeira = entra cedo no caminhão e fica embaixo.
+  const conflitos = itens.filter(it => it.onde==='cima' && it.entrega > 1);
+  const totalVol = r.paradas.reduce((s,p)=>s+(Number(p.volumes)||0),0);
+  const totalValor = itens.reduce((s,it)=>s+it.valor,0);
+
+  box.innerHTML = `
+    <div class="editrom">
+      <h3 style="margin-bottom:6px">Visão geral da carga</h3>
+      <div class="mut" style="margin-bottom:8px">${total} pedido(s) · ${totalVol} volume(s)${totalValor?' · '+money(totalValor):''}</div>
+      ${conflitos.length ? `<div class="semgeo" style="background:#fdeaea;border-color:#eba9a9;color:#7f1d1d">
+        <strong>⚠️ Cuidado ao empilhar</strong>
+        ${conflitos.map(c=>`<div style="margin-top:5px">${esc(c.descricao)} (pedido ${esc(c.pedido)}) vai por cima, mas é a entrega ${c.entrega} de ${total} — entra cedo no caminhão e fica embaixo.</div>`).join('')}
+      </div>` : ''}
+      <table style="margin-top:8px"><thead><tr><th>Produto</th><th>Cor</th><th>Pedido</th><th class="center">Vol.</th><th class="right">Valor</th><th>No caminhão</th></tr></thead><tbody>
+      ${itens.length ? itens.map(it=>`<tr>
+        <td><strong>${esc(it.descricao)}</strong>${it.fragil?' <span class="tag fragil">🔴 vidro</span>':''}<div class="mut">entrega ${it.entrega} de ${total}</div></td>
+        <td class="mut"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span> ${esc(it.cor||'—')}</td>
+        <td class="mut">${esc(it.pedido)}</td>
+        <td class="center">${it.volumes||'—'}</td>
+        <td class="right">${it.valor?money(it.valor):'—'}</td>
+        <td class="mut">${it.onde==='cima'?'⬆ por cima':it.onde==='baixo'?'⬇ embaixo':'—'}</td>
+      </tr>`).join('') : '<tr><td colspan="6"><div class="empty">Nenhum item cadastrado.</div></td></tr>'}
+      </tbody></table>
+    </div>`;
 }
 
 /* ---------------- ordem sugerida da rota (por localização) ---------------- */
@@ -1066,6 +1137,7 @@ window.editarFr = editarFr;
 window.editarEs = editarEs;
 window.toggleEditRom = toggleEditRom;
 window.salvarEdicaoRom = salvarEdicaoRom;
+window.toggleCarga = toggleCarga;
 window.abrirRotaCompleta = abrirRotaCompleta;
 window.recalcularGeo = recalcularGeo;
 window.sugerirOrdem = sugerirOrdem;

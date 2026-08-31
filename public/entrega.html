@@ -43,11 +43,34 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 .fotos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #ddd}
 .btnfoto{background:#fff;color:#14140F;border:2px solid #14140F;margin-top:10px}
 .btndesfazer{background:#fff;color:#6f6f66;border:1px solid #ddd;margin-top:8px;font-size:13px;padding:10px}
+/* Opções de "não entreguei" — botão grande, sem digitar nada no celular. */
+.caixamotivo{margin-top:10px;background:#fafaf4;border:2px solid #e2e2d9;border-radius:12px;padding:12px}
+.tituloMotivo{font-size:13px;font-weight:800;color:#57574e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px}
+.opcaomotivo{width:100%;background:#fff;color:#14140F;border:2px solid #14140F;margin-bottom:8px;padding:15px;font-size:15px}
+.cancelamotivo{width:100%;background:none;color:#6f6f66;border:0;padding:8px;font-size:14px;font-weight:600}
 .err{background:#fdeaea;color:#7f1d1d;padding:8px 10px;border-radius:8px;font-size:13px;margin-bottom:10px}
 .rota{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid #e2e2d9;border-left:5px solid #F2F250;text-decoration:none;display:block;color:inherit}
 .avisoOffline{background:#7a5416;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:600}
 /* Mostrinha de cor: borda escura sempre, senão "Branco" some no fundo branco. */
 .sw{display:inline-block;width:18px;height:18px;border-radius:5px;border:1.5px solid #9a9a8e;vertical-align:-4px;margin-right:6px}
+/* Vidro/frágil e recado do gerente: o freteiro precisa ver isso ANTES de pegar a peça. */
+.avisovidro{margin-top:11px;background:#fdeaea;border:2px solid #eba9a9;color:#7f1d1d;border-radius:11px;padding:12px 13px;font-size:15px;font-weight:800}
+.avisovidro .quais{font-weight:600;font-size:13px;margin-top:4px}
+.obsfreteiro{margin-top:10px;background:#fff8e1;border:1px solid #f0e0a8;border-radius:9px;padding:11px 12px;font-size:14px;font-weight:600}
+/* Passos obrigatórios pra entregar um item com vidro: foto + assinatura do cliente. */
+.vidrocheck{margin-top:11px;background:#fdeaea;border:2px solid #eba9a9;border-radius:12px;padding:12px}
+.vidrocheck-titulo{font-size:13px;font-weight:800;color:#7f1d1d;text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px}
+.passovidro{width:100%;background:#fff;color:#14140F;border:2px solid #14140F;margin-bottom:8px;padding:14px;font-size:15px}
+.passovidro.feito{background:#e3f6ec;color:#0f8a4a;border-color:#0f8a4a;opacity:1}
+.passovidro:last-child{margin-bottom:0}
+button.ok:disabled{background:#e2e2d9;color:#9a9a8e}
+.painelassinatura{margin-top:10px;background:#fafaf4;border:2px solid #e2e2d9;border-radius:12px;padding:12px}
+.tituloAssinatura{font-size:14px;font-weight:700;margin-bottom:9px}
+#tela-app canvas.canvasassinatura{width:100%;height:180px;display:block;border:2px solid #14140F;border-radius:10px;background:#fff;touch-action:none}
+.botoesassinatura{display:flex;gap:8px;margin-top:10px}
+.limparassinatura{background:#fff;color:#6f6f66;border:1px solid #ddd;flex:0 0 auto;width:auto;padding:12px 16px}
+.confirmarassinatura{background:#0f8a4a;color:#fff}
+.cancelarassinatura{width:100%;background:none;color:#6f6f66;border:0;padding:8px;font-size:14px;font-weight:600;margin-top:4px}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#14140F;color:#F2F250;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:600;z-index:99;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center}
 .toast.show{opacity:1}
 </style>
@@ -202,8 +225,7 @@ function render(){
 
   const rotaLink = linkRotaCompleta();
   document.getElementById('rotaCompleta').innerHTML = rotaLink
-    ? `<a class="maprota" target="_blank" href="${rotaLink}">Abrir rota completa no Google Maps (estoque → entregas)</a>
-       <div style="text-align:center;font-size:12px;color:#6b7280;margin:-6px 0 12px">O Waze não aceita várias paradas de uma vez — use o Google Maps pra rota completa.</div>`
+    ? `<a class="maprota" target="_blank" href="${rotaLink}">Abrir rotas no Maps</a>`
     : '';
 
   document.getElementById('lista').innerHTML = rom.paradas.map((p,i)=>{
@@ -212,7 +234,11 @@ function render(){
     const cid = [c.cidade, c.estado].filter(Boolean).join('/');
     const q = encodeURIComponent([end, cid, c.cep].filter(Boolean).join(', '));
     const telLimpo = (c.telefone||'').replace(/\D/g,'');
-    const itens = (p.itens||[]).map(it=>`<div>${it.cor?`<span class="sw" style="background:${corParaSwatch(it.cor)}"></span>`:''}${esc(it.quantidade)}x ${esc(it.descricao)}${it.cor?` — <b>${esc(it.cor)}</b>`:''}</div>`).join('');
+    const itens = (p.itens||[]).map(it=>`<div>${it.cor?`<span class="sw" style="background:${corParaSwatch(it.cor)}"></span>`:''}${esc(it.quantidade)}x ${esc(it.descricao)}${it.cor?` — <b>${esc(it.cor)}</b>`:''}${it.fragil?' <b style="color:#b91c1c">🔴 VIDRO</b>':''}</div>`).join('');
+    const comVidro = (p.itens||[]).filter(it=>it.fragil);
+    const fotoVidroFeita = (p.fotos||[]).some(f=>f.tipo==='vidro');
+    const assinaturaFeita = (p.fotos||[]).some(f=>f.tipo==='assinatura');
+    const faltaVidro = comVidro.length > 0 && (!fotoVidroFeita || !assinaturaFeita);
     const feito = p.status === 'entregue' || p.status === 'falhou';
     const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
     const fotos = (p.fotos||[]).map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}"></a>`).join('');
@@ -222,7 +248,9 @@ function render(){
       ${p.status==='em_rota'?'<span class="n">Em rota</span>':''}
       <h3>${esc(c.nome||'(sem cliente)')}</h3>
       <div class="end">${esc(end||'endereço não informado')}${cid?' · '+esc(cid):''}${c.cep?' · '+esc(c.cep):''}</div>
+      ${comVidro.length?`<div class="avisovidro">🔴 VAI COM VIDRO — cuidado no transporte e na descida<div class="quais">${comVidro.map(it=>esc(it.descricao)).join(' · ')}</div></div>`:''}
       ${itens?`<div class="itens">${itens}</div>`:''}
+      ${p.observacao?`<div class="obsfreteiro">📌 Recado do gerente: ${esc(p.observacao)}</div>`:''}
       <div class="contatos">
         ${end?`<a class="botaogrande bmapa" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${q}"><span class="emoji">📍</span>Mapa</a>`:''}
         ${telLimpo?`<a class="botaogrande btel" href="tel:${telLimpo}"><span class="emoji">📞</span>Ligar</a>`:''}
@@ -235,13 +263,26 @@ function render(){
       <div class="fotos">${fotos}</div>
       <button class="btnfoto" onclick="document.getElementById('foto-${p.id}').click()">📷 Enviar foto</button>
       <input type="file" id="foto-${p.id}" accept="image/*" capture="environment" style="display:none" onchange="enviarFoto('${p.id}', this.files[0])">
+      ${(!feito && comVidro.length) ? `
+      <div class="vidrocheck">
+        <div class="vidrocheck-titulo">📋 Antes de entregar (tem vidro):</div>
+        <button type="button" class="passovidro ${fotoVidroFeita?'feito':''}" onclick="document.getElementById('fotovidro-${p.id}').click()" ${fotoVidroFeita?'disabled':''}>
+          ${fotoVidroFeita ? '✓ Foto do vidro guardada' : '📷 Tirar foto do vidro'}
+        </button>
+        <input type="file" id="fotovidro-${p.id}" accept="image/*" capture="environment" style="display:none" onchange="enviarFotoVidro('${p.id}', this.files[0])">
+        <button type="button" class="passovidro ${assinaturaFeita?'feito':''}" onclick="abrirAssinatura(${i})" ${assinaturaFeita?'disabled':''}>
+          ${assinaturaFeita ? '✓ Assinatura do cliente colhida' : '✍️ Colher assinatura do cliente'}
+        </button>
+        <div id="assinaturabox-${i}"></div>
+      </div>` : ''}
       ${feito
         ? `<div class="status ${p.status==='entregue'?'ok':'no'}">${p.status==='entregue'?'✓ Entregue':'✕ Não entregue'}${p.recebedor?' — '+esc(p.recebedor):''}${p.motivo?' — '+esc(p.motivo):''}<br><small>${p.entregue_em?new Date(p.entregue_em).toLocaleString('pt-BR'):''}</small></div>
            <button class="btndesfazer" onclick="desfazer(${i})">↩️ Desfazer</button>`
         : `<div class="acoes">
-             <button class="ok" id="btnok-${i}" onclick="marcar(${i},'entregue')">✓ Entreguei</button>
-             <button class="no" id="btnno-${i}" onclick="marcar(${i},'falhou')">✕ Não entreguei</button>
-           </div>`}
+             <button class="ok" id="btnok-${i}" onclick="marcar(${i},'entregue')" ${faltaVidro?'disabled title="Tire a foto do vidro e colha a assinatura antes"':''}>✓ Entreguei</button>
+             <button class="no" id="btnno-${i}" onclick="abrirMotivos(${i})">✕ Não entreguei</button>
+           </div>
+           <div id="motivos-${i}"></div>`}
     </div>`;
   }).join('') || '<div class="empty">Sem paradas.</div>';
 }
@@ -271,20 +312,30 @@ function geo(){
   });
 }
 
-async function marcar(i, status){
+// "Não entreguei" abre estas opções em botão — nada de digitar motivo no celular.
+// Tem que bater com MOTIVOS_FALHA em netlify/functions/parada-status.js.
+const MOTIVOS_FALHA = ['Cliente não estava em casa', 'Erro da loja', 'Remarcado pra outro dia'];
+
+function abrirMotivos(i){
+  const caixa = document.getElementById('motivos-'+i);
+  if(!caixa) return;
+  if(caixa.innerHTML){ caixa.innerHTML = ''; return; }
+  caixa.innerHTML = `
+    <div class="caixamotivo">
+      <div class="tituloMotivo">Por que não deu pra entregar?</div>
+      ${MOTIVOS_FALHA.map((m,k)=>`<button type="button" class="opcaomotivo" onclick="marcar(${i},'falhou',${k})">${esc(m)}</button>`).join('')}
+      <button type="button" class="cancelamotivo" onclick="abrirMotivos(${i})">Cancelar</button>
+    </div>`;
+}
+
+async function marcar(i, status, indiceMotivo){
   const botao = document.getElementById(status==='entregue'?'btnok-'+i:'btnno-'+i);
-  if(botao && botao.disabled) return; // trava clique duplo
+  if(botao && botao.disabled) return; // trava clique duplo (e também trava se faltar vidro/assinatura)
   const parada = rom.paradas[i];
   let body = { paradaId: parada.id, status };
-  if(status === 'entregue'){
-    const nome = prompt('Nome de quem recebeu:');
-    if(nome === null) return;
-    body.recebedor = nome;
-  } else {
-    const motivo = prompt('Motivo (ausente, endereço errado, recusou…):');
-    if(motivo === null) return;
-    body.motivo = motivo;
-  }
+  if(status === 'falhou') body.motivo = MOTIVOS_FALHA[indiceMotivo] || MOTIVOS_FALHA[0];
+  const caixa = document.getElementById('motivos-'+i);
+  if(caixa) caixa.innerHTML = '';
   if(botao){ document.getElementById('btnok-'+i).disabled = true; document.getElementById('btnno-'+i).disabled = true; }
   const g = await geo();
   if(g){ body.lat = g.lat; body.lng = g.lng; }
@@ -294,7 +345,7 @@ async function marcar(i, status){
   }catch(e){
     if(e instanceof ErroOffline){
       parada.status = status;
-      if(status==='entregue'){ parada.entregue_em = new Date().toISOString(); parada.recebedor = body.recebedor; }
+      if(status==='entregue') parada.entregue_em = new Date().toISOString();
       if(status==='falhou') parada.motivo = body.motivo;
       enfileirar({ url: '/.netlify/functions/parada-status', body, token: localStorage.getItem('equipeToken') });
       localStorage.setItem('romCache_'+idAtual, JSON.stringify(rom));
@@ -348,9 +399,103 @@ async function enviarFoto(paradaId, file){
     else alert('Falha ao enviar a foto: ' + e.message);
   }
 }
+
+// ---------------- vidro: foto obrigatória + assinatura do cliente ----------------
+async function enviarFotoVidro(paradaId, file){
+  if(!file) return;
+  try{
+    const imagemBase64 = await redimensionarImagem(file, 1280);
+    await api('/.netlify/functions/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64, tipo:'vidro' }) });
+    toast('Foto do vidro guardada!');
+    await carregar();
+  }catch(e){
+    if(e instanceof ErroOffline) toast('Sem internet — a foto não pôde ser enviada agora. Tente de novo com sinal.');
+    else alert('Falha ao enviar a foto: ' + e.message);
+  }
+}
+
+function abrirAssinatura(i){
+  const box = document.getElementById('assinaturabox-'+i);
+  if(!box) return;
+  if(box.innerHTML){ box.innerHTML = ''; return; }
+  box.innerHTML = `
+    <div class="painelassinatura">
+      <div class="tituloAssinatura">Peça pro cliente assinar aqui, confirmando que recebeu o vidro em bom estado:</div>
+      <canvas class="canvasassinatura" id="canvasAssinatura-${i}"></canvas>
+      <div class="botoesassinatura">
+        <button type="button" class="limparassinatura" onclick="limparAssinatura(${i})">Limpar</button>
+        <button type="button" class="confirmarassinatura" onclick="confirmarAssinatura(${i})">✓ Confirmar assinatura</button>
+      </div>
+      <button type="button" class="cancelarassinatura" onclick="abrirAssinatura(${i})">Cancelar</button>
+    </div>`;
+  configurarCanvasAssinatura(i);
+}
+
+// Desenho simples com o dedo (canvas nativo do navegador — sem custo nenhum).
+// O canvas tem que nascer no tamanho real exibido, senão o traço fica borrado ou
+// desalinhado do dedo em telas com pixel density diferente.
+function configurarCanvasAssinatura(i){
+  const canvas = document.getElementById('canvasAssinatura-'+i);
+  if(!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width; canvas.height = rect.height;
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#14140F'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  canvas.dataset.assinado = '0';
+
+  const posicao = e => {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX - r.left, y: t.clientY - r.top };
+  };
+  let desenhando = false, ultimo = null;
+  const iniciar = e => { desenhando = true; canvas.dataset.assinado = '1'; ultimo = posicao(e); e.preventDefault(); };
+  const mover = e => {
+    if(!desenhando) return;
+    const p = posicao(e);
+    ctx.beginPath(); ctx.moveTo(ultimo.x, ultimo.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    ultimo = p; e.preventDefault();
+  };
+  const parar = () => { desenhando = false; };
+  canvas.addEventListener('mousedown', iniciar);
+  canvas.addEventListener('mousemove', mover);
+  canvas.addEventListener('mouseup', parar);
+  canvas.addEventListener('mouseleave', parar);
+  canvas.addEventListener('touchstart', iniciar, { passive:false });
+  canvas.addEventListener('touchmove', mover, { passive:false });
+  canvas.addEventListener('touchend', parar);
+}
+
+function limparAssinatura(i){
+  const canvas = document.getElementById('canvasAssinatura-'+i);
+  if(!canvas) return;
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  canvas.dataset.assinado = '0';
+}
+
+async function confirmarAssinatura(i){
+  const canvas = document.getElementById('canvasAssinatura-'+i);
+  if(!canvas) return;
+  if(canvas.dataset.assinado !== '1'){ toast('Peça pro cliente assinar antes de confirmar'); return; }
+  const paradaId = rom.paradas[i].id;
+  const imagemBase64 = canvas.toDataURL('image/png');
+  try{
+    await api('/.netlify/functions/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64, tipo:'assinatura' }) });
+    toast('Assinatura salva!');
+    await carregar();
+  }catch(e){
+    if(e instanceof ErroOffline) toast('Sem internet — a assinatura não pôde ser enviada agora. Tente de novo com sinal.');
+    else alert('Falha ao salvar a assinatura: ' + e.message);
+  }
+}
 window.marcar = marcar;
+window.abrirMotivos = abrirMotivos;
 window.desfazer = desfazer;
 window.enviarFoto = enviarFoto;
+window.enviarFotoVidro = enviarFotoVidro;
+window.abrirAssinatura = abrirAssinatura;
+window.limparAssinatura = limparAssinatura;
+window.confirmarAssinatura = confirmarAssinatura;
 window.abrirRota = abrirRota;
 window.ouvirEndereco = ouvirEndereco;
 window.ouvirTelefone = ouvirTelefone;

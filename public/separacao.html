@@ -24,15 +24,23 @@ main{padding:12px}
 
 /* ---- COR: a informação mais errada de se errar. Fundo preto, cor em amarelo, ---- */
 /* ---- mostrinha grande com borda branca. Dá pra ler de longe e no escuro.     ---- */
-.corbox{margin:14px 0 10px;background:#14140F;border-radius:15px;padding:16px}
-.corlinha{display:flex;align-items:center;gap:15px}
-.corbox .swbig{width:88px;height:88px;border-radius:13px;border:3px solid #fff;flex:0 0 auto}
-.corbox .txt{flex:1;min-width:0}
-.corbox .rot{font-size:11px;color:#b9b9ae;text-transform:uppercase;letter-spacing:.09em;font-weight:700}
-.corbox .nome{font-size:29px;font-weight:900;color:#F2F250;text-transform:uppercase;line-height:1.1;word-break:break-word;margin-top:3px}
-.corbox .semcor{font-size:19px;font-weight:800;color:#b9b9ae;text-transform:none;margin-top:3px}
-.btnouvircor{margin-top:13px;width:100%;background:#ffffff26;color:#fff;font-size:14px;font-weight:700;padding:12px;border-radius:9px}
+/* A tela mostra a COR DO MÓVEL em tamanho grande, como uma amostra de tinta:
+   a faixa de cima é a cor de verdade, o nome vem logo abaixo. */
+.corcard{margin:14px 0 10px;border:2px solid #14140F;border-radius:15px;overflow:hidden}
+.corchip{height:132px;width:100%}
+.cornome{background:#14140F;padding:12px 15px}
+.cornome .rot{font-size:11px;color:#b9b9ae;text-transform:uppercase;letter-spacing:.09em;font-weight:700}
+.cornome .nome{font-size:30px;font-weight:900;color:#F2F250;text-transform:uppercase;line-height:1.1;word-break:break-word;margin-top:2px}
+.cornome .semcor{font-size:19px;font-weight:800;color:#b9b9ae;margin-top:2px}
 .misturado{background:#fdeaea;border:2px solid #eba9a9;color:#7f1d1d;border-radius:11px;padding:11px 13px;font-size:14px;font-weight:800;margin-bottom:4px}
+/* Avisos de troca: mudou o produto dentro do mesmo pedido, ou mudou de pedido. */
+.trocou{border-radius:11px;padding:12px 13px;font-size:15px;font-weight:800;margin:10px 0}
+.trocou.produto{background:#fff3d6;border:2px solid #f0d495;color:#7a5416}
+.trocou.pedido{background:#e7f0ff;border:2px solid #b6cdf5;color:#1c3d73}
+.tagpos{display:inline-block;font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+.tagpos.ultima{background:#fdeaea;color:#7f1d1d}
+.tagpos.primeira{background:#eafaf1;color:#215e3f}
+.tagpos.meio{background:#efefe6;color:#57574e}
 
 /* Lista de itens do pedido, cada um com sua cor bem visível. */
 .itemlinha{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #eeeee4}
@@ -41,6 +49,10 @@ main{padding:12px}
 .itemlinha .desc{flex:1;min-width:0;font-size:14px;font-weight:600}
 .itemlinha .corpill{font-weight:800;font-size:12px;text-transform:uppercase;background:#F2F250;color:#14140F;padding:3px 9px;border-radius:7px;white-space:nowrap;flex:0 0 auto}
 .itemlinha .corpill.vazio{background:#efefe6;color:#8a8a7e}
+.posicao{font-size:11px;font-weight:800;padding:4px 9px;border-radius:7px;white-space:nowrap;flex:0 0 auto}
+.posicao.cima{background:#fdeaea;color:#7f1d1d}
+.posicao.baixo{background:#e8eef7;color:#1c3d73}
+.selovidro{display:inline-block;background:#fdeaea;color:#7f1d1d;font-size:11px;font-weight:800;padding:2px 7px;border-radius:6px;white-space:nowrap}
 .blocoitens{margin:12px 0;padding:4px 12px;background:#fafaf4;border:1px solid #eaeadf;border-radius:11px}
 .tituloitens{font-size:11px;color:#6f6f66;text-transform:uppercase;letter-spacing:.08em;font-weight:700;padding:9px 0 0}
 
@@ -93,7 +105,9 @@ button:disabled{opacity:.5}
 
 <script>
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money = v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 let rom = null, idAtual = null, ordemCarregamento = [], passo = 0, paradaAguardandoFoto = null;
+let mostrandoVisaoGeral = false;
 
 function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3200); }
 
@@ -107,18 +121,20 @@ function corParaSwatch(nome){
   return n ? '#cbd5e1' : 'transparent';
 }
 
-// Fala em voz alta (a cor, principalmente) — ajuda quem tem dificuldade de leitura.
-function falar(texto){
-  if(!window.speechSynthesis) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(texto);
-  u.lang = 'pt-BR'; u.rate = .85;
-  speechSynthesis.speak(u);
+/* ---------------- onde cada móvel vai no caminhão ----------------
+   A Omie não manda peso por item — só o peso total do pedido. Então o que dá pra usar
+   é o NOME do produto, que é o que diz o que a coisa é de verdade (colchão é caro e leve,
+   guarda-roupa é pesado). Se faltar algum produto seu nessas listas, é só pedir. */
+const VAI_POR_CIMA = ['COLCHAO','ESPELHO','VIDRO','TAMPO','LUMINARIA','ABAJUR','QUADRO','PUFF','ALMOFADA','CABECEIRA'];
+const VAI_EMBAIXO  = ['GUARDA','ROUPEIRO','ARMARIO','BASE','CAMA','RACK','BALCAO','BUFFET','COMODA','ESTANTE','MESA','SOFA','BANCADA','PAINEL','GELADEIRA','FOGAO'];
+const semAcento = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+function ondeVai(item){
+  if(item && item.fragil) return 'cima'; // marcado "🔴 vidro" na mão: manda no nome do produto
+  const d = semAcento(item && item.descricao);
+  if(VAI_POR_CIMA.some(x=>d.includes(x))) return 'cima';
+  if(VAI_EMBAIXO.some(x=>d.includes(x))) return 'baixo';
+  return '';
 }
-// Guarda a cor da tela atual numa variável em vez de embutir no onclick — assim nome de
-// cor com aspas/acento nunca quebra o botão.
-let corAtual = '';
-function ouvirCorAtual(){ falar(corAtual ? ('A cor é ' + corAtual) : 'Esse item está sem cor cadastrada'); }
 
 class ErroOffline extends Error {}
 async function api(url, opt){
@@ -225,6 +241,9 @@ function prepararOrdem(){
   ordemCarregamento = [...rom.paradas].reverse();
   passo = ordemCarregamento.findIndex(p => !p.separado);
   if(passo === -1) passo = ordemCarregamento.length;
+  // Abre pela visão geral da carga (o "antes de começar"), a não ser que o carregamento
+  // já esteja fechado — aí não tem mais o que planejar.
+  mostrandoVisaoGeral = !rom.carregamento_confirmado;
 }
 
 // Parada sem volume (ex: assistência sem peça) não tem o que confirmar — marca
@@ -263,15 +282,16 @@ function render(){
   if(paradaAguardandoFoto){ renderDialogoFoto(paradaAguardandoFoto); return; }
 
   if(rom.carregamento_confirmado){ renderResumoFinal(true); return; }
+  if(mostrandoVisaoGeral){ renderVisaoGeral(); return; }
   if(passo >= total){ renderResumoFinal(false); return; }
 
   const p = ordemCarregamento[passo];
   const posicaoOriginal = rom.paradas.indexOf(p) + 1;
   const totalRota = rom.paradas.length;
   let aviso;
-  if(posicaoOriginal === totalRota) aviso = { txt: 'ÚLTIMA entrega da rota — carregue esta AGORA, primeiro de todas', cls: 'ultima' };
-  else if(posicaoOriginal === 1) aviso = { txt: 'PRIMEIRA entrega da rota — carregue por ÚLTIMO, vai ficar na frente pra tirar primeiro', cls: 'primeira' };
-  else aviso = { txt: `Entrega ${posicaoOriginal} de ${totalRota} da rota`, cls: 'meio' };
+  if(posicaoOriginal === totalRota) aviso = { txt: 'última entrega · vai no fundo', cls: 'ultima' };
+  else if(posicaoOriginal === 1) aviso = { txt: 'primeira entrega · fica na porta', cls: 'primeira' };
+  else aviso = { txt: `entrega ${posicaoOriginal} de ${totalRota}`, cls: 'meio' };
 
   const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
   const total_vol = Number(p.volumes) || 0;
@@ -282,28 +302,35 @@ function render(){
   // A cor mostrada em destaque é a do volume que ele vai pegar AGORA. Se não der pra saber
   // qual item é, cai pra cor da parada (campo legado) — nunca deixa a tela sem essa informação.
   const corAgora = proximoItem ? (proximoItem.item.cor || '') : (p.cor || '');
-  corAtual = corAgora;
   const coresDoPedido = [...new Set((p.itens||[]).map(it=>(it.cor||'').trim()).filter(Boolean))];
+
+  // Mudou de produto dentro do mesmo pedido? (ex: acabaram os 2 volumes da bancada,
+  // agora começam os da base). É onde mais se erra, então avisa na cara.
+  const itemAnterior = confirmados > 0 ? itemDoVolume(p, confirmados - 1) : null;
+  const trocouProduto = proximoItem && itemAnterior && itemAnterior.item !== proximoItem.item;
+  // Primeiro volume desta parada = acabou o pedido anterior, começou outro.
+  const trocouPedido = confirmados === 0 && passo > 0;
 
   document.getElementById('lista').innerHTML = `
     <div class="p">
       <span class="n">Carregando ${passo+1} de ${total}</span>
-      <div class="aviso ${aviso.cls}">${aviso.txt}</div>
+      <span class="tagpos ${aviso.cls}">${aviso.txt}</span>
+
+      ${trocouPedido ? `<div class="trocou pedido">🔄 Acabou o pedido anterior. Agora é outro pedido:</div>` : ''}
       <div class="pedidodest">${rotulo} ${esc(p.numero||'—')}</div>
 
       ${coresDoPedido.length > 1 ? `<div class="misturado">⚠️ ATENÇÃO: esse pedido tem ${coresDoPedido.length} cores diferentes — confira uma por uma</div>` : ''}
+      ${trocouProduto ? `<div class="trocou produto">🔄 Mudou de produto! Os volumes de <b>${esc(itemAnterior.item.descricao||'')}</b> acabaram. Agora é <b>${esc(proximoItem.item.descricao||'')}</b> — confira a cor de novo.</div>` : ''}
+      ${(proximoItem && proximoItem.item.fragil) ? `<div class="misturado">🔴 ESTE VAI COM VIDRO — pegue com cuidado e deixe por cima de tudo</div>` : ''}
 
-      <div class="corbox">
-        <div class="corlinha">
-          <span class="swbig" style="background:${corParaSwatch(corAgora)}"></span>
-          <div class="txt">
-            <div class="rot">Cor deste volume</div>
-            ${corAgora
-              ? `<div class="nome">${esc(corAgora)}</div>`
-              : `<div class="semcor">Sem cor cadastrada</div>`}
-          </div>
+      <div class="corcard">
+        <div class="corchip" style="background:${corParaSwatch(corAgora)}"></div>
+        <div class="cornome">
+          <div class="rot">Cor do produto</div>
+          ${corAgora
+            ? `<div class="nome">${esc(corAgora)}</div>`
+            : `<div class="semcor">Sem cor cadastrada</div>`}
         </div>
-        <button class="btnouvircor" onclick="ouvirCorAtual()">🔊 Ouvir a cor</button>
       </div>
 
       ${proximoItem?`<div class="volitem">Pegue agora: ${esc(proximoItem.item.descricao||'')}${proximoItem.totalItem>1?' — parte '+proximoItem.unidade+' de '+proximoItem.totalItem:''}</div>`:''}
@@ -312,7 +339,7 @@ function render(){
         <div class="tituloitens">Tudo desse pedido</div>
         ${(p.itens||[]).map(it=>`<div class="itemlinha">
           <span class="swmed" style="background:${corParaSwatch(it.cor)}"></span>
-          <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}${it.volumes?` <span class="mut">(${it.volumes} vol.)</span>`:''}</span>
+          <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}${it.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}${it.volumes?` <span class="mut">(${it.volumes} vol.)</span>`:''}</span>
           <span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>
         </div>`).join('')}
       </div>` : ''}
@@ -327,10 +354,82 @@ function render(){
       ` : `<div class="done" style="margin-top:10px">Sem volumes pra confirmar nessa parada</div>`}
       <div class="nav">
         <button onclick="irPara(${passo-1})" ${passo===0?'disabled':''}>◀ Anterior</button>
+        <button onclick="verVisaoGeral()">📋 Ver a carga</button>
         <button onclick="irPara(${passo+1})">Pular ▶</button>
       </div>
     </div>`;
 }
+
+/* ---------------- visão geral da carga (antes de começar a separar) ----------------
+   Junta tudo que vai no caminhão, do mais caro pro mais barato, e diz o que precisa ir
+   por cima. O detalhe que importa: carregar é LIFO — a última entrega entra primeiro e
+   fica no fundo. Então um colchão da última entrega tem que ir por cima MAS entra
+   primeiro: é justamente aí que dá briga com o freteiro. O app aponta esse caso. */
+function itensDaCarga(){
+  const itens = [];
+  rom.paradas.forEach((p, i) => {
+    const posCarregamento = ordemCarregamento.indexOf(p); // 0 = entra primeiro = fundo
+    (p.itens||[]).forEach(it => {
+      itens.push({
+        descricao: it.descricao || '(sem descrição)',
+        cor: it.cor || '',
+        quantidade: Number(it.quantidade) || 0,
+        volumes: Number(it.volumes) || 0,
+        valor: Number(it.valorTotal) || 0,
+        pedido: p.numero || '',
+        entrega: i + 1,
+        posCarregamento,
+        onde: ondeVai(it),
+        fragil: !!it.fragil
+      });
+    });
+  });
+  return itens.sort((a,b) => b.valor - a.valor);
+}
+
+function renderVisaoGeral(){
+  const itens = itensDaCarga();
+  const totalVol = rom.paradas.reduce((s,p)=>s+(Number(p.volumes)||0), 0);
+  const totalValor = itens.reduce((s,it)=>s+it.valor, 0);
+  const ultimoACarregar = ordemCarregamento.length - 1;
+
+  // "Vai por cima" mas entra cedo no caminhão = alguém vai empilhar coisa em cima dele.
+  const conflitos = itens.filter(it => it.onde === 'cima' && it.posCarregamento < ultimoACarregar);
+
+  const linhas = itens.map(it => `
+    <div class="itemlinha">
+      <span class="swmed" style="background:${corParaSwatch(it.cor)}"></span>
+      <span class="desc">${esc(it.descricao)}${it.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}
+        <div class="mut">Pedido ${esc(it.pedido)} · entrega ${it.entrega} de ${rom.paradas.length}${it.volumes?' · '+it.volumes+' vol.':''}${it.valor?' · '+money(it.valor):''}</div>
+      </span>
+      ${it.onde==='cima' ? '<span class="posicao cima">⬆ por cima</span>'
+        : it.onde==='baixo' ? '<span class="posicao baixo">⬇ embaixo</span>' : ''}
+    </div>`).join('') || '<div class="mut" style="padding:10px 0">Nenhum item cadastrado nessa rota.</div>';
+
+  const jaComecou = ordemCarregamento.some(p=>p.separado || (p.volumes_confirmados||0) > 0);
+
+  document.getElementById('lista').innerHTML = `
+    <div class="p">
+      <h3 style="margin:0 0 2px;font-size:20px">Visão geral da carga</h3>
+      <div class="mut">${rom.paradas.length} pedido(s) · ${totalVol} volume(s)${totalValor?' · '+money(totalValor):''}</div>
+
+      ${conflitos.length ? `<div class="misturado" style="margin-top:12px">
+        ⚠️ CUIDADO AO EMPILHAR
+        ${conflitos.map(c=>`<div style="font-weight:600;margin-top:7px">
+          <b>${esc(c.descricao)}</b> (pedido ${esc(c.pedido)}) tem que ir por cima, mas é a entrega ${c.entrega} de ${rom.paradas.length} — entra cedo no caminhão e fica embaixo. Combine com o freteiro antes de carregar.
+        </div>`).join('')}
+      </div>` : ''}
+
+      <div class="blocoitens" style="margin-top:12px">
+        <div class="tituloitens">Do mais caro pro mais barato</div>
+        ${linhas}
+      </div>
+
+      <button class="amarelo" style="margin-top:12px" onclick="comecarSeparacao()">${jaComecou?'Continuar separando ▶':'Começar a separar ▶'}</button>
+    </div>`;
+}
+function comecarSeparacao(){ mostrandoVisaoGeral = false; render(); }
+function verVisaoGeral(){ mostrandoVisaoGeral = true; render(); }
 
 function renderResumoFinal(jaConfirmado){
   const linhas = rom.paradas.map((p,i) => {
@@ -338,7 +437,7 @@ function renderResumoFinal(jaConfirmado){
     const itens = (p.itens||[]).length
       ? (p.itens||[]).map(it=>`<div class="itemlinha">
           <span class="swmed" style="background:${corParaSwatch(it.cor)}"></span>
-          <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}</span>
+          <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}${it.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}</span>
           <span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>
         </div>`).join('')
       : '<div class="mut" style="padding:8px 0">Sem itens cadastrados nesse pedido.</div>';
@@ -471,7 +570,8 @@ window.pularFoto = pularFoto;
 window.abrirRota = abrirRota;
 window.confirmarCarregamento = confirmarCarregamento;
 window.voltarParaRotas = voltarParaRotas;
-window.ouvirCorAtual = ouvirCorAtual;
+window.comecarSeparacao = comecarSeparacao;
+window.verVisaoGeral = verVisaoGeral;
 
 checarSessao();
 </script>
