@@ -3,26 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Romaneio Omie</title>
+<title>Romaneio — Outlet dos Móveis DB</title>
+<link rel="icon" href="/logo.svg">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 :root{
-  --bg:#f6f7f9; --card:#fff; --line:#e3e6ea; --ink:#15181d; --mut:#6b7280;
-  --brand:#1f6feb; --brand-ink:#fff; --ok:#0f8a4a; --warn:#b45309; --bad:#b91c1c;
+  --bg:#f4f4f0; --card:#fff; --line:#e2e2d9; --ink:#14140F; --mut:#6f6f66;
+  --amarelo:#F2F250; --amarelo-forte:#E4E42F;
+  --brand:#14140F; --brand-ink:#fff; --ok:#0f8a4a; --warn:#b45309; --bad:#b91c1c;
   --radius:10px;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-header{background:#fff;border-bottom:1px solid var(--line);padding:0 16px;position:sticky;top:0;z-index:20}
-.hrow{display:flex;align-items:center;gap:16px;max-width:1100px;margin:0 auto;height:56px}
-.logo{font-weight:700;font-size:16px;letter-spacing:-.02em}
-.logo span{color:var(--brand)}
-nav{display:flex;gap:2px;margin-left:auto}
-nav button{background:none;border:0;padding:8px 14px;border-radius:8px;cursor:pointer;color:var(--mut);font:inherit;font-weight:500}
-nav button:hover{background:#f0f2f5;color:var(--ink)}
-nav button.on{background:var(--brand);color:#fff}
+header{background:var(--ink);padding:0 16px;position:sticky;top:0;z-index:20}
+.hrow{display:flex;align-items:center;gap:14px;max-width:1100px;margin:0 auto;height:60px}
+.marca{display:flex;align-items:center;gap:10px}
+.marca img{width:38px;height:38px;border-radius:7px;display:block}
+.logo{font-weight:700;font-size:15px;letter-spacing:-.02em;color:#fff;line-height:1.15}
+.logo span{display:block;font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--amarelo)}
+nav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+nav button{background:none;border:0;padding:8px 13px;border-radius:7px;cursor:pointer;color:#b9b9ae;font:inherit;font-weight:600;font-size:13px}
+nav button:hover{background:#ffffff1a;color:#fff}
+nav button.on{background:var(--amarelo);color:var(--ink)}
 main{max-width:1100px;margin:20px auto;padding:0 16px 60px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
 h2{font-size:15px;margin:0 0 12px;letter-spacing:-.01em}
@@ -31,10 +33,13 @@ label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px;font-weigh
 input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
 input:focus,select:focus{outline:2px solid var(--brand);outline-offset:-1px;border-color:transparent}
 button.btn,a.btn{background:var(--brand);color:var(--brand-ink);border:0;padding:9px 16px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
-button.btn:hover,a.btn:hover{filter:brightness(1.08)}
+button.btn:hover,a.btn:hover{filter:brightness(1.25)}
 button.btn:disabled{opacity:.45;cursor:not-allowed}
+/* Ação principal da tela: amarelo da marca, preto por cima — impossível não ver. */
+button.cta,a.cta{background:var(--amarelo);color:var(--ink);border:0;font-weight:700}
+button.cta:hover,a.cta:hover{background:var(--amarelo-forte);filter:none}
 button.ghost,a.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
-button.ghost:hover,a.ghost:hover{background:#f4f6f8;filter:none}
+button.ghost:hover,a.ghost:hover{background:#f4f4ee;filter:none}
 button.sm,a.sm{padding:5px 10px;font-size:12px;font-weight:500}
 button.danger,a.danger{color:var(--bad);border-color:#f0c9c9;background:#fff}
 .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
@@ -43,59 +48,73 @@ button.danger,a.danger{color:var(--bad);border-color:#f0c9c9;background:#fff}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
 td{padding:9px 8px;border-bottom:1px solid #f0f2f4;vertical-align:top}
-tr:hover td{background:#fbfcfd}
+tr:hover td{background:#fbfbf7}
 .mut{color:var(--mut);font-size:12px}
 .right{text-align:right}.center{text-align:center}
-.tag{display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:600;background:#eef1f5;color:var(--mut)}
+.tag{display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:600;background:#edede4;color:var(--mut)}
 .tag.ok{background:#e3f6ec;color:var(--ok)}
 .tag.pend{background:#fef3e2;color:var(--warn)}
 .tag.falhou{background:#fdeaea;color:var(--bad)}
 .tag.alt{background:#fef3e2;color:var(--warn)}
+.tag.marca{background:var(--amarelo);color:var(--ink)}
 .empty{padding:34px;text-align:center;color:var(--mut)}
 .itens{margin-top:5px;padding-left:9px;border-left:2px solid var(--line);font-size:12px;color:#444}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#15181d;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:99;opacity:0;transition:.2s;pointer-events:none}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--amarelo);padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:99;opacity:0;transition:.2s;pointer-events:none}
 .toast.show{opacity:1}
 .err{background:#fdeaea;border:1px solid #f5c6c6;color:#7f1d1d;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;white-space:pre-line}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.rm{border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:10px}
+.rm{border:1px solid var(--line);border-left:4px solid var(--ink);border-radius:var(--radius);padding:12px;margin-bottom:10px;background:#fff}
 .rm .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.rm .cod{font-weight:700}
-details>summary{cursor:pointer;color:var(--brand);font-size:12px;margin-top:8px}
-code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
+.rm .cod{font-weight:800;font-size:15px;letter-spacing:-.01em}
+details>summary{cursor:pointer;color:var(--ink);font-size:12px;font-weight:600;margin-top:8px}
+code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
 .spin{display:inline-block;width:13px;height:13px;border:2px solid #fff6;border-top-color:#fff;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px}
 @keyframes s{to{transform:rotate(360deg)}}
-.loginbox{max-width:340px;margin:80px auto}
+.loginbox{max-width:360px;margin:70px auto}
+.loginmarca{text-align:center;margin-bottom:18px}
+.loginmarca img{width:92px;height:92px;border-radius:14px}
 .subnav{display:flex;gap:6px;margin-bottom:14px}
-.subnav button{background:#f0f2f5;border:0;padding:7px 12px;border-radius:20px;font:inherit;font-size:12px;font-weight:600;color:var(--mut);cursor:pointer}
-.subnav button.on{background:var(--brand);color:#fff}
+.subnav button{background:#edede4;border:0;padding:7px 12px;border-radius:20px;font:inherit;font-size:12px;font-weight:600;color:var(--mut);cursor:pointer}
+.subnav button.on{background:var(--ink);color:var(--amarelo)}
 .volinput{width:64px;padding:5px 6px;text-align:center}
-.mapa{height:360px;border-radius:8px;margin-top:10px;border:1px solid var(--line)}
-.pin{border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
-.pin.pend{background:#1f6feb}.pin.ok{background:#0f8a4a}.pin.falhou{background:#b91c1c}
 .semgeo{background:#fef3e2;border:1px solid #fbe0b0;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:12px;color:#7a5416}
-@media(max-width:640px){.grid2{grid-template-columns:1fr}nav button{padding:8px 10px;font-size:13px}}
+.editrom{background:#fbfbf4;border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:8px}
+/* Mostrinha de cor: sempre com borda escura, senão "Branco" some no fundo branco. */
+.sw{display:inline-block;border-radius:4px;border:1.5px solid #9a9a8e;flex:0 0 auto}
+@media(max-width:640px){
+  .grid2{grid-template-columns:1fr}
+  .hrow{height:auto;padding:10px 0;flex-wrap:wrap}
+  nav{margin-left:0;width:100%}
+  nav button{padding:7px 10px;font-size:12px}
+}
 </style>
 </head>
 <body>
 
 <!-- ===================== LOGIN ===================== -->
-<div id="tela-login" class="loginbox card" hidden>
-  <h2>Entrar</h2>
+<div id="tela-login" class="loginbox" hidden>
+  <div class="loginmarca"><img src="/logo.svg" alt="Outlet dos Móveis DB"></div>
+  <div class="card">
+  <h2>Entrar no painel</h2>
   <div id="erroLogin"></div>
   <div style="margin-bottom:10px"><label>E-mail</label><input id="lEmail" type="email" autocomplete="username"></div>
   <div style="margin-bottom:12px"><label>Senha</label><input id="lSenha" type="password" autocomplete="current-password"></div>
-  <button class="btn" id="btnLogin" style="width:100%">Entrar</button>
+  <button class="btn cta" id="btnLogin" style="width:100%">Entrar</button>
+  </div>
 </div>
 
 <!-- ===================== APP ===================== -->
 <div id="tela-app" hidden>
 <header><div class="hrow">
-  <div class="logo">Romaneio<span>Omie</span></div>
+  <div class="marca">
+    <img src="/logo.svg" alt="Outlet dos Móveis DB">
+    <div class="logo">Romaneio<span>Outlet dos Móveis DB</span></div>
+  </div>
   <nav>
     <button data-t="painel" class="on">Painel</button>
     <button data-t="pedido">Buscar pedido</button>
     <button data-t="rom">Romaneios</button>
-    <button data-t="revisao">Revisão</button>
+    <button data-t="revisao">Conferência</button>
     <button data-t="fret">Freteiros</button>
     <button data-t="rel">Relatórios</button>
     <button data-t="diag">Diagnóstico</button>
@@ -160,7 +179,7 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
         </div>
         <div><label>Total de volumes</label><input id="rVolumesTotal" disabled value="0" style="background:#f4f6f8;font-weight:700"></div>
         <div style="flex:2"><label>Observação (opcional)</label><input id="rObs"></div>
-        <div class="auto"><button class="btn" id="addRascunho">Adicionar ao romaneio</button></div>
+        <div class="auto"><button class="btn cta" id="addRascunho">Adicionar ao romaneio</button></div>
       </div>
     </div>
 
@@ -179,9 +198,9 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
             <option value="">— novo romaneio —</option>
           </select>
         </div>
-        <div style="min-width:180px" id="wFrSel"><label>Freteiro</label><select id="frSel"></select></div>
+        <div style="min-width:180px" id="wFrSel"><label>Freteiro *</label><select id="frSel"></select></div>
         <div style="min-width:150px" id="wDataRota"><label>Data da rota</label><input type="date" id="dataRota"></div>
-        <button class="btn" id="gerar">Gerar romaneio</button>
+        <button class="btn cta" id="gerar">Gerar romaneio</button>
       </div>
     </div>
   </section>
@@ -199,11 +218,11 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
     </div>
   </section>
 
-  <!-- ===================== REVISÃO ===================== -->
+  <!-- ===================== CONFERÊNCIA ===================== -->
   <section id="t-revisao" hidden>
     <div class="card">
-      <h2>Revisão pós-entrega</h2>
-      <p class="mut" style="margin-top:-6px">Toda entrega confirmada agenda uma revisão pra uns dias depois — uma ligação rápida pra ver se está tudo bem, antes que vire uma assistência.</p>
+      <h2>Conferência pós-entrega</h2>
+      <p class="mut" style="margin-top:-6px">Pedidos já entregues. Confira como foi pago e dê baixa no seu estoque manualmente — depois marque aqui como conferido (isso não mexe no seu controle de estoque, é só um lembrete do que já foi processado).</p>
       <div id="listaRevisao"></div>
     </div>
   </section>
@@ -216,7 +235,7 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
       <input type="hidden" id="fId">
       <div class="row">
         <div><label>Nome</label><input id="fNome" placeholder="João Silva"></div>
-        <div><label>Telefone (login)</label><input id="fTel" placeholder="(11) 99999-0000"></div>
+        <div><label>Telefone (login) *</label><input id="fTel" placeholder="(11) 99999-0000"></div>
         <div><label>Veículo</label><input id="fVeic" placeholder="Fiorino"></div>
         <div><label>Placa</label><input id="fPlaca" placeholder="ABC1D23"></div>
         <div class="auto"><button class="btn" id="addFr">Adicionar</button></div>
@@ -233,7 +252,7 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
       <input type="hidden" id="eId">
       <div class="row">
         <div><label>Nome</label><input id="eNome" placeholder="Maria"></div>
-        <div><label>Telefone (login)</label><input id="eTel" placeholder="(11) 99999-0000"></div>
+        <div><label>Telefone (login) *</label><input id="eTel" placeholder="(11) 99999-0000"></div>
         <div class="auto"><button class="btn" id="addEs">Adicionar</button></div>
         <div class="auto"><button class="btn ghost" id="cancelarEs" hidden>Cancelar edição</button></div>
       </div>
@@ -291,11 +310,9 @@ code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:12px}
 const SUPABASE_URL = 'https://teaymabvqynopsbnnuwp.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_rE-fSECVdd8sThPSQReZAg_GDjilRcu';
 
-// Endereços fixos: freteiro pega a nota na loja e os móveis no estoque, antes de sair pra entregar.
-// As coordenadas são no nível da cidade (o OpenStreetMap não tem o endereço exato mapeado) —
-// servem só pra centralizar o mapa e sugerir a ordem da rota. Pra navegação de verdade o app usa
-// o endereço por texto, que o Google Maps resolve com muito mais precisão.
-const LOJA = { nome: 'Loja — Outlet dos Móveis DB', endereco: 'Rua Presidente Venceslau Braz, 1013', lat: -7.1215981, lng: -34.8820280 };
+// Endereço fixo do estoque: a rota sempre sai de lá (é de onde o freteiro pega os móveis).
+// As coordenadas são no nível da cidade — servem só pra sugerir a ordem da rota por
+// proximidade. Pra navegação de verdade o app usa o endereço por texto no Google Maps.
 const ESTOQUE = { nome: 'Estoque (móveis)', endereco: 'R. Márcia Travassos, 660 - Jardim Jerico, Cabedelo - PB, 58103-718', lat: -6.9732400, lng: -34.8351609 };
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -304,10 +321,16 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 let freteiros = [], romaneios = [], rascunho = [], pedidoAtual = null;
 let modoBusca = 'pedido';
-let mapas = {};
+// Quais romaneios estão com "Ver paradas" aberto — pra não fechar tudo (e perder o
+// lugar da tela) toda vez que uma ação (mover parada, marcar problema etc.) recarrega a lista.
+let detalhesAbertos = new Set();
+function onToggleDetalhes(id, aberto){ if(aberto) detalhesAbertos.add(id); else detalhesAbertos.delete(id); }
 
 const money = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// 'AAAA-MM-DD' no fuso da Paraíba. Com toISOString() (que é UTC), depois das 21h o
+// campo de data já vinha preenchido com o dia seguinte — e a rota nascia com data errada.
+const dataBR = d => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Fortaleza'}).format(d||new Date());
 
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
 function erro(m){$('#erro').innerHTML = m ? `<div class="err">${esc(m)}</div>` : '';}
@@ -416,7 +439,12 @@ function alternarEdicaoDesc(i){
   const txt = document.getElementById('descTxt-'+i), edit = document.getElementById('descEdit-'+i);
   const entrando = edit.hidden;
   edit.hidden = !entrando; txt.hidden = entrando;
-  if(entrando) edit.focus();
+  if(entrando){ edit.focus(); return; }
+  // Saindo da edição: mostra o nome novo na hora (antes continuava exibindo o antigo,
+  // parecendo que a alteração não tinha pegado — mesmo tendo pegado).
+  const it = ((pedidoAtual && pedidoAtual.itens) || [])[i] || {};
+  const novo = edit.value.trim() || it.descricao || '';
+  txt.textContent = `${it.quantidade!=null?it.quantidade:''}x ${it.codigo?it.codigo+' — ':''}${novo}`;
 }
 
 function renderResultado(){
@@ -531,11 +559,12 @@ $('#romDestino').onchange = () => {
 $('#gerar').onclick = async () => {
   if(!rascunho.length) return;
   const destino = $('#romDestino').value;
+  if(!destino && !$('#frSel').value){ erro('Selecione um freteiro — todo romaneio precisa de um.'); return; }
   try{
     const url = destino ? '/.netlify/functions/romaneios?id='+destino : '/.netlify/functions/romaneios';
     const body = destino
       ? { paradas: rascunho }
-      : { freteiroId: $('#frSel').value || null, dataRota: $('#dataRota').value || null, paradas: rascunho };
+      : { freteiroId: $('#frSel').value, dataRota: $('#dataRota').value || null, paradas: rascunho };
     const r = await api(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
     rascunho = []; renderRascunho();
     toast(destino ? 'Adicionado ao romaneio ' + r.codigo : 'Romaneio ' + r.codigo + ' criado');
@@ -547,7 +576,6 @@ $('#gerar').onclick = async () => {
 async function carregarRomaneios(){
   try{
     romaneios = await api('/.netlify/functions/romaneios');
-    mapas = {}; // os mapas antigos já saem da tela quando o HTML é reconstruído abaixo
     atualizarRomDestino();
     renderListaRom();
   }catch(e){ erro(e.message); }
@@ -555,16 +583,20 @@ async function carregarRomaneios(){
 
 function renderListaRom(){
   const el = $('#listaRom');
+  // A lista é reconstruída inteira a cada ação (mover parada, salvar problema...).
+  // Sem isso a página saltava pro topo e dava a impressão de que o clique fez outra coisa.
+  const scroll = window.scrollY;
   const lista = filtroRom === 'ativos' ? romaneios.filter(r=>r.status!=='concluido')
     : filtroRom === 'concluidos' ? romaneios.filter(r=>r.status==='concluido')
     : romaneios;
-  if(!lista.length){ el.innerHTML = '<div class="empty">Nenhum romaneio aqui.</div>'; return; }
+  if(!lista.length){ el.innerHTML = '<div class="empty">Nenhum romaneio aqui.</div>'; window.scrollTo(0, scroll); return; }
   el.innerHTML = lista.map(r => {
       const ok = r.paradas.filter(p=>p.status==='entregue').length;
       const falhou = r.paradas.filter(p=>p.status==='falhou').length;
-      const fr = freteiros.find(f=>f.nome===r.freteiroNome);
-      const telFr = fr ? fr.telefone.replace(/\D/g,'') : '';
-      const msgWpp = encodeURIComponent(`Oi! Sua rota de hoje (${r.codigo}) já está pronta — abre em ${location.origin}/equipe`);
+      // Busca pelo id, não pelo nome: dois freteiros de mesmo nome pegariam o telefone errado.
+      const fr = freteiros.find(f=>f.id===r.freteiro_id);
+      const telFr = (fr && fr.telefone) ? fr.telefone.replace(/\D/g,'') : '';
+      const msgWpp = encodeURIComponent(`Oi! Sua rota (${r.codigo}) já está pronta — abre em ${location.origin}/equipe`);
       return `<div class="rm">
         <div class="top">
           <span class="cod">${esc(r.codigo)}</span>
@@ -574,14 +606,14 @@ function renderListaRom(){
           ${falhou?`<span class="tag falhou">⚠️ ${falhou} não realizada${falhou>1?'s':''}</span>`:''}
           ${r.carregamento_confirmado?`<span class="tag ok">✓ carregamento conferido</span>`:''}
           <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn ghost sm" onclick="window.open('/romaneio/${r.id}/imprimir','_blank')">Imprimir</button>
             ${telFr?`<button class="btn ghost sm" onclick="window.open('https://wa.me/55${telFr}?text=${msgWpp}','_blank')">Avisar no WhatsApp</button>`:''}
-            <button class="btn ghost sm" onclick="toggleMapa('${r.id}')">Ver mapa</button>
             <button class="btn ghost sm" onclick="abrirRotaCompleta('${r.id}')">Rota no Maps</button>
+            <button class="btn ghost sm" onclick="toggleEditRom('${r.id}')">Editar</button>
             <button class="btn ghost sm danger" onclick="excluirRom('${r.id}')">Excluir</button>
           </span>
         </div>
-        <details><summary>Ver paradas</summary>
+        <div id="editbox-${r.id}"></div>
+        <details ${detalhesAbertos.has(r.id)?'open':''} ontoggle="onToggleDetalhes('${r.id}', this.open)"><summary>Ver paradas</summary>
           <table style="margin-top:8px"><thead><tr><th>#</th><th>Cliente</th><th>Pedido</th><th class="center">Vol.</th><th>Status</th><th>Recebedor</th><th>Problema</th><th></th></tr></thead><tbody>
           ${r.paradas.map((p,i)=>{
             const c=p.cliente||{};
@@ -596,7 +628,7 @@ function renderListaRom(){
             </td>
               <td>${esc(c.nome||'—')}<div class="mut">${esc([c.endereco,c.cidade].filter(Boolean).join(' - '))}</div></td>
               <td>${tipoLabel} ${esc(p.numero||'')}
-                ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut" style="display:flex;align-items:center;gap:4px"><span style="width:11px;height:11px;border-radius:3px;border:1px solid var(--line);display:inline-block;background:${corParaSwatch(it.cor)}"></span>${esc(it.descricao||'')}${it.volumes?' ('+it.volumes+' vol.)':''}: ${esc(it.cor)}</div>`).join('')}
+                ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut" style="display:flex;align-items:center;gap:5px"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span>${esc(it.descricao||'')}${it.volumes?' ('+it.volumes+' vol.)':''}: <strong>${esc(it.cor)}</strong></div>`).join('')}
                 ${(!((p.itens||[]).some(it=>it.cor)) && p.cor)?`<div class="mut">Cor: ${esc(p.cor)}</div>`:''}
                 ${(p.fotos&&p.fotos.length)?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${p.fotos.map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--line)" title="${f.tipo==='carro'?'foto do carro':'foto do produto'}"></a>`).join('')}</div>`:''}
               </td>
@@ -604,9 +636,7 @@ function renderListaRom(){
               <td>
                 <span class="tag ${cls}">${esc(p.status)}</span>${p.entregue_em?`<div class="mut">${new Date(p.entregue_em).toLocaleString('pt-BR')}</div>`:''}
                 ${p.status==='pendente'?`<div style="margin-top:4px"><button class="btn ghost sm" style="padding:3px 8px;font-size:11px" onclick="marcarEmRota('${p.id}')">Marcar em rota</button></div>`:''}
-                ${finalizado?`<label style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:400;text-transform:none;color:var(--ink);margin-top:4px">
-                  <input type="checkbox" style="width:auto" ${p.conferido?'checked':''} onchange="salvarConferido('${p.id}', this.checked)"> conferido
-                </label>`:''}
+                ${p.status==='entregue'?`<div class="mut" style="margin-top:4px">${p.conferido?'✓ conferido':'aguardando conferência (aba Conferência)'}</div>`:''}
               </td>
               <td class="mut">${esc(p.recebedor||'—')}${(p.lat&&p.lng)?`<div><a href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank">local da confirmação</a></div>`:''}</td>
               <td style="min-width:170px">
@@ -626,11 +656,17 @@ function renderListaRom(){
               <td><button class="btn ghost sm danger" style="padding:3px 8px;font-size:11px" onclick="removerParada('${p.id}')">Remover</button></td>
             </tr>`;}).join('')}
           </tbody></table>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn ghost sm" onclick="recalcularGeo('${r.id}')">Calcular localização das paradas</button>
+            <button class="btn ghost sm" onclick="sugerirOrdem('${r.id}')">Ordenar pela melhor rota</button>
+          </div>
+          <div id="semgeo-${r.id}"></div>
+          <div id="ordemSugerida-${r.id}"></div>
         </details>
-        <div id="mapabox-${r.id}"></div>
       </div>`;
     }).join('');
   lista.forEach(r => r.paradas.forEach(p => atualizarMotivos(p.id)));
+  window.scrollTo(0, scroll);
 }
 
 /* ---------------- painel do dia ---------------- */
@@ -639,7 +675,7 @@ async function carregarPainelDia(){
     const p = await api('/.netlify/functions/painel-dia');
     const partes = [];
     if(p.totalFalhasHoje) partes.push(`<span class="tag falhou">⚠️ ${p.totalFalhasHoje} entrega(s) não realizada(s) hoje</span>`);
-    if(p.revisoesAtrasadas) partes.push(`<span class="tag pend">📞 ${p.revisoesAtrasadas} revisão(ões) atrasada(s)</span>`);
+    if(p.conferenciasPendentes) partes.push(`<span class="tag pend">🧾 ${p.conferenciasPendentes} entrega(s) aguardando conferência</span>`);
     partes.push(`<span class="tag">${p.problemas30dias} problema(s) nos últimos 30 dias</span>`);
     $('#painelResumo').innerHTML = partes.join(' ') || '<div class="empty">Tudo tranquilo.</div>';
 
@@ -656,45 +692,41 @@ async function carregarPainelDia(){
   }catch(e){ erro(e.message); }
 }
 
-/* ---------------- revisão pós-entrega ---------------- */
+/* ---------------- conferência pós-entrega (pagamento + baixa manual de estoque) ---------------- */
 async function carregarRevisoes(){
   try{
-    const lista = await api('/.netlify/functions/revisoes');
-    const hoje = new Date().toISOString().slice(0,10);
+    const lista = await api('/.netlify/functions/conferencia');
     $('#listaRevisao').innerHTML = lista.length ? lista.map(p => {
       const c = p.cliente || {};
-      const tel = (c.telefone||'').replace(/\D/g,'');
-      const atrasada = p.revisaoEm && p.revisaoEm < hoje;
-      const hojeMesmo = p.revisaoEm === hoje;
-      const tag = atrasada ? 'falhou' : hojeMesmo ? 'pend' : '';
       return `<div class="rm">
         <div class="top">
           <span class="cod">${esc(p.romaneioCodigo)} · ${esc(p.tipo==='assistencia'?'Assist.':'Ped.')} ${esc(p.numero||'')}</span>
-          <span class="tag ${tag}">${atrasada?'atrasada':hojeMesmo?'hoje':esc(p.revisaoEm||'')}</span>
-          <span class="mut">${esc(c.nome||'')}</span>
-          <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
-            ${tel?`<a class="btn ghost sm" href="tel:${tel}">📞 Ligar</a>`:''}
-            ${tel?`<a class="btn ghost sm" href="https://wa.me/55${tel}" target="_blank">💬 WhatsApp</a>`:''}
-            <button class="btn ghost sm" onclick="marcarRevisado('${p.id}')">✓ Revisado, tudo certo</button>
+          <span class="mut">${esc(c.nome||'')} · ${money(p.valor)}</span>
+          <span class="mut">${p.entregueEm?new Date(p.entregueEm).toLocaleDateString('pt-BR'):''}</span>
+          <span style="margin-left:auto">
+            <button class="btn sm" onclick="marcarConferido('${p.id}')">✓ Conferido (pago e baixado no estoque)</button>
           </span>
         </div>
       </div>`;
-    }).join('') : '<div class="empty">Nenhuma revisão pendente.</div>';
+    }).join('') : '<div class="empty">Nenhuma entrega aguardando conferência.</div>';
   }catch(e){ erro(e.message); }
 }
-async function marcarRevisado(paradaId){
+async function marcarConferido(paradaId){
   try{
-    await api('/.netlify/functions/parada-status', { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ paradaId, revisaoFeita: true }) });
-    toast('Revisão registrada');
+    await salvarConferido(paradaId, true);
     carregarRevisoes();
   }catch(e){ erro(e.message); }
 }
 
 async function excluirRom(id){
-  if(!confirm('Excluir este romaneio?')) return;
-  await api('/.netlify/functions/romaneios?id='+id, {method:'DELETE'});
-  carregarRomaneios();
+  const r = romaneios.find(x=>x.id===id);
+  const aviso = r ? `Excluir o romaneio ${r.codigo} (${r.paradas.length} parada(s))?\n\nIsso apaga também o histórico das entregas dele.` : 'Excluir este romaneio?';
+  if(!confirm(aviso)) return;
+  try{
+    await api('/.netlify/functions/romaneios?id='+id, {method:'DELETE'});
+    toast('Romaneio excluído');
+    carregarRomaneios();
+  }catch(e){ erro(e.message); }
 }
 
 async function removerParada(paradaId){
@@ -715,8 +747,9 @@ function abrirRotaCompleta(id){
   }).filter(Boolean);
   if(!enderecos.length) return toast('Nenhuma parada com endereço');
   const destino = enderecos[enderecos.length-1];
-  const waypoints = [ESTOQUE.endereco, ...enderecos.slice(0,-1)].map(encodeURIComponent).join('|');
-  window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(LOJA.endereco)}&destination=${encodeURIComponent(destino)}&waypoints=${waypoints}`, '_blank');
+  const waypoints = enderecos.slice(0,-1).map(encodeURIComponent).join('|');
+  const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(ESTOQUE.endereco)}&destination=${encodeURIComponent(destino)}`;
+  window.open(waypoints ? url + `&waypoints=${waypoints}` : url, '_blank');
 }
 
 async function marcarEmRota(paradaId){
@@ -763,67 +796,38 @@ async function salvarProblema(paradaId){
   }catch(e){ erro(e.message); }
 }
 
-/* ---------------- mapa da rota ---------------- */
-function toggleMapa(id){
-  const box = document.getElementById('mapabox-'+id);
+/* ---------------- editar romaneio (freteiro / data) ---------------- */
+function toggleEditRom(id){
+  const box = document.getElementById('editbox-'+id);
   if(!box) return;
-  if(box.dataset.aberto === '1'){ box.innerHTML = ''; box.dataset.aberto = '0'; if(mapas[id]){ mapas[id].remove(); delete mapas[id]; } return; }
+  if(box.dataset.aberto === '1'){ box.innerHTML = ''; box.dataset.aberto = '0'; return; }
   box.dataset.aberto = '1';
-  box.innerHTML = `
-    <div class="mapa" id="leaflet-${id}"></div>
-    <div id="semgeo-${id}"></div>
-    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn ghost sm" onclick="recalcularGeo('${id}')">Recalcular coordenadas</button>
-      <button class="btn ghost sm" onclick="sugerirOrdem('${id}')">Ordenar pela melhor rota</button>
-    </div>
-    <div id="ordemSugerida-${id}"></div>
-  `;
-  desenharMapa(id);
-}
-
-function desenharMapa(id){
   const r = romaneios.find(x=>x.id===id);
   if(!r) return;
-  const comGeo = r.paradas.filter(p=>p.geo_lat && p.geo_lng);
-  const semGeo = r.paradas.filter(p=>!(p.geo_lat && p.geo_lng));
-
-  if(mapas[id]){ mapas[id].remove(); delete mapas[id]; }
-  const map = L.map('leaflet-'+id);
-  mapas[id] = map;
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-
-  const iconFixo = (letra, cor) => L.divIcon({ className:'', html:`<div class="pin" style="background:${cor}">${letra}</div>`, iconSize:[26,26] });
-  L.marker([LOJA.lat, LOJA.lng], { icon: iconFixo('L','#6b7280') }).addTo(map).bindPopup(`<strong>${esc(LOJA.nome)}</strong><br>${esc(LOJA.endereco)}<br><small>Pegar a nota</small>`);
-  L.marker([ESTOQUE.lat, ESTOQUE.lng], { icon: iconFixo('E','#6b7280') }).addTo(map).bindPopup(`<strong>${esc(ESTOQUE.nome)}</strong><br>${esc(ESTOQUE.endereco)}<br><small>Pegar os móveis</small>`);
-
-  if(!comGeo.length){
-    map.setView([ESTOQUE.lat, ESTOQUE.lng], 11);
-  } else {
-    const pontos = comGeo.map(p => [p.geo_lat, p.geo_lng]);
-    comGeo.forEach((p,i) => {
-      const cor = p.status==='entregue'?'ok':p.status==='falhou'?'falhou':'pend';
-      const icon = L.divIcon({ className:'', html:`<div class="pin ${cor}">${r.paradas.indexOf(p)+1}</div>`, iconSize:[26,26] });
-      const c = p.cliente || {};
-      const gmaps = `https://www.google.com/maps/dir/?api=1&destination=${p.geo_lat},${p.geo_lng}`;
-      const precisaoTxt = p.geo_prec && p.geo_prec !== 'exato' ? `<br><small style="color:#b45309">Localização aproximada (${esc(p.geo_prec)}) — confira antes de confiar</small>` : '';
-      L.marker([p.geo_lat, p.geo_lng], { icon }).addTo(map).bindPopup(
-        `<strong>${esc(c.nome||'—')}</strong><br>${esc(c.endereco||'')}${c.doc?'<br>'+esc(c.doc):''}${precisaoTxt}<br><a href="${gmaps}" target="_blank">Abrir no Google Maps</a>`
-      );
-    });
-    if(pontos.length > 1){
-      L.polyline(pontos, { color:'#1f6feb', weight:3, opacity:.6 }).addTo(map);
-      map.fitBounds(pontos, { padding:[30,30] });
-    } else {
-      map.setView(pontos[0], 15);
-    }
-  }
-
-  const box = document.getElementById('semgeo-'+id);
-  box.innerHTML = semGeo.length
-    ? `<div class="semgeo">${semGeo.length} parada(s) sem coordenada ainda: ${semGeo.map(p=>esc(p.numero)).join(', ')}. Clique em "Recalcular coordenadas".</div>`
-    : '';
+  const opcoesFr = freteiros.map(f=>`<option value="${f.id}" ${r.freteiro_id===f.id?'selected':''}>${esc(f.nome)}</option>`).join('');
+  box.innerHTML = `
+    <div class="editrom">
+      <div class="row">
+        <div><label>Freteiro *</label><select id="editFrSel-${id}"><option value="">— escolher —</option>${opcoesFr}</select></div>
+        <div><label>Data da rota</label><input type="date" id="editData-${id}" value="${esc(r.data_rota||'')}"></div>
+        <div class="auto"><button class="btn sm" onclick="salvarEdicaoRom('${id}')">Salvar</button></div>
+        <div class="auto"><button class="btn ghost sm" onclick="toggleEditRom('${id}')">Cancelar</button></div>
+      </div>
+    </div>`;
+}
+async function salvarEdicaoRom(id){
+  const freteiroId = document.getElementById('editFrSel-'+id).value;
+  const dataRota = document.getElementById('editData-'+id).value;
+  if(!freteiroId) return erro('Selecione um freteiro — todo romaneio precisa de um.');
+  try{
+    await api('/.netlify/functions/romaneios?id='+id, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ freteiroId, dataRota }) });
+    toast('Romaneio atualizado');
+    document.getElementById('editbox-'+id).dataset.aberto = '0';
+    carregarRomaneios();
+  }catch(e){ erro(e.message); }
 }
 
+/* ---------------- ordem sugerida da rota (por localização) ---------------- */
 async function recalcularGeo(id){
   const r = romaneios.find(x=>x.id===id);
   if(!r) return;
@@ -837,7 +841,11 @@ async function recalcularGeo(id){
     }catch(e){ /* segue pras próximas mesmo se uma falhar */ }
     await new Promise(res => setTimeout(res, 1100));
   }
-  desenharMapa(id);
+  const semGeo = r.paradas.filter(p=>!(p.geo_lat && p.geo_lng));
+  const box = document.getElementById('semgeo-'+id);
+  if(box) box.innerHTML = semGeo.length
+    ? `<div class="semgeo">${semGeo.length} parada(s) sem coordenada ainda: ${semGeo.map(p=>esc(p.numero)).join(', ')}.</div>`
+    : '';
   toast('Coordenadas atualizadas');
 }
 
@@ -894,8 +902,8 @@ async function confirmarOrdem(id, ordemIds){
   try{
     await api('/.netlify/functions/reordenar-paradas', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ romaneioId: id, ordem: ordemIds }) });
     toast('Ordem atualizada');
+    detalhesAbertos.add(id); // mantém "Ver paradas" aberto pra já mostrar a ordem nova
     await carregarRomaneios();
-    toggleMapa(id); // a lista foi reconstruída, então isso abre o mapa (já com a ordem nova)
   }catch(e){ erro(e.message); }
 }
 
@@ -925,13 +933,27 @@ function limparFormFr(){
 $('#cancelarFr').onclick = limparFormFr;
 $('#addFr').onclick = async () => {
   if(!$('#fNome').value.trim()) return toast('Informe o nome');
-  await api('/.netlify/functions/freteiros',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({id:$('#fId').value||undefined,nome:$('#fNome').value,telefone:$('#fTel').value,veiculo:$('#fVeic').value,placa:$('#fPlaca').value})});
-  const editando = !!$('#fId').value;
-  limparFormFr();
-  carregarFreteiros(); toast(editando ? 'Freteiro atualizado' : 'Freteiro cadastrado');
+  if(!$('#fTel').value.trim()) return toast('Informe o telefone — é o login dele');
+  erro('');
+  try{
+    await api('/.netlify/functions/freteiros',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id:$('#fId').value||undefined,nome:$('#fNome').value,telefone:$('#fTel').value,veiculo:$('#fVeic').value,placa:$('#fPlaca').value})});
+    const editando = !!$('#fId').value;
+    limparFormFr();
+    await carregarFreteiros();
+    toast(editando ? 'Freteiro atualizado' : 'Freteiro cadastrado');
+  }catch(e){ erro(e.message); }
 };
-async function delFr(id){ await api('/.netlify/functions/freteiros?id='+id,{method:'DELETE'}); carregarFreteiros(); }
+async function delFr(id){
+  const f = freteiros.find(x=>x.id===id);
+  if(!confirm(`Remover ${f?f.nome:'este freteiro'}?\n\nEle perde o acesso ao app na hora.`)) return;
+  erro('');
+  try{
+    await api('/.netlify/functions/freteiros?id='+id,{method:'DELETE'});
+    toast('Freteiro removido');
+    carregarFreteiros();
+  }catch(e){ erro(e.message); }
+}
 
 /* ---------------- estoquistas ---------------- */
 let estoquistas = [];
@@ -956,13 +978,27 @@ function limparFormEs(){
 $('#cancelarEs').onclick = limparFormEs;
 $('#addEs').onclick = async () => {
   if(!$('#eNome').value.trim()) return toast('Informe o nome');
-  await api('/.netlify/functions/estoquistas',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({id:$('#eId').value||undefined,nome:$('#eNome').value,telefone:$('#eTel').value})});
-  const editando = !!$('#eId').value;
-  limparFormEs();
-  carregarEstoquistas(); toast(editando ? 'Estoquista atualizado' : 'Estoquista cadastrado');
+  if(!$('#eTel').value.trim()) return toast('Informe o telefone — é o login dele');
+  erro('');
+  try{
+    await api('/.netlify/functions/estoquistas',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id:$('#eId').value||undefined,nome:$('#eNome').value,telefone:$('#eTel').value})});
+    const editando = !!$('#eId').value;
+    limparFormEs();
+    await carregarEstoquistas();
+    toast(editando ? 'Estoquista atualizado' : 'Estoquista cadastrado');
+  }catch(e){ erro(e.message); }
 };
-async function delEs(id){ await api('/.netlify/functions/estoquistas?id='+id,{method:'DELETE'}); carregarEstoquistas(); }
+async function delEs(id){
+  const es = estoquistas.find(x=>x.id===id);
+  if(!confirm(`Remover ${es?es.nome:'este estoquista'}?\n\nEle perde o acesso ao app na hora.`)) return;
+  erro('');
+  try{
+    await api('/.netlify/functions/estoquistas?id='+id,{method:'DELETE'});
+    toast('Estoquista removido');
+    carregarEstoquistas();
+  }catch(e){ erro(e.message); }
+}
 
 /* ---------------- relatórios ---------------- */
 $('#relBuscar').onclick = async () => {
@@ -1014,11 +1050,10 @@ $('#dGo').onclick = async () => {
 
 /* ---------------- init ---------------- */
 function statusHoje(){
-  const iso = d => d.toISOString().slice(0,10);
   const hoje = new Date();
-  $('#dataRota').value = iso(hoje);
+  $('#dataRota').value = dataBR(hoje);
   const trintaDiasAtras = new Date(hoje); trintaDiasAtras.setDate(hoje.getDate()-30);
-  $('#relDe').value = iso(trintaDiasAtras); $('#relAte').value = iso(hoje);
+  $('#relDe').value = dataBR(trintaDiasAtras); $('#relAte').value = dataBR(hoje);
 }
 window.removerRascunho = removerRascunho;
 window.atualizarSwatch = atualizarSwatch;
@@ -1029,13 +1064,15 @@ window.delFr = delFr;
 window.delEs = delEs;
 window.editarFr = editarFr;
 window.editarEs = editarEs;
-window.toggleMapa = toggleMapa;
+window.toggleEditRom = toggleEditRom;
+window.salvarEdicaoRom = salvarEdicaoRom;
 window.abrirRotaCompleta = abrirRotaCompleta;
 window.recalcularGeo = recalcularGeo;
 window.sugerirOrdem = sugerirOrdem;
 window.confirmarOrdem = confirmarOrdem;
 window.moverParada = moverParada;
-window.marcarRevisado = marcarRevisado;
+window.onToggleDetalhes = onToggleDetalhes;
+window.marcarConferido = marcarConferido;
 window.salvarProblema = salvarProblema;
 window.atualizarMotivos = atualizarMotivos;
 window.marcarEmRota = marcarEmRota;

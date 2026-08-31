@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Outlet dos Móveis DB">
+  <title>Outlet dos Móveis DB</title>
+  <rect width="400" height="400" fill="#F2F250"/>
+  <path d="M62 182 L200 56 L338 182 L338 348 L62 348 Z"
+        fill="none" stroke="#14140F" stroke-width="9" stroke-linejoin="miter"/>
+  <text x="200" y="168" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', 'Playfair Display', serif"
+        font-size="96" fill="#14140F">db</text>
+  <g text-anchor="middle" font-family="'Segoe UI', Helvetica, Arial, sans-serif"
+     font-size="33" letter-spacing="2.5" fill="#14140F">
+    <text x="200" y="238">OUTLET</text>
+    <text x="200" y="279">DOS</text>
+    <text x="200" y="320">MÓVEIS</text>
+  </g>
+</svg>

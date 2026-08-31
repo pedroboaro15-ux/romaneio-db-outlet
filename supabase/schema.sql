@@ -10,6 +10,9 @@
 -- Freteiros e estoquistas fazem login só por TELEFONE (sem senha/PIN — escolha
 -- consciente pra facilitar o uso; não é Supabase Auth, é sessão própria em
 -- "sessoes_equipe"). Só o gerente usa Supabase Auth de verdade.
+--
+-- As colunas "pin" e "email" sobraram de versões antigas do login e não são mais
+-- usadas. Ficam aqui só pra não arriscar apagar dado à toa — pode ignorar.
 
 create extension if not exists "pgcrypto";
 
@@ -37,7 +40,7 @@ alter table public.estoquistas enable row level security;
 alter table public.estoquistas add column if not exists telefone text default '';
 alter table public.estoquistas add column if not exists pin text default '';
 
--- Sessão criada no login por telefone+PIN (token opaco, sem relação com Supabase Auth).
+-- Sessão criada no login por telefone (token opaco, sem relação com Supabase Auth).
 create table if not exists public.sessoes_equipe (
   token text primary key,
   tipo text not null, -- 'freteiro' | 'estoquista'
@@ -107,8 +110,8 @@ alter table public.paradas add column if not exists problema_responsavel text de
 alter table public.paradas add column if not exists problema_obs text default '';
 
 -- status agora também aceita 'em_rota' (pedido saiu pra entrega), além de
--- 'pendente' | 'entregue' | 'falhou'. conferido = você revisou depois que o
--- freteiro confirmou (pagamento/reclamação ficam fora do app de propósito).
+-- 'pendente' | 'entregue' | 'falhou'. conferido = você já confirmou como foi pago e
+-- deu baixa no estoque manualmente (aba Conferência) — o app não mexe no seu estoque.
 alter table public.paradas add column if not exists conferido boolean default false;
 
 -- Separação por volume: o estoquista confirma volume a volume (ex: 2 módulos de sofá =
@@ -126,8 +129,9 @@ alter table public.paradas add column if not exists cor text default '';
 -- livre, pra observação extra.
 alter table public.paradas add column if not exists problema_motivo text default '';
 
--- Revisão pós-entrega: agendada automaticamente uns dias depois de "entregue", pra você
--- ligar e checar se está tudo bem antes que vire uma assistência.
+-- Legado: eram da antiga "revisão pós-entrega" (ligação de acompanhamento), que virou a
+-- aba Conferência (pagamento + baixa manual de estoque, coluna "conferido" acima).
+-- Mantidas só pra não apagar histórico — o app não lê mais essas duas.
 alter table public.paradas add column if not exists revisao_em date;
 alter table public.paradas add column if not exists revisao_feita boolean default false;
 
@@ -161,7 +165,24 @@ create table if not exists public.geo_cache (
   atualizado timestamptz default now()
 );
 
+-- Cache do cadastro de clientes da Omie (endereço, telefone...). Sem essa tabela o app
+-- consulta a Omie de novo a cada busca de pedido, ficando bem mais lento.
+create table if not exists public.clientes_cache (
+  codigo text primary key,
+  nome text default '',
+  doc text default '',
+  endereco text default '',
+  complemento text default '',
+  bairro text default '',
+  cidade text default '',
+  estado text default '',
+  cep text default '',
+  telefone text default '',
+  atualizado_em timestamptz default now()
+);
+
 alter table public.freteiros enable row level security;
 alter table public.romaneios enable row level security;
 alter table public.paradas enable row level security;
 alter table public.geo_cache enable row level security;
+alter table public.clientes_cache enable row level security;

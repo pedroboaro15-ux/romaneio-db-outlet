@@ -2,6 +2,7 @@
 const { requireAdmin } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
+const { hojeBR } = require('./lib/datas');
 
 exports.handler = async event => {
   const user = await requireAdmin(event);
@@ -58,9 +59,14 @@ exports.handler = async event => {
       if (eAtual) return json(500, { erro: eAtual.message });
       if (!existente) return json(404, { erro: 'romaneio não encontrado' });
 
+      // Um romaneio sempre tem que ter freteiro — não deixa tirar/zerar por engano.
+      if (b.freteiroId !== undefined && !b.freteiroId) return json(400, { erro: 'romaneio sempre precisa de um freteiro' });
+
       const patchRom = {};
-      if (b.freteiroId !== undefined) patchRom.freteiro_id = b.freteiroId || null;
-      if (b.dataRota !== undefined) patchRom.data_rota = b.dataRota || null;
+      if (b.freteiroId !== undefined) patchRom.freteiro_id = b.freteiroId;
+      // Data nunca pode ficar vazia: romaneio sem data some da tela do freteiro/estoquista
+      // (a busca deles é "de hoje em diante", e NULL não entra em nenhuma comparação de data).
+      if (b.dataRota !== undefined) patchRom.data_rota = b.dataRota || hojeBR();
       if (b.observacao !== undefined) patchRom.observacao = b.observacao || '';
       if (Object.keys(patchRom).length) {
         const { error: eUpd } = await sb.from('romaneios').update(patchRom).eq('id', q.id);
@@ -85,12 +91,13 @@ exports.handler = async event => {
 
     // Criar romaneio novo.
     if (!paradas.length) return json(400, { erro: 'informe ao menos uma parada' });
+    if (!b.freteiroId) return json(400, { erro: 'selecione um freteiro' });
 
     const { data: rom, error: e1 } = await sb
       .from('romaneios')
       .insert({
-        freteiro_id: b.freteiroId || null,
-        data_rota: b.dataRota || null,
+        freteiro_id: b.freteiroId,
+        data_rota: b.dataRota || hojeBR(),
         observacao: b.observacao || '',
         status: 'aberto'
       })

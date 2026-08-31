@@ -1,28 +1,59 @@
 # Romaneio Omie
 
-> **Atualização mais recente:** ver "O QUE MUDOU AGORA" logo abaixo. Rode o `supabase/schema.sql` de novo (é seguro, só adiciona o que falta) e suba o código no GitHub do jeito de sempre.
+> **Atualização mais recente:** ver "O QUE MUDOU AGORA" logo abaixo.
+> **Rode o `supabase/schema.sql` de novo** (é seguro, só cria o que falta — dessa vez faltava uma tabela) e depois suba o código no GitHub do jeito de sempre.
 
 ## O QUE MUDOU AGORA
 
-- **Um único endereço pra equipe entrar**: `seusite.netlify.app/equipe`. A pessoa toca em Freteiro ou Estoquista, digita o telefone, e da próxima vez que abrir esse link já cai direto na área dela (fica salvo no celular). Acabaram os links por romaneio.
-- **Freteiro e estoquista só veem a rota de HOJE.** Nada de lista de romaneios antigos pra rolar. Se não tiver rota criada pro dia ainda, aparece um aviso claro em vez de mostrar algo errado.
-- **Busca por período foi removida** — demorava demais e podia até dar erro de tempo esgotado. A busca por número continua igual, rápida.
-- **Fuso horário corrigido**: "hoje" agora é sempre calculado no horário da Paraíba, não no horário de Londres (que é o do servidor) — antes, depois das 21h o app podia achar que já era "amanhã".
-- **Cor de verdade, com mostrinha colorida** — não é só a palavra escrita. Adicionei também **Nature** (amadeirado), **Nature/Off** (mais madeira, tom off) e **Off/Nature** (mais off, pouca madeira).
-- **Volume por produto, não mais um número solto**: cada item do pedido tem seu próprio campo de volumes; o total é a soma automática. Na hora de separar, o estoquista vê qual produto corresponde a cada volume que está confirmando.
-- **Lápis ✏️ pra editar o nome do produto**: ao revisar um pedido, clique no lápis ao lado de qualquer item e reescreva o nome como quiser — fica assim pro estoquista, sem precisar decifrar código da Omie.
-- **Revisão final da separação**: depois de confirmar todos os volumes de todas as paradas, aparece uma tela-resumo (pedido, cor, volumes de cada parada) pro estoquista conferir antes de tocar em "Confirmar carregamento". Fica registrado no romaneio.
-- **Trava de clique duplo** no botão de confirmar volume — evita contar 2 volumes com um toque só sem querer.
-- **Desfazer entrega**: o freteiro pode desfazer uma entrega/falha marcada errado, mas só digitando o próprio nome (do jeito que está cadastrado) — evita desfazer sem querer.
-- **Ouvir endereço e ouvir telefone**: dois botões na tela do freteiro que fazem o celular *falar* o endereço ou o telefone em voz alta (usa a função de voz do próprio celular, sem custo nenhum).
-- **Funciona (bem melhor) sem sinal**: se o freteiro/estoquista confirmar algo sem internet, o app salva no celular e avisa "será enviado quando voltar o sinal" — manda sozinho assim que a conexão voltar. A rota também fica salva no celular pra ainda dar pra consultar endereço/telefone mesmo sem sinal.
-- **Acesso cai na hora se você demitir alguém**: ao remover um freteiro/estoquista do cadastro, todas as sessões dele são apagadas — ele perde o acesso imediatamente, mesmo que o login não tivesse expirado ainda.
-- **Histórico do cliente**: ao buscar um pedido, se aquele cliente já teve algum problema registrado antes, aparece um aviso ⚠️ na hora.
-- **Painel do dia**: nova aba inicial mostrando um resumo — entregas não realizadas hoje, revisões atrasadas, quantos problemas nos últimos 30 dias, e a situação de cada rota de hoje (carregada ou não, quantas paradas faltam).
-- **Indicador de entrega não realizada**: aparece bem visível (⚠️) tanto no painel quanto na lista de romaneios.
-- **Editar freteiro/estoquista** continua igual; cadastro ficou mais simples (só nome + telefone + veículo/placa, sem PIN).
+### A cara do app
+- **A logo da loja entrou em todas as telas** e o app adotou o **preto e amarelo da marca**: cabeçalho preto com a logo, botão principal amarelo, barra de progresso amarela. Antes era azul e verde genéricos.
+- **Tela de entrada da equipe (`/equipe`) refeita** com a logo grande e botões maiores.
 
-Sobre o app não achar coordenada de rua pequena, sobre limpar fotos do Storage, sobre reordenar rota na mão, e sobre confirmação por foto: conversamos e ficou definido que isso fica por sua conta (limpeza de fotos mensal, reordenar só pessoalmente se precisar) — nada a fazer no código por enquanto.
+### A cor do produto ficou impossível de errar
+Essa era a informação mais cara de errar e a menos visível na tela. Agora, na tela do estoquista:
+- **Um bloco preto grande mostra a cor do volume que ele vai pegar naquele exato momento** — mostrinha de 88px e o nome da cor em letra gigante amarela, legível de longe.
+- **Botão "🔊 Ouvir a cor"** — o celular fala a cor em voz alta, pra quem tem dificuldade de leitura.
+- **Aviso vermelho quando o pedido tem cores diferentes**: "⚠️ ATENÇÃO: esse pedido tem 2 cores diferentes — confira uma por uma".
+- **Cada item aparece com sua mostrinha e a cor numa etiqueta amarela**, não mais um quadradinho de 14px perdido no meio do texto.
+- O **número do pedido** virou o destaque da tela (etiqueta amarela), e o **nome do cliente saiu** — o estoquista não precisa dele.
+
+### Erros que achei e corrigi nessa limpeza
+- **Data da rota nascia errada depois das 21h**: o campo vinha preenchido com o dia seguinte (o app usava o relógio de Londres, não o da Paraíba). Mesmo erro que já tínhamos corrigido no servidor, mas que ainda existia na tela.
+- **Romaneio sem data sumia pra equipe inteira**: se você deixasse a data em branco, o romaneio ficava invisível pro freteiro e pro estoquista, sem nenhum aviso. Agora, sem data, ele assume hoje.
+- **A tela quebrava** ao listar um romaneio cujo freteiro estivesse sem telefone cadastrado.
+- **Freteiro/estoquista podia ser cadastrado sem telefone** — e aí nunca conseguia entrar, já que o telefone É o login. Agora é obrigatório.
+- **Dois freteiros com o mesmo telefone** faziam o login entrar sempre como a mesma pessoa. Agora o app bloqueia telefone repetido.
+- **Excluir um freteiro deixava os romaneios dele órfãos**, sem ninguém responsável. Agora o app bloqueia e manda você passar os romaneios pra outro antes.
+- **Excluir/cadastrar falhava calado**: se dava erro no servidor, nada aparecia na tela. Agora mostra o erro, e as remoções pedem confirmação.
+- **Faltava uma tabela no banco** (`clientes_cache`) — por isso o app consultava a Omie de novo a cada busca, ficando mais lento à toa. Por isso rode o `schema.sql` de novo.
+- **O nome do produto editado no lápis ✏️ não aparecia na hora**, dava a impressão de que a alteração não tinha pegado (tinha).
+- **Botão "Voltar" do estoquista não fazia nada** quando só existia uma rota — reabria a mesma na hora.
+- **Se você removesse alguém do cadastro**, a pessoa ficava presa numa tela de erro sem saber o que fazer. Agora o app leva ela de volta pra tela de entrada.
+- **Removi a folha de impressão**: além de você ter dito que não fazia sentido, era o único endereço do app que **não pedia login nenhum** — qualquer um com o link via nome, endereço, telefone e valor dos seus clientes. Fechei essa porta.
+
+### Da rodada anterior
+- **Editar romaneio**: cada romaneio na aba "Romaneios" agora tem um botão **Editar** pra trocar o freteiro e/ou a data da rota depois de criado — antes não tinha como corrigir isso, só excluindo e refazendo tudo.
+- **Romaneio sempre precisa de freteiro**: não dá mais pra criar (nem editar) um romaneio sem escolher um freteiro. Isso também corrige o caso de um romaneio ficar "órfão" sem ninguém pra levar a rota.
+- **Rota no Google Maps agora sai do estoque, não da loja** — como 99% das vezes o freteiro sai direto do estoque com os móveis, o link "Rota no Maps" (painel e tela do freteiro) já começa por lá.
+- **Setas ▲▼ de reordenar parada corrigidas**: antes, qualquer ação na lista de romaneios fechava a tabela "Ver paradas" e a tela "pulava" de lugar, dando a impressão de que a seta tinha mexido na parada errada. Agora a tabela continua aberta depois da ação.
+- **Removido "Ver mapa" e "Imprimir"** da lista de romaneios — o Google Maps já resolve a navegação. As ferramentas de "Calcular localização das paradas" e "Ordenar pela melhor rota" continuam, agora direto dentro de "Ver paradas".
+- **Conferência pós-entrega, redesenhada**: a antiga aba "Revisão" (que agendava uma ligação pro cliente alguns dias depois) virou **Conferência** — uma lista simples dos pedidos já entregues, pra você confirmar como foi pago e dar baixa no seu estoque manualmente, marcando "Conferido" quando processar cada um. Não mexe no seu controle de estoque, é só um lembrete.
+- **Freteiro e estoquista agora também acham rotas futuras** — antes só apareciam as rotas de hoje; se você já cria a rota de amanhã com antecedência, ela aparece pra eles.
+- **Tela final de separação melhorada**: a última conferida antes de "Confirmar carregamento" agora mostra os produtos de cada parada (não só a quantidade de volumes), esconde o nome do cliente e destaca o número do pedido — depois de confirmado, tem um botão "Voltar" pra checar se tem outra rota pra separar.
+- **Um único endereço pra equipe entrar**: `seusite.netlify.app/equipe`. A pessoa toca em Freteiro ou Estoquista, digita o telefone, e da próxima vez que abrir esse link já cai direto na área dela (fica salvo no celular).
+- **Fuso horário corrigido**: "hoje" é sempre calculado no horário da Paraíba, não no do servidor.
+- **Cor de verdade, com mostrinha colorida**, incluindo **Nature** (amadeirado), **Nature/Off** e **Off/Nature**.
+- **Volume por produto**, não um número solto: cada item tem seu campo de volumes; o total é a soma automática. Na separação, o estoquista vê qual produto corresponde a cada volume confirmado.
+- **Lápis ✏️ pra editar o nome do produto** na hora de revisar um pedido, antes de gerar o romaneio.
+- **Trava de clique duplo** no botão de confirmar volume/entrega.
+- **Desfazer entrega**: o freteiro desfaz uma entrega/falha marcada errado digitando o próprio nome, do jeito cadastrado.
+- **Ouvir endereço e ouvir telefone**: botões que fazem o celular falar em voz alta (sem custo).
+- **Funciona sem sinal**: confirmações feitas offline ficam guardadas no celular e são enviadas sozinhas quando a conexão volta.
+- **Acesso cai na hora se você demitir alguém** — remover o cadastro derruba a sessão dele na hora.
+- **Histórico do cliente**: aviso ⚠️ ao buscar um pedido de um cliente que já teve problema antes.
+- **Painel do dia**: aba inicial com resumo — entregas não realizadas hoje, conferências pendentes, problemas dos últimos 30 dias, situação de cada rota de hoje.
+
+Sobre o app não achar coordenada de rua pequena, sobre limpar fotos do Storage, e sobre confirmação por foto: conversamos e ficou definido que isso fica por sua conta (limpeza de fotos mensal) — nada a fazer no código por enquanto.
 
 App pessoal (só você usa) que puxa **pedidos de venda** do Omie pelo número, monta **romaneios de entrega** por freteiro, e dá a cada um dos seus times um link de celular:
 
@@ -180,11 +211,11 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas 
 | `netlify/functions/reordenar-paradas.js` | Grava a nova ordem das paradas de um romaneio |
 | `netlify/functions/parada-problema.js` | Registra problema numa parada e de quem é a culpa |
 | `netlify/functions/relatorio.js` | Estatísticas por freteiro num período |
-| `netlify/functions/minhas-rotas.js` | Lista a(s) rota(s) de HOJE de quem logou |
+| `netlify/functions/minhas-rotas.js` | Rotas de hoje em diante de quem logou |
 | `netlify/functions/equipe-login.js` | Login só por telefone (freteiro/estoquista) |
 | `netlify/functions/parada-separar.js` | Estoquista confirma volume a volume |
 | `netlify/functions/foto-upload.js` | Recebe foto (produto/carro) e guarda no Storage |
-| `netlify/functions/revisoes.js` | Lista entregas aguardando revisão pós-entrega |
+| `netlify/functions/conferencia.js` | Entregas aguardando sua conferência (pagamento/estoque) |
 | `netlify/functions/historico-cliente.js` | Problemas anteriores de um cliente |
 | `netlify/functions/painel-dia.js` | Resumo do dia (painel inicial) |
 | `netlify/functions/romaneio-carregado.js` | Estoquista confirma a revisão final do carregamento |
@@ -193,10 +224,10 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas 
 | `netlify/functions/romaneios.js` | Criar/listar/editar/excluir romaneios |
 | `netlify/functions/romaneio-publico.js` | Dados do romaneio pra `entrega.html` e `separacao.html` |
 | `netlify/functions/parada-status.js` | Entrega/falha/desfazer, gerente remove parada |
-| `netlify/functions/romaneio-imprimir.js` | Folha A4 de impressão |
 | `netlify/functions/omie-raw.js` | Diagnóstico — chama qualquer método da Omie |
 | `netlify/functions/lib/datas.js` | Data/hora sempre no fuso da loja, não do servidor |
 | `public/index.html` | Painel (você) |
+| `public/logo.svg` | Logo da loja (usada em todas as telas) |
 | `public/equipe.html` | Entrada única da equipe — escolher papel + telefone |
 | `public/entrega.html` | Página do freteiro (celular) |
 | `public/separacao.html` | Página do estoquista (celular) |

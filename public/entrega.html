@@ -3,22 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>Entregas — Romaneio</title>
+<title>Entregas — Outlet dos Móveis DB</title>
+<link rel="icon" href="/logo.svg">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:#f4f5f7;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#15181d;padding-bottom:30px}
-header{background:#1f6feb;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5}
-header h1{font-size:17px;margin:0}
-header p{margin:3px 0 0;font-size:13px;opacity:.85}
-.prog{height:5px;background:#ffffff40;border-radius:3px;margin-top:10px;overflow:hidden}
-.prog i{display:block;height:100%;background:#fff;width:0;transition:.3s}
+body{margin:0;background:#f4f4f0;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#14140F;padding-bottom:30px}
+header{background:#14140F;color:#fff;padding:12px 14px;position:sticky;top:0;z-index:5}
+.hcima{display:flex;align-items:center;gap:10px}
+.hcima img{width:36px;height:36px;border-radius:7px;flex:0 0 auto}
+header h1{font-size:17px;margin:0;flex:1;min-width:0}
+header p{margin:6px 0 0;font-size:13px;color:#c9c9bd}
+.prog{height:6px;background:#ffffff26;border-radius:3px;margin-top:9px;overflow:hidden}
+.prog i{display:block;height:100%;background:#F2F250;width:0;transition:.3s}
 main{padding:12px}
-.p{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
-.p.done{opacity:.65}
-.p .n{display:inline-block;background:#eef1f5;color:#6b7280;font-weight:700;font-size:13px;padding:3px 10px;border-radius:20px}
+.p{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;border:1px solid #e2e2d9}
+.p.done{opacity:.6}
+.p .n{display:inline-block;background:#efefe6;color:#6f6f66;font-weight:700;font-size:13px;padding:3px 10px;border-radius:20px}
+.p .n.dest{background:#F2F250;color:#14140F}
 .p h3{margin:10px 0 4px;font-size:24px;line-height:1.2}
-.p .end{color:#5b6270;font-size:15px}
-.p .itens{margin:10px 0;padding:10px 12px;background:#f7f8fa;border-radius:8px;font-size:14px}
+.p .end{color:#57574e;font-size:15px}
+.p .itens{margin:10px 0;padding:10px 12px;background:#fafaf4;border:1px solid #eaeadf;border-radius:9px;font-size:14px}
 .acoes{display:flex;gap:8px;margin-top:12px}
 button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:700;cursor:pointer;font-size:15px}
 .ok{background:#0f8a4a;color:#fff}
@@ -26,45 +30,40 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 .contatos{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .botaogrande{flex:1;min-width:80px;text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:14px 6px;border-radius:12px;font-weight:700;font-size:12px;color:#fff}
 .botaogrande .emoji{font-size:26px}
-.bmapa{background:#1f6feb}
+.bmapa{background:#14140F}
 .btel{background:#0f8a4a}
 .bwpp{background:#25d366}
-.bouvir{background:#6b7280}
-.maprota{background:#7c3aed;color:#fff;text-decoration:none;display:block;text-align:center;padding:14px;border-radius:10px;margin:0 12px 12px;font-weight:700;font-size:15px}
+.bouvir{background:#6f6f66}
+.maprota{background:#F2F250;color:#14140F;text-decoration:none;display:block;text-align:center;padding:15px;border-radius:11px;margin:0 12px 10px;font-weight:800;font-size:16px}
 .status{margin-top:10px;font-size:15px;font-weight:700}
 .status.ok{background:none;color:#0f8a4a}
 .status.no{background:none;color:#b91c1c;border:0}
-.empty{text-align:center;padding:40px;color:#6b7280}
+.empty{text-align:center;padding:40px;color:#6f6f66}
 .fotos{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .fotos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #ddd}
-.btnfoto{background:#7c3aed;color:#fff;margin-top:10px}
-.btndesfazer{background:#fff;color:#6b7280;border:1px solid #ddd;margin-top:8px;font-size:13px;padding:10px}
-.loginbox{max-width:320px;margin:70px auto;background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
-.loginbox input{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font:inherit;box-sizing:border-box}
-.loginbox button{background:#1f6feb;color:#fff}
+.btnfoto{background:#fff;color:#14140F;border:2px solid #14140F;margin-top:10px}
+.btndesfazer{background:#fff;color:#6f6f66;border:1px solid #ddd;margin-top:8px;font-size:13px;padding:10px}
 .err{background:#fdeaea;color:#7f1d1d;padding:8px 10px;border-radius:8px;font-size:13px;margin-bottom:10px}
-.rota{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);text-decoration:none;display:block;color:inherit}
+.rota{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid #e2e2d9;border-left:5px solid #F2F250;text-decoration:none;display:block;color:inherit}
 .avisoOffline{background:#7a5416;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:600}
-.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#15181d;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:99;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center}
+/* Mostrinha de cor: borda escura sempre, senão "Branco" some no fundo branco. */
+.sw{display:inline-block;width:18px;height:18px;border-radius:5px;border:1.5px solid #9a9a8e;vertical-align:-4px;margin-right:6px}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#14140F;color:#F2F250;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:600;z-index:99;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center}
 .toast.show{opacity:1}
 </style>
 </head>
 <body>
 
-<div id="tela-login" class="loginbox" hidden>
-  <h3 style="margin-top:0">Entrar — Freteiro</h3>
-  <div id="erroLogin"></div>
-  <input id="lTel" type="tel" placeholder="seu telefone" autocomplete="tel">
-  <button id="btnLogin" style="width:100%">Entrar</button>
-</div>
-
 <div id="tela-app" hidden>
 <div id="avisoOffline" class="avisoOffline" hidden></div>
 <header>
-  <h1 id="titulo">Carregando…</h1>
+  <div class="hcima">
+    <img src="/logo.svg" alt="Outlet dos Móveis DB">
+    <h1 id="titulo">Carregando…</h1>
+    <button id="btnSair" style="width:auto;flex:none;padding:7px 11px;font-size:12px;background:#ffffff26;color:#fff">Sair</button>
+  </div>
   <p id="sub"></p>
   <div class="prog"><i id="bar"></i></div>
-  <button id="btnSair" style="position:absolute;top:12px;right:14px;width:auto;flex:none;padding:6px 10px;font-size:12px;background:#ffffff30;color:#fff">Sair</button>
 </header>
 <div id="rotaCompleta"></div>
 <main id="lista"></main>
@@ -72,13 +71,22 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 <div class="toast" id="toast"></div>
 
 <script>
-const LOJA = { nome: 'Loja — Outlet dos Móveis DB', endereco: 'Rua Presidente Venceslau Braz, 1013' };
 const ESTOQUE = { nome: 'Estoque', endereco: 'R. Márcia Travassos, 660 - Jardim Jerico, Cabedelo - PB, 58103-718' };
 
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let rom = null, idAtual = null;
 
 function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3200); }
+
+function corParaSwatch(nome){
+  const n = (nome||'').trim().toLowerCase();
+  if(n==='branco') return '#ffffff';
+  if(n==='off') return '#efe6d3';
+  if(n==='nature') return '#a3744f';
+  if(n==='nature/off') return 'linear-gradient(135deg,#a3744f 60%,#efe6d3 60%)';
+  if(n==='off/nature') return 'linear-gradient(135deg,#a3744f 40%,#efe6d3 40%)';
+  return n ? '#cbd5e1' : 'transparent';
+}
 
 class ErroOffline extends Error {}
 async function api(url, opt){
@@ -88,6 +96,13 @@ async function api(url, opt){
   let r;
   try{ r = await fetch(url, opt); }
   catch(e){ throw new ErroOffline('sem conexão'); }
+  // Sessão morreu (login removido do cadastro, por ex.): volta pro início em vez de
+  // deixar a pessoa presa numa tela de erro que ela não sabe resolver.
+  if(r.status === 401){
+    localStorage.removeItem('equipeToken'); localStorage.removeItem('equipeTipo');
+    location.href = '/equipe';
+    throw new Error('sessão expirada');
+  }
   const j = await r.json().catch(()=>({erro:'resposta inválida'}));
   if(!r.ok) throw new Error(j.erro || ('HTTP '+r.status));
   return j;
@@ -116,43 +131,36 @@ async function processarFila(){
 }
 window.addEventListener('online', processarFila);
 
+// Sem token? Manda pra /equipe, que é a única porta de entrada da equipe.
 function checarSessao(){
-  if(localStorage.getItem('equipeToken')){ document.getElementById('tela-login').hidden = true; document.getElementById('tela-app').hidden = false; atualizarAvisoOffline(); processarFila(); iniciar(); }
-  else { document.getElementById('tela-login').hidden = false; document.getElementById('tela-app').hidden = true; }
+  if(!localStorage.getItem('equipeToken')){ location.href = '/equipe'; return; }
+  document.getElementById('tela-app').hidden = false;
+  atualizarAvisoOffline(); processarFila(); iniciar();
 }
-document.getElementById('btnLogin').onclick = async () => {
-  const telefone = document.getElementById('lTel').value.trim();
-  document.getElementById('erroLogin').innerHTML = '';
-  try{
-    const r = await api('/.netlify/functions/equipe-login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ telefone, tipo: 'freteiro' }) });
-    localStorage.setItem('equipeToken', r.token);
-    localStorage.setItem('equipeTipo', 'freteiro');
-    checarSessao();
-  }catch(e){ document.getElementById('erroLogin').innerHTML = '<div class="err">'+esc(e.message)+'</div>'; }
-};
 
 document.getElementById('btnSair').onclick = () => {
+  if(!confirm('Sair do app?')) return;
   localStorage.removeItem('equipeToken'); localStorage.removeItem('equipeTipo');
   location.href = '/equipe';
 };
 
-// Sempre mostra a rota de HOJE — sem link por romaneio, sem lista de rotas antigas.
+// Mostra as rotas de HOJE EM DIANTE — não some se você já criou a rota de amanhã.
 async function iniciar(){
   try{
     const rotas = await api('/.netlify/functions/minhas-rotas');
     if(!rotas.length){
-      document.getElementById('titulo').textContent = 'Sem rota hoje';
+      document.getElementById('titulo').textContent = 'Sem rota';
       document.getElementById('sub').textContent = '';
-      document.getElementById('lista').innerHTML = '<div class="empty">Nenhuma rota criada pra você hoje ainda. Fale com o gerente.</div>';
+      document.getElementById('lista').innerHTML = '<div class="empty">Nenhuma rota agendada pra você ainda. Fale com o gerente.</div>';
       return;
     }
     if(rotas.length === 1){ idAtual = rotas[0].id; await carregar(); return; }
-    document.getElementById('titulo').textContent = 'Suas rotas de hoje';
-    document.getElementById('sub').textContent = 'Você tem mais de uma rota hoje — escolha uma:';
+    document.getElementById('titulo').textContent = 'Suas rotas';
+    document.getElementById('sub').textContent = 'Você tem mais de uma rota agendada — escolha uma:';
     document.getElementById('lista').innerHTML = rotas.map(r => `
       <a class="rota" href="#" onclick="abrirRota('${r.id}');return false;">
         <span class="n">${esc(r.codigo)}</span>
-        <div class="end">${r.entregues}/${r.totalParadas} entregues</div>
+        <div class="end">${esc(r.data||'')} · ${r.entregues}/${r.totalParadas} entregues</div>
       </a>`).join('');
   }catch(e){
     document.getElementById('titulo').textContent = 'Sem internet';
@@ -180,8 +188,9 @@ function linkRotaCompleta(){
   }).filter(Boolean);
   if(!enderecos.length) return '';
   const destino = enderecos[enderecos.length-1];
-  const waypoints = [ESTOQUE.endereco, ...enderecos.slice(0, -1)].map(encodeURIComponent).join('|');
-  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(LOJA.endereco)}&destination=${encodeURIComponent(destino)}&waypoints=${waypoints}`;
+  const waypoints = enderecos.slice(0, -1).map(encodeURIComponent).join('|');
+  const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(ESTOQUE.endereco)}&destination=${encodeURIComponent(destino)}`;
+  return waypoints ? url + `&waypoints=${waypoints}` : url;
 }
 
 function render(){
@@ -193,7 +202,7 @@ function render(){
 
   const rotaLink = linkRotaCompleta();
   document.getElementById('rotaCompleta').innerHTML = rotaLink
-    ? `<a class="maprota" target="_blank" href="${rotaLink}">Abrir rota completa no Google Maps (loja → estoque → entregas)</a>
+    ? `<a class="maprota" target="_blank" href="${rotaLink}">Abrir rota completa no Google Maps (estoque → entregas)</a>
        <div style="text-align:center;font-size:12px;color:#6b7280;margin:-6px 0 12px">O Waze não aceita várias paradas de uma vez — use o Google Maps pra rota completa.</div>`
     : '';
 
@@ -203,12 +212,12 @@ function render(){
     const cid = [c.cidade, c.estado].filter(Boolean).join('/');
     const q = encodeURIComponent([end, cid, c.cep].filter(Boolean).join(', '));
     const telLimpo = (c.telefone||'').replace(/\D/g,'');
-    const itens = (p.itens||[]).map(it=>`<div>${esc(it.quantidade)}x ${esc(it.descricao)}${it.cor?` — <b>${esc(it.cor)}</b>`:''}</div>`).join('');
+    const itens = (p.itens||[]).map(it=>`<div>${it.cor?`<span class="sw" style="background:${corParaSwatch(it.cor)}"></span>`:''}${esc(it.quantidade)}x ${esc(it.descricao)}${it.cor?` — <b>${esc(it.cor)}</b>`:''}</div>`).join('');
     const feito = p.status === 'entregue' || p.status === 'falhou';
     const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
     const fotos = (p.fotos||[]).map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}"></a>`).join('');
     return `<div class="p ${feito?'done':''}">
-      <span class="n">${i+1} de ${rom.paradas.length}</span>
+      <span class="n dest">${i+1} de ${rom.paradas.length}</span>
       <span class="n">${rotulo}${p.numero?' '+esc(p.numero):''} · ${p.volumes||0} vol.</span>
       ${p.status==='em_rota'?'<span class="n">Em rota</span>':''}
       <h3>${esc(c.nome||'(sem cliente)')}</h3>
@@ -218,8 +227,10 @@ function render(){
         ${end?`<a class="botaogrande bmapa" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${q}"><span class="emoji">📍</span>Mapa</a>`:''}
         ${telLimpo?`<a class="botaogrande btel" href="tel:${telLimpo}"><span class="emoji">📞</span>Ligar</a>`:''}
         ${telLimpo?`<a class="botaogrande bwpp" target="_blank" href="https://wa.me/55${telLimpo}"><span class="emoji">💬</span>WhatsApp</a>`:''}
-        <button type="button" class="botaogrande bouvir" onclick="ouvirEndereco(${i})"><span class="emoji">🔊</span>Endereço</button>
-        ${telLimpo?`<button type="button" class="botaogrande bouvir" onclick="ouvirTelefone(${i})"><span class="emoji">🔊</span>Telefone</button>`:''}
+      </div>
+      <div class="contatos">
+        <button type="button" class="botaogrande bouvir" onclick="ouvirEndereco(${i})"><span class="emoji">🔊</span>Ouvir endereço</button>
+        ${telLimpo?`<button type="button" class="botaogrande bouvir" onclick="ouvirTelefone(${i})"><span class="emoji">🔊</span>Ouvir telefone</button>`:''}
       </div>
       <div class="fotos">${fotos}</div>
       <button class="btnfoto" onclick="document.getElementById('foto-${p.id}').click()">📷 Enviar foto</button>

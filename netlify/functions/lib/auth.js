@@ -1,6 +1,6 @@
 // Duas formas de autenticar, pelo mesmo header Authorization: Bearer <token>:
 // 1) JWT do Supabase Auth — só o gerente usa isso (ADMIN_EMAIL).
-// 2) Token opaco da tabela sessoes_equipe — freteiro/estoquista, login por telefone+PIN.
+// 2) Token opaco da tabela sessoes_equipe — freteiro/estoquista, login só por telefone.
 const { admin } = require('./supabase');
 const { identificarSessao } = require('./sessao');
 

@@ -1,12 +1,11 @@
 // POST /.netlify/functions/parada-status
-//   { paradaId, status?, recebedor?, motivo?, lat?, lng?, conferido?, revisaoFeita? }
+//   { paradaId, status?, recebedor?, motivo?, lat?, lng?, conferido? }
 //   { paradaId, desfazer: true, nomeConfirmacao }  -- freteiro desfaz uma entrega/falha,
 //     confirmando digitando o próprio nome (evita desfazer sem querer). Gerente não precisa.
 // Exige login. Freteiro só mexe nas paradas do romaneio dele; "conferido" é só do gerente.
 const { identificar } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
-const { emDiasBR } = require('./lib/datas');
 
 exports.handler = async event => {
   const quem = await identificar(event);
@@ -55,13 +54,12 @@ exports.handler = async event => {
         return json(403, { erro: 'nome não confere — digite seu nome exatamente como está cadastrado' });
       }
     }
-    patch = { status: 'pendente', entregue_em: null, recebedor: '', motivo: '', revisao_em: null, revisao_feita: false };
+    patch = { status: 'pendente', entregue_em: null, recebedor: '', motivo: '', conferido: false };
   } else {
     if (b.status) patch.status = b.status;
     if (b.status === 'entregue') {
       patch.entregue_em = new Date().toISOString();
       patch.recebedor = b.recebedor || '';
-      patch.revisao_em = emDiasBR(3);
     }
     if (b.status === 'falhou') patch.motivo = b.motivo || '';
     if (b.lat != null) patch.lat = b.lat;
@@ -69,10 +67,6 @@ exports.handler = async event => {
     if (b.conferido != null) {
       if (quem.role !== 'admin') return json(403, { erro: 'só o gerente pode marcar como conferido' });
       patch.conferido = !!b.conferido;
-    }
-    if (b.revisaoFeita != null) {
-      if (quem.role !== 'admin') return json(403, { erro: 'só o gerente marca a revisão' });
-      patch.revisao_feita = !!b.revisaoFeita;
     }
   }
 
