@@ -608,13 +608,15 @@ function renderListaRom(){
           <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
             ${telFr?`<button class="btn ghost sm" onclick="window.open('https://wa.me/55${telFr}?text=${msgWpp}','_blank')">Avisar no WhatsApp</button>`:''}
             <button class="btn ghost sm" onclick="abrirRotaCompleta('${r.id}')">Rota no Maps</button>
+            <button class="btn ghost sm" onclick="toggleCarga('${r.id}')">Ver a carga</button>
             <button class="btn ghost sm" onclick="toggleEditRom('${r.id}')">Editar</button>
             <button class="btn ghost sm danger" onclick="excluirRom('${r.id}')">Excluir</button>
           </span>
         </div>
         <div id="editbox-${r.id}"></div>
+        <div id="cargabox-${r.id}"></div>
         <details ${detalhesAbertos.has(r.id)?'open':''} ontoggle="onToggleDetalhes('${r.id}', this.open)"><summary>Ver paradas</summary>
-          <table style="margin-top:8px"><thead><tr><th>#</th><th>Cliente</th><th>Pedido</th><th class="center">Vol.</th><th>Status</th><th>Recebedor</th><th>Problema</th><th></th></tr></thead><tbody>
+          <table style="margin-top:8px"><thead><tr><th>#</th><th>Cliente</th><th>Pedido</th><th class="center">Vol.</th><th>Status</th><th>Confirmação</th><th>Problema</th><th></th></tr></thead><tbody>
           ${r.paradas.map((p,i)=>{
             const c=p.cliente||{};
             const cls = p.status==='entregue'?'ok':p.status==='falhou'?'falhou':p.status==='em_rota'?'alt':'pend';
@@ -825,6 +827,66 @@ async function salvarEdicaoRom(id){
     document.getElementById('editbox-'+id).dataset.aberto = '0';
     carregarRomaneios();
   }catch(e){ erro(e.message); }
+}
+
+/* ---------------- visão geral da carga ----------------
+   A Omie não manda peso por item (só o peso total do pedido), então o que dá pra usar é o
+   NOME do produto — é ele que diz o que a coisa é de verdade: colchão é caro e leve,
+   guarda-roupa é pesado. Se faltar algum produto seu nessas listas, é só me pedir.
+   O detalhe que importa: carregar é ao contrário de entregar. A última entrega entra
+   primeiro e fica no fundo. Então um colchão da última entrega precisa ir por cima MAS
+   entra primeiro — é aí que dá briga com o freteiro, e é isso que o app aponta. */
+const VAI_POR_CIMA = ['COLCHAO','ESPELHO','VIDRO','TAMPO','LUMINARIA','ABAJUR','QUADRO','PUFF','ALMOFADA','CABECEIRA'];
+const VAI_EMBAIXO  = ['GUARDA','ROUPEIRO','ARMARIO','BASE','CAMA','RACK','BALCAO','BUFFET','COMODA','ESTANTE','MESA','SOFA','BANCADA','PAINEL','GELADEIRA','FOGAO'];
+const semAcento = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+function ondeVai(descricao){
+  const d = semAcento(descricao);
+  if(VAI_POR_CIMA.some(x=>d.includes(x))) return 'cima';
+  if(VAI_EMBAIXO.some(x=>d.includes(x))) return 'baixo';
+  return '';
+}
+
+function toggleCarga(id){
+  const box = document.getElementById('cargabox-'+id);
+  if(!box) return;
+  if(box.dataset.aberto === '1'){ box.innerHTML = ''; box.dataset.aberto = '0'; return; }
+  box.dataset.aberto = '1';
+  const r = romaneios.find(x=>x.id===id);
+  if(!r) return;
+
+  const total = r.paradas.length;
+  const itens = [];
+  r.paradas.forEach((p, i) => (p.itens||[]).forEach(it => itens.push({
+    descricao: it.descricao||'(sem descrição)', cor: it.cor||'',
+    volumes: Number(it.volumes)||0, valor: Number(it.valorTotal)||0,
+    pedido: p.numero||'', entrega: i+1, onde: ondeVai(it.descricao)
+  })));
+  itens.sort((a,b)=>b.valor-a.valor);
+
+  // "Vai por cima" numa entrega que não é a primeira = entra cedo no caminhão e fica embaixo.
+  const conflitos = itens.filter(it => it.onde==='cima' && it.entrega > 1);
+  const totalVol = r.paradas.reduce((s,p)=>s+(Number(p.volumes)||0),0);
+  const totalValor = itens.reduce((s,it)=>s+it.valor,0);
+
+  box.innerHTML = `
+    <div class="editrom">
+      <h3 style="margin-bottom:6px">Visão geral da carga</h3>
+      <div class="mut" style="margin-bottom:8px">${total} pedido(s) · ${totalVol} volume(s)${totalValor?' · '+money(totalValor):''}</div>
+      ${conflitos.length ? `<div class="semgeo" style="background:#fdeaea;border-color:#eba9a9;color:#7f1d1d">
+        <strong>⚠️ Cuidado ao empilhar</strong>
+        ${conflitos.map(c=>`<div style="margin-top:5px">${esc(c.descricao)} (pedido ${esc(c.pedido)}) vai por cima, mas é a entrega ${c.entrega} de ${total} — entra cedo no caminhão e fica embaixo.</div>`).join('')}
+      </div>` : ''}
+      <table style="margin-top:8px"><thead><tr><th>Produto</th><th>Cor</th><th>Pedido</th><th class="center">Vol.</th><th class="right">Valor</th><th>No caminhão</th></tr></thead><tbody>
+      ${itens.length ? itens.map(it=>`<tr>
+        <td><strong>${esc(it.descricao)}</strong><div class="mut">entrega ${it.entrega} de ${total}</div></td>
+        <td class="mut"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span> ${esc(it.cor||'—')}</td>
+        <td class="mut">${esc(it.pedido)}</td>
+        <td class="center">${it.volumes||'—'}</td>
+        <td class="right">${it.valor?money(it.valor):'—'}</td>
+        <td class="mut">${it.onde==='cima'?'⬆ por cima':it.onde==='baixo'?'⬇ embaixo':'—'}</td>
+      </tr>`).join('') : '<tr><td colspan="6"><div class="empty">Nenhum item cadastrado.</div></td></tr>'}
+      </tbody></table>
+    </div>`;
 }
 
 /* ---------------- ordem sugerida da rota (por localização) ---------------- */
@@ -1066,6 +1128,7 @@ window.editarFr = editarFr;
 window.editarEs = editarEs;
 window.toggleEditRom = toggleEditRom;
 window.salvarEdicaoRom = salvarEdicaoRom;
+window.toggleCarga = toggleCarga;
 window.abrirRotaCompleta = abrirRotaCompleta;
 window.recalcularGeo = recalcularGeo;
 window.sugerirOrdem = sugerirOrdem;

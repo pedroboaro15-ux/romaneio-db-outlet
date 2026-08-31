@@ -43,6 +43,11 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 .fotos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #ddd}
 .btnfoto{background:#fff;color:#14140F;border:2px solid #14140F;margin-top:10px}
 .btndesfazer{background:#fff;color:#6f6f66;border:1px solid #ddd;margin-top:8px;font-size:13px;padding:10px}
+/* Opções de "não entreguei" — botão grande, sem digitar nada no celular. */
+.caixamotivo{margin-top:10px;background:#fafaf4;border:2px solid #e2e2d9;border-radius:12px;padding:12px}
+.tituloMotivo{font-size:13px;font-weight:800;color:#57574e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px}
+.opcaomotivo{width:100%;background:#fff;color:#14140F;border:2px solid #14140F;margin-bottom:8px;padding:15px;font-size:15px}
+.cancelamotivo{width:100%;background:none;color:#6f6f66;border:0;padding:8px;font-size:14px;font-weight:600}
 .err{background:#fdeaea;color:#7f1d1d;padding:8px 10px;border-radius:8px;font-size:13px;margin-bottom:10px}
 .rota{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid #e2e2d9;border-left:5px solid #F2F250;text-decoration:none;display:block;color:inherit}
 .avisoOffline{background:#7a5416;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:600}
@@ -202,8 +207,7 @@ function render(){
 
   const rotaLink = linkRotaCompleta();
   document.getElementById('rotaCompleta').innerHTML = rotaLink
-    ? `<a class="maprota" target="_blank" href="${rotaLink}">Abrir rota completa no Google Maps (estoque → entregas)</a>
-       <div style="text-align:center;font-size:12px;color:#6b7280;margin:-6px 0 12px">O Waze não aceita várias paradas de uma vez — use o Google Maps pra rota completa.</div>`
+    ? `<a class="maprota" target="_blank" href="${rotaLink}">Abrir rotas no Maps</a>`
     : '';
 
   document.getElementById('lista').innerHTML = rom.paradas.map((p,i)=>{
@@ -240,8 +244,9 @@ function render(){
            <button class="btndesfazer" onclick="desfazer(${i})">↩️ Desfazer</button>`
         : `<div class="acoes">
              <button class="ok" id="btnok-${i}" onclick="marcar(${i},'entregue')">✓ Entreguei</button>
-             <button class="no" id="btnno-${i}" onclick="marcar(${i},'falhou')">✕ Não entreguei</button>
-           </div>`}
+             <button class="no" id="btnno-${i}" onclick="abrirMotivos(${i})">✕ Não entreguei</button>
+           </div>
+           <div id="motivos-${i}"></div>`}
     </div>`;
   }).join('') || '<div class="empty">Sem paradas.</div>';
 }
@@ -271,20 +276,30 @@ function geo(){
   });
 }
 
-async function marcar(i, status){
+// "Não entreguei" abre estas opções em botão — nada de digitar motivo no celular.
+// Tem que bater com MOTIVOS_FALHA em netlify/functions/parada-status.js.
+const MOTIVOS_FALHA = ['Cliente não estava em casa', 'Erro da loja', 'Remarcado pra outro dia'];
+
+function abrirMotivos(i){
+  const caixa = document.getElementById('motivos-'+i);
+  if(!caixa) return;
+  if(caixa.innerHTML){ caixa.innerHTML = ''; return; }
+  caixa.innerHTML = `
+    <div class="caixamotivo">
+      <div class="tituloMotivo">Por que não deu pra entregar?</div>
+      ${MOTIVOS_FALHA.map((m,k)=>`<button type="button" class="opcaomotivo" onclick="marcar(${i},'falhou',${k})">${esc(m)}</button>`).join('')}
+      <button type="button" class="cancelamotivo" onclick="abrirMotivos(${i})">Cancelar</button>
+    </div>`;
+}
+
+async function marcar(i, status, indiceMotivo){
   const botao = document.getElementById(status==='entregue'?'btnok-'+i:'btnno-'+i);
   if(botao && botao.disabled) return; // trava clique duplo
   const parada = rom.paradas[i];
   let body = { paradaId: parada.id, status };
-  if(status === 'entregue'){
-    const nome = prompt('Nome de quem recebeu:');
-    if(nome === null) return;
-    body.recebedor = nome;
-  } else {
-    const motivo = prompt('Motivo (ausente, endereço errado, recusou…):');
-    if(motivo === null) return;
-    body.motivo = motivo;
-  }
+  if(status === 'falhou') body.motivo = MOTIVOS_FALHA[indiceMotivo] || MOTIVOS_FALHA[0];
+  const caixa = document.getElementById('motivos-'+i);
+  if(caixa) caixa.innerHTML = '';
   if(botao){ document.getElementById('btnok-'+i).disabled = true; document.getElementById('btnno-'+i).disabled = true; }
   const g = await geo();
   if(g){ body.lat = g.lat; body.lng = g.lng; }
@@ -294,7 +309,7 @@ async function marcar(i, status){
   }catch(e){
     if(e instanceof ErroOffline){
       parada.status = status;
-      if(status==='entregue'){ parada.entregue_em = new Date().toISOString(); parada.recebedor = body.recebedor; }
+      if(status==='entregue') parada.entregue_em = new Date().toISOString();
       if(status==='falhou') parada.motivo = body.motivo;
       enfileirar({ url: '/.netlify/functions/parada-status', body, token: localStorage.getItem('equipeToken') });
       localStorage.setItem('romCache_'+idAtual, JSON.stringify(rom));
@@ -349,6 +364,7 @@ async function enviarFoto(paradaId, file){
   }
 }
 window.marcar = marcar;
+window.abrirMotivos = abrirMotivos;
 window.desfazer = desfazer;
 window.enviarFoto = enviarFoto;
 window.abrirRota = abrirRota;

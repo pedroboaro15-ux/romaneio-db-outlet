@@ -7,6 +7,10 @@ const { identificar } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 
+// Motivos fixos de não-entrega. O freteiro escolhe tocando num botão (nada de digitar),
+// então a lista aqui tem que ser a mesma de public/entrega.html.
+const MOTIVOS_FALHA = ['Cliente não estava em casa', 'Erro da loja', 'Remarcado pra outro dia'];
+
 exports.handler = async event => {
   const quem = await identificar(event);
   if (!quem) return json(401, { erro: 'não autenticado' });
@@ -61,7 +65,14 @@ exports.handler = async event => {
       patch.entregue_em = new Date().toISOString();
       patch.recebedor = b.recebedor || '';
     }
-    if (b.status === 'falhou') patch.motivo = b.motivo || '';
+    // Só aceita um dos motivos da lista (o gerente pode corrigir com texto livre).
+    if (b.status === 'falhou') {
+      const escolhido = String(b.motivo || '');
+      if (quem.role === 'freteiro' && !MOTIVOS_FALHA.includes(escolhido)) {
+        return json(400, { erro: 'escolha um dos motivos da lista' });
+      }
+      patch.motivo = escolhido;
+    }
     if (b.lat != null) patch.lat = b.lat;
     if (b.lng != null) patch.lng = b.lng;
     if (b.conferido != null) {
