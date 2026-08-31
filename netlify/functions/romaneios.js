@@ -29,22 +29,28 @@ exports.handler = async event => {
     try { b = JSON.parse(event.body || '{}'); } catch (e) { return json(400, { erro: 'JSON inválido' }); }
     const paradas = Array.isArray(b.paradas) ? b.paradas : [];
 
-    const montarLinha = (p, romaneioId, ordem) => ({
-      romaneio_id: romaneioId,
-      ordem,
-      tipo: p.tipo || 'pedido',
-      numero: String(p.numero || ''),
-      doc_id: p.docId != null ? String(p.docId) : '',
-      data_doc: p.data || '',
-      cliente: p.cliente ? { ...p.cliente, codigo: p.codigoCliente != null ? String(p.codigoCliente) : null } : null,
-      itens: p.itens || [],
-      volumes: Number(p.volumes) || 0,
-      peso: Number(p.peso) || 0,
-      valor: Number(p.valor) || 0,
-      observacao: p.observacao || '',
-      cor: p.cor || '',
-      status: 'pendente'
-    });
+    const montarLinha = (p, romaneioId, ordem) => {
+      const itens = p.itens || [];
+      // O total de volumes é sempre a soma dos volumes de cada item — nunca um número
+      // digitado à parte, pra nunca ficar destoante do que tem item por item.
+      const somaVolumes = itens.reduce((s, it) => s + (Number(it.volumes) || 0), 0);
+      return {
+        romaneio_id: romaneioId,
+        ordem,
+        tipo: p.tipo || 'pedido',
+        numero: String(p.numero || ''),
+        doc_id: p.docId != null ? String(p.docId) : '',
+        data_doc: p.data || '',
+        cliente: p.cliente ? { ...p.cliente, codigo: p.codigoCliente != null ? String(p.codigoCliente) : null } : null,
+        itens,
+        volumes: somaVolumes || Number(p.volumes) || 0,
+        peso: Number(p.peso) || 0,
+        valor: Number(p.valor) || 0,
+        observacao: p.observacao || '',
+        cor: p.cor || '',
+        status: 'pendente'
+      };
+    };
 
     // Editar um romaneio já existente: adicionar paradas e/ou trocar freteiro/data.
     if (q.id) {

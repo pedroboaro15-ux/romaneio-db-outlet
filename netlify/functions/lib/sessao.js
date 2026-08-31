@@ -16,15 +16,28 @@ async function criarSessao(tipo, pessoaId, nome) {
 }
 
 // Devolve { role, freteiroId, nome } ou null.
+// Confere de novo se a pessoa ainda existe no cadastro — se você excluir um freteiro/
+// estoquista, o acesso dele cai na hora, mesmo que a sessão ainda não tivesse expirado.
 async function identificarSessao(token) {
   if (!token) return null;
   const sb = admin();
   const { data } = await sb.from('sessoes_equipe').select('*').eq('token', token).maybeSingle();
   if (!data) return null;
   if (new Date(data.expira_em).getTime() < Date.now()) return null;
+
+  const tabela = data.tipo === 'freteiro' ? 'freteiros' : data.tipo === 'estoquista' ? 'estoquistas' : null;
+  if (!tabela) return null;
+  const { data: pessoa } = await sb.from(tabela).select('id').eq('id', data.pessoa_id).maybeSingle();
+  if (!pessoa) return null;
+
   if (data.tipo === 'freteiro') return { role: 'freteiro', freteiroId: data.pessoa_id, nome: data.nome };
-  if (data.tipo === 'estoquista') return { role: 'estoquista', freteiroId: null, nome: data.nome };
-  return null;
+  return { role: 'estoquista', freteiroId: null, nome: data.nome };
 }
 
-module.exports = { criarSessao, identificarSessao, soDigitos };
+// Apaga todas as sessões ativas de uma pessoa — usado quando você remove ela do cadastro.
+async function derrubarSessoes(pessoaId) {
+  const sb = admin();
+  await sb.from('sessoes_equipe').delete().eq('pessoa_id', pessoaId);
+}
+
+module.exports = { criarSessao, identificarSessao, derrubarSessoes, soDigitos };
