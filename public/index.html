@@ -79,6 +79,17 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
 .volinput{width:64px;padding:5px 6px;text-align:center}
 .semgeo{background:#fef3e2;border:1px solid #fbe0b0;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:12px;color:#7a5416}
 .editrom{background:#fbfbf4;border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:8px}
+/* Galeria de fotos direto na tabela — pra ver vidro/assinatura/pagamento/entrega sem
+   precisar abrir o Supabase. */
+.galeriafotos{margin-top:6px;display:flex;gap:8px;flex-wrap:wrap}
+.fotoadm{display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none}
+.fotoadm img{width:58px;height:58px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+.fotoadm span{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--mut)}
+.barrafrete{display:grid;grid-template-columns:120px 1fr 90px;align-items:center;gap:10px;margin-bottom:8px;font-size:13px}
+.barrafrete-nome{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.barrafrete-trilho{background:#edede4;border-radius:6px;height:20px;overflow:hidden}
+.barrafrete-cheio{background:var(--amarelo);height:100%;border-radius:6px 0 0 6px}
+.barrafrete-valor{text-align:right;font-weight:700;white-space:nowrap}
 /* Mostrinha de cor: sempre com borda escura, senão "Branco" some no fundo branco. */
 .sw{display:inline-block;border-radius:4px;border:1.5px solid #9a9a8e;flex:0 0 auto}
 .fragilcheck{display:flex;align-items:center;gap:4px;flex:0 0 auto;margin:0;font-size:12px;font-weight:600;color:var(--ink);text-transform:none;white-space:nowrap;cursor:pointer}
@@ -203,6 +214,7 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
         </div>
         <div style="min-width:180px" id="wFrSel"><label>Freteiro *</label><select id="frSel"></select></div>
         <div style="min-width:150px" id="wDataRota"><label>Data da rota</label><input type="date" id="dataRota"></div>
+        <div style="min-width:130px" id="wValorFrete"><label>Valor do frete (R$)</label><input type="number" min="0" step="0.01" id="valorFrete" placeholder="0,00"></div>
         <button class="btn cta" id="gerar">Gerar romaneio</button>
       </div>
     </div>
@@ -268,18 +280,19 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
   <!-- ===================== RELATÓRIOS ===================== -->
   <section id="t-rel" hidden>
     <div class="card">
-      <h2>Quanto cada freteiro levou e quantos problemas deu</h2>
-      <p class="mut" style="margin-top:-6px">Baseado nas paradas marcadas com "houve problema" na aba Romaneios. Guarda o histórico todo — o período abaixo é só pra filtrar a visualização (padrão: últimos 30 dias).</p>
+      <h2>Quanto cada freteiro levou, faturou de frete e quantos problemas deu</h2>
+      <p class="mut" style="margin-top:-6px">Faturamento é a soma do "Valor do frete" de cada romaneio (aba Romaneios). Problemas são as paradas marcadas com "houve problema". Guarda o histórico todo — o período abaixo é só pra filtrar (padrão: últimos 30 dias).</p>
       <div class="row">
         <div><label>De</label><input type="date" id="relDe"></div>
         <div><label>Até</label><input type="date" id="relAte"></div>
         <div class="auto"><button class="btn" id="relBuscar">Buscar</button></div>
       </div>
       <div id="relResumo" class="mut" style="margin-top:12px"></div>
+      <div id="graficoFrete" style="margin-top:14px"></div>
       <div style="margin-top:10px"><button class="btn ghost sm" id="relExportar" hidden>Exportar CSV</button></div>
       <div style="overflow-x:auto;margin-top:12px"><table>
-        <thead><tr><th>Freteiro</th><th class="center">Paradas</th><th class="center">Entregues</th><th class="center">Falharam</th><th class="center">Com problema</th><th class="center">% problema do freteiro</th></tr></thead>
-        <tbody id="tabRel"><tr><td colspan="6"><div class="empty">Escolha um período e clique em Buscar.</div></td></tr></tbody>
+        <thead><tr><th>Freteiro</th><th class="right">Frete faturado</th><th class="center">Paradas</th><th class="center">Entregues</th><th class="center">Falharam</th><th class="center">Com problema</th><th class="center">% problema do freteiro</th></tr></thead>
+        <tbody id="tabRel"><tr><td colspan="7"><div class="empty">Escolha um período e clique em Buscar.</div></td></tr></tbody>
       </table></div>
     </div>
   </section>
@@ -562,6 +575,7 @@ $('#romDestino').onchange = () => {
   const existe = !!$('#romDestino').value;
   $('#wFrSel').hidden = existe;
   $('#wDataRota').hidden = existe;
+  $('#wValorFrete').hidden = existe;
 };
 
 $('#gerar').onclick = async () => {
@@ -572,9 +586,10 @@ $('#gerar').onclick = async () => {
     const url = destino ? '/.netlify/functions/romaneios?id='+destino : '/.netlify/functions/romaneios';
     const body = destino
       ? { paradas: rascunho }
-      : { freteiroId: $('#frSel').value, dataRota: $('#dataRota').value || null, paradas: rascunho };
+      : { freteiroId: $('#frSel').value, dataRota: $('#dataRota').value || null, valorFrete: $('#valorFrete').value || 0, paradas: rascunho };
     const r = await api(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
     rascunho = []; renderRascunho();
+    $('#valorFrete').value = '';
     toast(destino ? 'Adicionado ao romaneio ' + r.codigo : 'Romaneio ' + r.codigo + ' criado');
     $$('nav button').find(b=>b.dataset.t==='rom').click();
   }catch(e){ erro(e.message); }
@@ -609,7 +624,7 @@ function renderListaRom(){
         <div class="top">
           <span class="cod">${esc(r.codigo)}</span>
           <span class="tag">${esc(r.freteiroNome || 'sem freteiro')}</span>
-          <span class="mut">${esc(r.data_rota||'')} · ${r.paradas.length} parada(s)</span>
+          <span class="mut">${esc(r.data_rota||'')} · ${r.paradas.length} parada(s)${r.valor_frete?' · frete '+money(r.valor_frete):''}</span>
           <span class="tag ${ok===r.paradas.length && r.paradas.length?'ok':'pend'}">${ok}/${r.paradas.length} entregues</span>
           ${falhou?`<span class="tag falhou">⚠️ ${falhou} não realizada${falhou>1?'s':''}</span>`:''}
           ${r.carregamento_confirmado?`<span class="tag ok">✓ carregamento conferido</span>`:''}
@@ -640,7 +655,7 @@ function renderListaRom(){
               <td>${tipoLabel} ${esc(p.numero||'')}${(p.itens||[]).some(it=>it.fragil)?' <span class="tag fragil">🔴 vidro</span>':''}
                 ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut" style="display:flex;align-items:center;gap:5px"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span>${esc(it.descricao||'')}${it.volumes?' ('+it.volumes+' vol.)':''}: <strong>${esc(it.cor)}</strong></div>`).join('')}
                 ${(!((p.itens||[]).some(it=>it.cor)) && p.cor)?`<div class="mut">Cor: ${esc(p.cor)}</div>`:''}
-                ${(p.fotos&&p.fotos.length)?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${p.fotos.map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--line)" title="${f.tipo==='carro'?'foto do carro':f.tipo==='vidro'?'foto do vidro':f.tipo==='assinatura'?'assinatura do cliente':'foto do produto'}"></a>`).join('')}</div>`:''}
+                ${(p.fotos&&p.fotos.length)?`<div class="galeriafotos">${p.fotos.map(f=>`<a href="${f.url}" target="_blank" class="fotoadm"><img src="${f.url}"><span>${f.tipo==='carro'?'carro':f.tipo==='vidro'?'vidro':f.tipo==='assinatura'?'assinatura':f.tipo==='pagamento'?'pagamento':'entrega'}</span></a>`).join('')}</div>`:''}
               </td>
               <td class="center">${p.volumes||0}</td>
               <td>
@@ -820,6 +835,7 @@ function toggleEditRom(id){
       <div class="row">
         <div><label>Freteiro *</label><select id="editFrSel-${id}"><option value="">— escolher —</option>${opcoesFr}</select></div>
         <div><label>Data da rota</label><input type="date" id="editData-${id}" value="${esc(r.data_rota||'')}"></div>
+        <div><label>Valor do frete (R$)</label><input type="number" min="0" step="0.01" id="editFrete-${id}" value="${r.valor_frete||''}"></div>
         <div class="auto"><button class="btn sm" onclick="salvarEdicaoRom('${id}')">Salvar</button></div>
         <div class="auto"><button class="btn ghost sm" onclick="toggleEditRom('${id}')">Cancelar</button></div>
       </div>
@@ -828,9 +844,10 @@ function toggleEditRom(id){
 async function salvarEdicaoRom(id){
   const freteiroId = document.getElementById('editFrSel-'+id).value;
   const dataRota = document.getElementById('editData-'+id).value;
+  const valorFrete = document.getElementById('editFrete-'+id).value || 0;
   if(!freteiroId) return erro('Selecione um freteiro — todo romaneio precisa de um.');
   try{
-    await api('/.netlify/functions/romaneios?id='+id, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ freteiroId, dataRota }) });
+    await api('/.netlify/functions/romaneios?id='+id, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ freteiroId, dataRota, valorFrete }) });
     toast('Romaneio atualizado');
     document.getElementById('editbox-'+id).dataset.aberto = '0';
     carregarRomaneios();
@@ -855,47 +872,72 @@ function ondeVai(item){
   return '';
 }
 
+function volumesEfetivos(p){
+  const jaNoFrete = (p.itens||[]).reduce((s,it)=>s+(it.jaNoFrete?(Number(it.volumes)||0):0), 0);
+  return Math.max((Number(p.volumes)||0) - jaNoFrete, 0);
+}
+
 function toggleCarga(id){
   const box = document.getElementById('cargabox-'+id);
   if(!box) return;
   if(box.dataset.aberto === '1'){ box.innerHTML = ''; box.dataset.aberto = '0'; return; }
   box.dataset.aberto = '1';
+  renderCargaBox(id);
+}
+
+function renderCargaBox(id){
+  const box = document.getElementById('cargabox-'+id);
+  if(!box || box.dataset.aberto !== '1') return;
   const r = romaneios.find(x=>x.id===id);
   if(!r) return;
 
   const total = r.paradas.length;
   const itens = [];
-  r.paradas.forEach((p, i) => (p.itens||[]).forEach(it => itens.push({
+  r.paradas.forEach((p, i) => (p.itens||[]).forEach((it, idx) => itens.push({
+    paradaId: p.id, indice: idx,
     descricao: it.descricao||'(sem descrição)', cor: it.cor||'',
     volumes: Number(it.volumes)||0, valor: Number(it.valorTotal)||0,
-    pedido: p.numero||'', entrega: i+1, onde: ondeVai(it), fragil: !!it.fragil
+    pedido: p.numero||'', entrega: i+1, onde: ondeVai(it), fragil: !!it.fragil, jaNoFrete: !!it.jaNoFrete
   })));
   itens.sort((a,b)=>b.valor-a.valor);
 
   // "Vai por cima" numa entrega que não é a primeira = entra cedo no caminhão e fica embaixo.
-  const conflitos = itens.filter(it => it.onde==='cima' && it.entrega > 1);
-  const totalVol = r.paradas.reduce((s,p)=>s+(Number(p.volumes)||0),0);
+  const conflitos = itens.filter(it => it.onde==='cima' && it.entrega > 1 && !it.jaNoFrete);
+  const totalVol = r.paradas.reduce((s,p)=>s+volumesEfetivos(p),0);
   const totalValor = itens.reduce((s,it)=>s+it.valor,0);
 
   box.innerHTML = `
     <div class="editrom">
       <h3 style="margin-bottom:6px">Visão geral da carga</h3>
       <div class="mut" style="margin-bottom:8px">${total} pedido(s) · ${totalVol} volume(s)${totalValor?' · '+money(totalValor):''}</div>
+      <p class="mut" style="margin:0 0 8px">Já separou algum desses num outro estoque? Marque "já no frete" — some da conferência do estoquista.</p>
       ${conflitos.length ? `<div class="semgeo" style="background:#fdeaea;border-color:#eba9a9;color:#7f1d1d">
         <strong>⚠️ Cuidado ao empilhar</strong>
         ${conflitos.map(c=>`<div style="margin-top:5px">${esc(c.descricao)} (pedido ${esc(c.pedido)}) vai por cima, mas é a entrega ${c.entrega} de ${total} — entra cedo no caminhão e fica embaixo.</div>`).join('')}
       </div>` : ''}
-      <table style="margin-top:8px"><thead><tr><th>Produto</th><th>Cor</th><th>Pedido</th><th class="center">Vol.</th><th class="right">Valor</th><th>No caminhão</th></tr></thead><tbody>
-      ${itens.length ? itens.map(it=>`<tr>
+      <table style="margin-top:8px"><thead><tr><th>Produto</th><th>Cor</th><th>Pedido</th><th class="center">Vol.</th><th class="right">Valor</th><th>No caminhão</th><th></th></tr></thead><tbody>
+      ${itens.length ? itens.map(it=>`<tr style="${it.jaNoFrete?'opacity:.5':''}">
         <td><strong>${esc(it.descricao)}</strong>${it.fragil?' <span class="tag fragil">🔴 vidro</span>':''}<div class="mut">entrega ${it.entrega} de ${total}</div></td>
         <td class="mut"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span> ${esc(it.cor||'—')}</td>
         <td class="mut">${esc(it.pedido)}</td>
         <td class="center">${it.volumes||'—'}</td>
         <td class="right">${it.valor?money(it.valor):'—'}</td>
         <td class="mut">${it.onde==='cima'?'⬆ por cima':it.onde==='baixo'?'⬇ embaixo':'—'}</td>
-      </tr>`).join('') : '<tr><td colspan="6"><div class="empty">Nenhum item cadastrado.</div></td></tr>'}
+        <td><button class="btn ghost sm ${it.jaNoFrete?'':''}" onclick="marcarJaNoFreteAdmin('${it.paradaId}',${it.indice},${!it.jaNoFrete})">${it.jaNoFrete?'✓ já no frete':'já no frete?'}</button></td>
+      </tr>`).join('') : '<tr><td colspan="7"><div class="empty">Nenhum item cadastrado.</div></td></tr>'}
       </tbody></table>
     </div>`;
+}
+
+async function marcarJaNoFreteAdmin(paradaId, indice, jaNoFrete){
+  try{
+    const atualizada = await api('/.netlify/functions/parada-item-carregado', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, indice, jaNoFrete }) });
+    for(const r of romaneios){
+      const p = r.paradas.find(x=>x.id===paradaId);
+      if(p){ Object.assign(p, atualizada); renderCargaBox(r.id); break; }
+    }
+    toast(jaNoFrete ? 'Marcado como já no frete' : 'Desmarcado');
+  }catch(e){ erro(e.message); }
 }
 
 /* ---------------- ordem sugerida da rota (por localização) ---------------- */
@@ -1087,19 +1129,30 @@ function renderRelatorio(r){
   const s = r.resumoResponsaveis;
   $('#relResumo').innerHTML = `Problemas registrados no período — <strong>vendedores:</strong> ${s.vendedores} · <strong>estoque:</strong> ${s.estoque} · <strong>freteiro:</strong> ${s.freteiro}`;
   $('#relExportar').hidden = !r.porFreteiro.length;
+
+  // Gráfico simples de barras (sem biblioteca nenhuma) — cada barra proporcional ao maior frete do período.
+  const maiorFrete = Math.max(1, ...r.porFreteiro.map(f=>f.totalFrete||0));
+  $('#graficoFrete').innerHTML = r.porFreteiro.some(f=>f.totalFrete>0) ? r.porFreteiro.map(f => `
+    <div class="barrafrete">
+      <span class="barrafrete-nome">${esc(f.nome)}</span>
+      <div class="barrafrete-trilho"><div class="barrafrete-cheio" style="width:${Math.max(2, f.totalFrete/maiorFrete*100)}%"></div></div>
+      <span class="barrafrete-valor">${money(f.totalFrete)}</span>
+    </div>`).join('') : '';
+
   $('#tabRel').innerHTML = r.porFreteiro.length ? r.porFreteiro.map(f => `<tr>
     <td>${esc(f.nome)}</td>
+    <td class="right">${money(f.totalFrete)}</td>
     <td class="center">${f.totalParadas}</td>
     <td class="center">${f.entregues}</td>
     <td class="center">${f.falharam}</td>
     <td class="center">${f.comProblema}</td>
     <td class="center">${f.percProblemaFreteiro}%</td>
-  </tr>`).join('') : '<tr><td colspan="6"><div class="empty">Nenhum romaneio nesse período.</div></td></tr>';
+  </tr>`).join('') : '<tr><td colspan="7"><div class="empty">Nenhum romaneio nesse período.</div></td></tr>';
 }
 $('#relExportar').onclick = () => {
   if(!relatorioAtual) return;
-  const linhas = [['Freteiro','Paradas','Entregues','Falharam','Com problema','% problema do freteiro']];
-  relatorioAtual.porFreteiro.forEach(f => linhas.push([f.nome, f.totalParadas, f.entregues, f.falharam, f.comProblema, f.percProblemaFreteiro+'%']));
+  const linhas = [['Freteiro','Frete faturado','Paradas','Entregues','Falharam','Com problema','% problema do freteiro']];
+  relatorioAtual.porFreteiro.forEach(f => linhas.push([f.nome, f.totalFrete, f.totalParadas, f.entregues, f.falharam, f.comProblema, f.percProblemaFreteiro+'%']));
   const csv = linhas.map(l => l.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
   const blob = new Blob(['﻿'+csv], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -1138,6 +1191,7 @@ window.editarEs = editarEs;
 window.toggleEditRom = toggleEditRom;
 window.salvarEdicaoRom = salvarEdicaoRom;
 window.toggleCarga = toggleCarga;
+window.marcarJaNoFreteAdmin = marcarJaNoFreteAdmin;
 window.abrirRotaCompleta = abrirRotaCompleta;
 window.recalcularGeo = recalcularGeo;
 window.sugerirOrdem = sugerirOrdem;

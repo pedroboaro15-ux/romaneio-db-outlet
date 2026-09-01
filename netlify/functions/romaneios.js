@@ -68,6 +68,7 @@ exports.handler = async event => {
       // (a busca deles é "de hoje em diante", e NULL não entra em nenhuma comparação de data).
       if (b.dataRota !== undefined) patchRom.data_rota = b.dataRota || hojeBR();
       if (b.observacao !== undefined) patchRom.observacao = b.observacao || '';
+      if (b.valorFrete !== undefined) patchRom.valor_frete = Number(b.valorFrete) || 0;
       if (Object.keys(patchRom).length) {
         const { error: eUpd } = await sb.from('romaneios').update(patchRom).eq('id', q.id);
         if (eUpd) return json(500, { erro: eUpd.message });
@@ -99,6 +100,7 @@ exports.handler = async event => {
         freteiro_id: b.freteiroId,
         data_rota: b.dataRota || hojeBR(),
         observacao: b.observacao || '',
+        valor_frete: Number(b.valorFrete) || 0,
         status: 'aberto'
       })
       .select()
