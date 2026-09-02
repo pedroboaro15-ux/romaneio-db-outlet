@@ -71,6 +71,10 @@ alter table public.romaneios add column if not exists criado_em timestamptz defa
 alter table public.romaneios add column if not exists carregamento_confirmado boolean default false;
 alter table public.romaneios add column if not exists carregamento_confirmado_em timestamptz;
 
+-- Quanto você paga de frete pro freteiro nessa rota — pra saber quanto cada um está
+-- faturando (aba Relatórios). Não tem nada a ver com o valor que o cliente paga.
+alter table public.romaneios add column if not exists valor_frete numeric default 0;
+
 create table if not exists public.paradas (
   id uuid primary key default gen_random_uuid(),
   romaneio_id uuid not null references public.romaneios(id) on delete cascade,
@@ -142,7 +146,7 @@ create table if not exists public.parada_fotos (
   id uuid primary key default gen_random_uuid(),
   parada_id uuid not null references public.paradas(id) on delete cascade,
   url text not null,
-  tipo text default 'produto', -- 'produto' | 'carro' | 'vidro' | 'assinatura'
+  tipo text default 'produto', -- 'produto' | 'carro' | 'vidro' | 'assinatura' | 'pagamento'
   enviado_por text default '',
   criado_em timestamptz default now()
 );

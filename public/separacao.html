@@ -81,6 +81,17 @@ button:disabled{opacity:.5}
 .avisoOffline{background:#7a5416;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:600}
 .resumoLinha{border-bottom:1px solid #eeeee4;padding:12px 0}
 .resumoLinha:last-of-type{border-bottom:0}
+.desfazervol{margin-top:8px;background:#fff;border:1px solid #ddd;color:#6f6f66;font-size:12px;font-weight:600;padding:8px}
+.itemlinha.jafrete{opacity:.5}
+.botaonofrete{flex:0 0 auto;width:auto;padding:7px 11px;font-size:11px;font-weight:700;background:#fff;border:1px solid #ddd;color:#57574e}
+.botaonofrete.marcado{background:#e3f6ec;border-color:#0f8a4a;color:#0f8a4a}
+.chipnofrete{display:inline-block;background:#e3f6ec;color:#0f8a4a;font-weight:800;font-size:11px;padding:3px 9px;border-radius:7px;white-space:nowrap;flex:0 0 auto}
+/* Trava de confirmação do vidro: só libera o botão de confirmar volume depois de marcado. */
+.vidrocheck{margin:10px 0;background:#fdeaea;border:2px solid #eba9a9;border-radius:12px;padding:14px}
+.vidrocheck-titulo{font-size:15px;font-weight:800;color:#7f1d1d;margin-bottom:11px;line-height:1.35}
+.checkvidro{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:#7f1d1d;margin-bottom:11px;cursor:pointer}
+.checkvidro input{width:22px;height:22px;flex:0 0 auto}
+.btnquebrado{width:100%;background:#fff;border:2px solid #b91c1c;color:#b91c1c;font-size:13px;font-weight:700;padding:11px}
 .mut{color:#6f6f66;font-size:12px}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#14140F;color:#F2F250;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:600;z-index:99;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center}
 .toast.show{opacity:1}
@@ -246,13 +257,23 @@ function prepararOrdem(){
   mostrandoVisaoGeral = !rom.carregamento_confirmado;
 }
 
-// Parada sem volume (ex: assistência sem peça) não tem o que confirmar — marca
-// como separada sozinho e pula pra próxima, sem exigir clique.
+// Quanto ainda falta confirmar de verdade — descontando os itens já marcados como
+// "já no frete" (vieram prontos de outro estoque, por exemplo).
+function volumesEfetivos(p){
+  const jaNoFrete = (p.itens||[]).reduce((s,it)=>s+(it.jaNoFrete?(Number(it.volumes)||0):0), 0);
+  return Math.max((Number(p.volumes)||0) - jaNoFrete, 0);
+}
+
+// Parada sem volume (ex: assistência sem peça, ou tudo já no frete) não tem o que
+// confirmar — marca como separada sozinho e pula pra próxima, sem exigir clique.
 async function avancarSeSemVolume(){
-  while(passo < ordemCarregamento.length && (Number(ordemCarregamento[passo].volumes) || 0) === 0 && !ordemCarregamento[passo].separado){
+  while(passo < ordemCarregamento.length && volumesEfetivos(ordemCarregamento[passo]) === 0 && !ordemCarregamento[passo].separado){
     try{
       const atualizada = await api('/.netlify/functions/parada-separar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId: ordemCarregamento[passo].id }) });
-      ordemCarregamento[passo] = { ...ordemCarregamento[passo], ...atualizada };
+      // Object.assign (não spread) — ordemCarregamento e rom.paradas apontam pro MESMO
+      // objeto de cada parada; trocar por um objeto novo aqui desalinhava os dois e a
+      // tela de resumo (que lê rom.paradas) ficava com dado velho.
+      Object.assign(ordemCarregamento[passo], atualizada);
     }catch(e){ break; }
     passo++;
   }
@@ -263,6 +284,7 @@ async function avancarSeSemVolume(){
 function itemDoVolume(p, indice){
   let acumulado = 0;
   for(const it of (p.itens||[])){
+    if(it.jaNoFrete) continue; // já foi colocado no frete — não entra na contagem
     const v = Number(it.volumes) || 0;
     if(v <= 0) continue;
     if(indice < acumulado + v) return { item: it, unidade: indice - acumulado + 1, totalItem: v };
@@ -294,7 +316,7 @@ function render(){
   else aviso = { txt: `entrega ${posicaoOriginal} de ${totalRota}`, cls: 'meio' };
 
   const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
-  const total_vol = Number(p.volumes) || 0;
+  const total_vol = volumesEfetivos(p);
   const confirmados = Math.min(p.volumes_confirmados || 0, total_vol);
   const fotos = (p.fotos||[]).map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}"></a>`).join('');
   const proximoItem = total_vol > 0 && confirmados < total_vol ? itemDoVolume(p, confirmados) : null;
@@ -302,7 +324,7 @@ function render(){
   // A cor mostrada em destaque é a do volume que ele vai pegar AGORA. Se não der pra saber
   // qual item é, cai pra cor da parada (campo legado) — nunca deixa a tela sem essa informação.
   const corAgora = proximoItem ? (proximoItem.item.cor || '') : (p.cor || '');
-  const coresDoPedido = [...new Set((p.itens||[]).map(it=>(it.cor||'').trim()).filter(Boolean))];
+  const coresDoPedido = [...new Set((p.itens||[]).filter(it=>!it.jaNoFrete).map(it=>(it.cor||'').trim()).filter(Boolean))];
 
   // Mudou de produto dentro do mesmo pedido? (ex: acabaram os 2 volumes da bancada,
   // agora começam os da base). É onde mais se erra, então avisa na cara.
@@ -321,7 +343,14 @@ function render(){
 
       ${coresDoPedido.length > 1 ? `<div class="misturado">⚠️ ATENÇÃO: esse pedido tem ${coresDoPedido.length} cores diferentes — confira uma por uma</div>` : ''}
       ${trocouProduto ? `<div class="trocou produto">🔄 Mudou de produto! Os volumes de <b>${esc(itemAnterior.item.descricao||'')}</b> acabaram. Agora é <b>${esc(proximoItem.item.descricao||'')}</b> — confira a cor de novo.</div>` : ''}
-      ${(proximoItem && proximoItem.item.fragil) ? `<div class="misturado">🔴 ESTE VAI COM VIDRO — pegue com cuidado e deixe por cima de tudo</div>` : ''}
+      ${(proximoItem && proximoItem.item.fragil) ? `
+      <div class="vidrocheck">
+        <div class="vidrocheck-titulo">🔴 Este volume é vidro — pegue com cuidado e deixe por cima de tudo</div>
+        <label class="checkvidro">
+          <input type="checkbox" id="chkVidroOk" onchange="atualizarBotaoVolume()"> Conferi — o vidro não está quebrado
+        </label>
+        <button type="button" class="btnquebrado" onclick="reportarVidroQuebrado('${p.id}')">🔴 Está quebrado — avisar o gerente</button>
+      </div>` : ''}
 
       <div class="corcard">
         <div class="corchip" style="background:${corParaSwatch(corAgora)}"></div>
@@ -337,10 +366,10 @@ function render(){
 
       ${(p.itens||[]).length ? `<div class="blocoitens">
         <div class="tituloitens">Tudo desse pedido</div>
-        ${(p.itens||[]).map(it=>`<div class="itemlinha">
+        ${(p.itens||[]).map(it=>`<div class="itemlinha ${it.jaNoFrete?'jafrete':''}">
           <span class="swmed" style="background:${corParaSwatch(it.cor)}"></span>
           <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}${it.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}${it.volumes?` <span class="mut">(${it.volumes} vol.)</span>`:''}</span>
-          <span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>
+          ${it.jaNoFrete ? '<span class="chipnofrete">✓ já no frete</span>' : `<span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>`}
         </div>`).join('')}
       </div>` : ''}
 
@@ -349,7 +378,7 @@ function render(){
       ${total_vol > 0 ? `
         <div class="vol"><b>${confirmados} / ${total_vol}</b><span>volumes confirmados</span></div>
         ${confirmados < total_vol
-          ? `<button class="ok" id="btnvol" style="margin-top:10px" onclick="confirmarVolume('${p.id}')">Confirmei o volume ${confirmados+1} de ${total_vol}</button>`
+          ? `<button class="ok" id="btnvol" ${(proximoItem && proximoItem.item.fragil)?'disabled':''} style="margin-top:10px" onclick="confirmarVolume('${p.id}')">Confirmei o volume ${confirmados+1} de ${total_vol}</button>`
           : `<div class="done">✓ Separado</div>`}
       ` : `<div class="done" style="margin-top:10px">Sem volumes pra confirmar nessa parada</div>`}
       <div class="nav">
@@ -369,8 +398,10 @@ function itensDaCarga(){
   const itens = [];
   rom.paradas.forEach((p, i) => {
     const posCarregamento = ordemCarregamento.indexOf(p); // 0 = entra primeiro = fundo
-    (p.itens||[]).forEach(it => {
+    (p.itens||[]).forEach((it, idx) => {
       itens.push({
+        paradaId: p.id,
+        indice: idx,
         descricao: it.descricao || '(sem descrição)',
         cor: it.cor || '',
         quantidade: Number(it.quantidade) || 0,
@@ -380,7 +411,8 @@ function itensDaCarga(){
         entrega: i + 1,
         posCarregamento,
         onde: ondeVai(it),
-        fragil: !!it.fragil
+        fragil: !!it.fragil,
+        jaNoFrete: !!it.jaNoFrete
       });
     });
   });
@@ -389,29 +421,36 @@ function itensDaCarga(){
 
 function renderVisaoGeral(){
   const itens = itensDaCarga();
-  const totalVol = rom.paradas.reduce((s,p)=>s+(Number(p.volumes)||0), 0);
+  const totalVol = rom.paradas.reduce((s,p)=>s+volumesEfetivos(p), 0);
   const totalValor = itens.reduce((s,it)=>s+it.valor, 0);
   const ultimoACarregar = ordemCarregamento.length - 1;
 
   // "Vai por cima" mas entra cedo no caminhão = alguém vai empilhar coisa em cima dele.
   const conflitos = itens.filter(it => it.onde === 'cima' && it.posCarregamento < ultimoACarregar);
 
+  // As setinhas de cima/embaixo em toda linha viraram poluição visual — o que importa de
+  // verdade é só avisar quando dá conflito de verdade (aviso acima). A lista aqui fica
+  // só o panorama: produto, cor, pedido, volumes e valor.
   const linhas = itens.map(it => `
-    <div class="itemlinha">
+    <div class="itemlinha ${it.jaNoFrete?'jafrete':''}">
       <span class="swmed" style="background:${corParaSwatch(it.cor)}"></span>
       <span class="desc">${esc(it.descricao)}${it.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}
         <div class="mut">Pedido ${esc(it.pedido)} · entrega ${it.entrega} de ${rom.paradas.length}${it.volumes?' · '+it.volumes+' vol.':''}${it.valor?' · '+money(it.valor):''}</div>
       </span>
-      ${it.onde==='cima' ? '<span class="posicao cima">⬆ por cima</span>'
-        : it.onde==='baixo' ? '<span class="posicao baixo">⬇ embaixo</span>' : ''}
+      <button type="button" class="botaonofrete ${it.jaNoFrete?'marcado':''}" onclick="marcarJaNoFrete('${it.paradaId}',${it.indice},${!it.jaNoFrete})">
+        ${it.jaNoFrete?'✓ já no frete':'📦 já no frete?'}
+      </button>
     </div>`).join('') || '<div class="mut" style="padding:10px 0">Nenhum item cadastrado nessa rota.</div>';
 
   const jaComecou = ordemCarregamento.some(p=>p.separado || (p.volumes_confirmados||0) > 0);
+  const comRecado = rom.paradas.filter(p=>p.observacao);
 
   document.getElementById('lista').innerHTML = `
     <div class="p">
       <h3 style="margin:0 0 2px;font-size:20px">Visão geral da carga</h3>
       <div class="mut">${rom.paradas.length} pedido(s) · ${totalVol} volume(s)${totalValor?' · '+money(totalValor):''}</div>
+
+      ${comRecado.length ? comRecado.map(p=>`<div class="obs">📌 Recado do gerente (pedido ${esc(p.numero||'—')}): ${esc(p.observacao)}</div>`).join('') : ''}
 
       ${conflitos.length ? `<div class="misturado" style="margin-top:12px">
         ⚠️ CUIDADO AO EMPILHAR
@@ -422,6 +461,7 @@ function renderVisaoGeral(){
 
       <div class="blocoitens" style="margin-top:12px">
         <div class="tituloitens">Do mais caro pro mais barato</div>
+        <p class="mut" style="padding:8px 0 0;margin:0">Já separou algum desses num outro estoque? Toque em "já no frete" — some da conferência, sem precisar confirmar de novo.</p>
         ${linhas}
       </div>
 
@@ -430,6 +470,20 @@ function renderVisaoGeral(){
 }
 function comecarSeparacao(){ mostrandoVisaoGeral = false; render(); }
 function verVisaoGeral(){ mostrandoVisaoGeral = true; render(); }
+
+async function marcarJaNoFrete(paradaId, indice, jaNoFrete){
+  try{
+    const atualizada = await api('/.netlify/functions/parada-item-carregado', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, indice, jaNoFrete }) });
+    const p = rom.paradas.find(x=>x.id===paradaId);
+    if(p) Object.assign(p, atualizada);
+    const noArray = ordemCarregamento.find(x=>x.id===paradaId);
+    if(noArray) Object.assign(noArray, atualizada);
+    passo = ordemCarregamento.findIndex(x => !x.separado);
+    if(passo === -1) passo = ordemCarregamento.length;
+    toast(jaNoFrete ? 'Marcado como já no frete' : 'Desmarcado');
+    render();
+  }catch(e){ alert('Não foi possível marcar: ' + e.message); }
+}
 
 function renderResumoFinal(jaConfirmado){
   const linhas = rom.paradas.map((p,i) => {
@@ -441,12 +495,17 @@ function renderResumoFinal(jaConfirmado){
           <span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>
         </div>`).join('')
       : '<div class="mut" style="padding:8px 0">Sem itens cadastrados nesse pedido.</div>';
+    // Só dá pra desfazer volume enquanto o carregamento ainda não foi confirmado —
+    // depois de confirmado, tem que desfazer o carregamento inteiro primeiro.
+    const podeDesfazer = !jaConfirmado && (p.volumes_confirmados||0) > 0;
     return `<div class="resumoLinha">
       <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
         <span class="pedidodest" style="font-size:18px;margin:0;padding:5px 11px">${rotulo} ${esc(p.numero||'—')}</span>
         <span class="n">${p.volumes||0} volume(s)</span>
       </div>
+      ${p.observacao?`<div class="obs">📌 Recado do gerente: ${esc(p.observacao)}</div>`:''}
       ${itens}
+      ${podeDesfazer?`<button type="button" class="desfazervol" onclick="desfazerVolumeResumo('${p.id}')">↩️ Desfazer último volume separado</button>`:''}
     </div>`;
   }).join('');
   document.getElementById('lista').innerHTML = `
@@ -456,12 +515,39 @@ function renderResumoFinal(jaConfirmado){
       ${linhas}
       ${jaConfirmado
         ? `<div class="done" style="margin-top:14px">Carregamento confirmado ✓</div>
+           <button style="margin-top:10px;background:#fff;border:2px solid #b91c1c;color:#b91c1c" onclick="desfazerCarregamento()">↩️ Desfazer carregamento</button>
            <button style="margin-top:10px;background:#fff;border:2px solid #14140F;color:#14140F" onclick="voltarParaRotas()">◀ Voltar — ver outras rotas</button>`
         : `<button class="ok" style="margin-top:14px" onclick="confirmarCarregamento()">Confirmar carregamento</button>`}
     </div>`;
 }
 
 function voltarParaRotas(){ idAtual = null; rom = null; iniciar(true); }
+
+async function desfazerVolumeResumo(paradaId){
+  try{
+    const atualizada = await api('/.netlify/functions/parada-separar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, desfazer:true }) });
+    const p = rom.paradas.find(x=>x.id===paradaId);
+    if(p) Object.assign(p, atualizada);
+    const noArray = ordemCarregamento.find(x=>x.id===paradaId);
+    if(noArray) Object.assign(noArray, atualizada);
+    // Recalcula em qual parada parar, sem mexer em mostrandoVisaoGeral (senão voltava
+    // pro "panorama" em vez de continuar mostrando o resumo/tela certa).
+    passo = ordemCarregamento.findIndex(x => !x.separado);
+    if(passo === -1) passo = ordemCarregamento.length;
+    toast('Volume desfeito');
+    render();
+  }catch(e){ alert('Não foi possível desfazer: ' + e.message); }
+}
+
+async function desfazerCarregamento(){
+  if(!confirm('Reabrir a conferência deste carregamento?')) return;
+  try{
+    await api('/.netlify/functions/romaneio-carregado', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ romaneioId: idAtual, desfazer:true }) });
+    rom.carregamento_confirmado = false;
+    toast('Carregamento reaberto');
+    render();
+  }catch(e){ alert('Não foi possível desfazer: ' + e.message); }
+}
 
 async function confirmarCarregamento(){
   try{
@@ -479,6 +565,22 @@ async function irPara(i){
   render();
 }
 
+// Volume de vidro: só libera o botão de confirmar depois de marcar que conferiu.
+function atualizarBotaoVolume(){
+  const chk = document.getElementById('chkVidroOk');
+  const btn = document.getElementById('btnvol');
+  if(btn) btn.disabled = !!(chk && !chk.checked);
+}
+
+async function reportarVidroQuebrado(paradaId){
+  if(!confirm('Confirma que esse vidro chegou quebrado? Isso avisa o gerente na hora.')) return;
+  try{
+    await api('/.netlify/functions/parada-problema', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ paradaId, problema:true, responsavel:'estoque', motivo:'Móvel quebrado', obs:'Vidro quebrado — avisado pelo estoquista na separação' }) });
+    toast('Avisado! O gerente vai ver isso na aba Romaneios.');
+  }catch(e){ alert('Não foi possível avisar: ' + e.message); }
+}
+
 async function confirmarVolume(paradaId){
   const botao = document.getElementById('btnvol');
   if(botao && botao.disabled) return; // trava clique duplo (não conta o mesmo volume 2x)
@@ -486,7 +588,7 @@ async function confirmarVolume(paradaId){
   const i = ordemCarregamento.findIndex(x=>x.id===paradaId);
   try{
     const atualizada = await api('/.netlify/functions/parada-separar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId }) });
-    if(i>=0) ordemCarregamento[i] = { ...ordemCarregamento[i], ...atualizada };
+    if(i>=0) Object.assign(ordemCarregamento[i], atualizada);
     if(atualizada.separado) paradaAguardandoFoto = ordemCarregamento[i>=0?i:passo];
     render();
   }catch(e){
@@ -572,6 +674,11 @@ window.confirmarCarregamento = confirmarCarregamento;
 window.voltarParaRotas = voltarParaRotas;
 window.comecarSeparacao = comecarSeparacao;
 window.verVisaoGeral = verVisaoGeral;
+window.desfazerVolumeResumo = desfazerVolumeResumo;
+window.desfazerCarregamento = desfazerCarregamento;
+window.marcarJaNoFrete = marcarJaNoFrete;
+window.atualizarBotaoVolume = atualizarBotaoVolume;
+window.reportarVidroQuebrado = reportarVidroQuebrado;
 
 checarSessao();
 </script>

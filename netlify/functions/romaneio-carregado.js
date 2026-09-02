@@ -1,5 +1,7 @@
-// POST /.netlify/functions/romaneio-carregado  { romaneioId }
+// POST /.netlify/functions/romaneio-carregado  { romaneioId, desfazer? }
 // Estoquista confirma, na tela-resumo final, que revisou tudo e o caminhão está carregado.
+// { romaneioId, desfazer: true } reabre a conferência (pra corrigir um volume marcado
+// sem querer, por exemplo) — volta pra "carregamento_confirmado: false".
 const { identificar } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
@@ -15,12 +17,11 @@ exports.handler = async event => {
   if (!b.romaneioId) return json(400, { erro: 'informe romaneioId' });
 
   const sb = admin();
-  const { data, error } = await sb
-    .from('romaneios')
-    .update({ carregamento_confirmado: true, carregamento_confirmado_em: new Date().toISOString() })
-    .eq('id', b.romaneioId)
-    .select()
-    .single();
+  const patch = b.desfazer
+    ? { carregamento_confirmado: false, carregamento_confirmado_em: null }
+    : { carregamento_confirmado: true, carregamento_confirmado_em: new Date().toISOString() };
+
+  const { data, error } = await sb.from('romaneios').update(patch).eq('id', b.romaneioId).select().single();
   if (error) return json(500, { erro: error.message });
   return json(200, data);
 };

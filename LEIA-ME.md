@@ -1,11 +1,35 @@
 # Romaneio Omie
 
 > **Atualização mais recente:** ver "O QUE MUDOU AGORA" logo abaixo.
-> **Rode o `supabase/schema.sql` de novo** (é seguro, só cria o que falta — dessa vez faltava uma tabela) e depois suba o código no GitHub do jeito de sempre.
+> **Rode o `supabase/schema.sql` de novo** (é seguro, só cria o que falta — dessa vez tem uma coluna nova, `valor_frete`) e depois suba o código no GitHub do jeito de sempre.
 
 ## O QUE MUDOU AGORA
 
-### Foto do vidro + assinatura do cliente, obrigatórias (novo)
+### Confirmação de que o vidro não está quebrado (novo)
+Na separação, quando chega a vez de um volume que é vidro, o estoquista **não consegue** tocar em "Confirmei o volume" até marcar uma caixinha: **"Conferi — o vidro não está quebrado"**. Sem marcar, o botão fica cinza e travado.
+
+Se estiver quebrado de verdade, tem um botão **"🔴 Está quebrado — avisar o gerente"** que registra na hora como problema (mesma lógica de "houve problema" que já existia na aba Romaneios, com responsável "estoque" e motivo "Móvel quebrado") — você vê isso no Painel e na aba Romaneios, igual a qualquer outro problema.
+
+### Panorama da carga: menos poluído, e agora com "já no frete" (dois estoques)
+- **Tirei as setinhas ⬆/⬇ de cada linha** da lista "Do mais caro pro mais barato" — ficavam repetindo em toda linha e viraram poluição visual. Continua avisando "⚠️ Cuidado ao empilhar" quando tem um conflito de verdade (item que precisa ir por cima mas entra cedo no caminhão).
+- **"Já no frete"**: como você tem dois estoques, cada item da lista agora tem um botão pra marcar "já no frete" — pra quando aquele produto já foi separado/carregado em outro estoque antes. Some da cobrança de volume na hora de separar (o app não pede confirmação de novo pra esse item) e o total de volumes da tela já desconta ele. Dá pra desmarcar se foi engano. Aparece tanto no seu painel ("Ver a carga") quanto na tela do estoquista.
+
+### Desfazer carregamento e desfazer volume (novo)
+- Na tela final "Tudo separado!", cada pedido tem um botão **"↩️ Desfazer último volume separado"** — pra quando o estoquista marcar um volume sem querer.
+- Depois de "Confirmar carregamento", tem um botão **"↩️ Desfazer carregamento"** que reabre a conferência (pede confirmação antes, pra não ser sem querer).
+
+### Valor do frete por romaneio + gráfico de faturamento dos freteiros (novo)
+- Campo **"Valor do frete (R$)"** ao criar ou editar um romaneio — é quanto você paga de frete pro freteiro daquela rota.
+- Na aba **Relatórios**, um gráfico de barras simples mostra quanto cada freteiro faturou de frete no período escolhido, junto com a tabela de sempre (agora com a coluna "Frete faturado" e no CSV também).
+
+### Fotos organizadas por categoria, direto no seu painel (novo)
+- As fotos que o freteiro manda agora têm 4 categorias: **entrega do produto**, **pagamento** (novo botão "💰 Foto do pagamento"), **vidro** e **assinatura** (essas duas já existiam, obrigatórias quando tem vidro).
+- **Você vê todas direto no seu painel**, sem precisar entrar no Supabase — na aba Romaneios, dentro de "Ver paradas", cada foto aparece com o rótulo da categoria embaixo (não é mais só ao passar o mouse).
+
+### Observação também na tela do estoquista, sempre visível
+- O recado que você escreve na hora de montar o romaneio agora aparece pro estoquista **já na Visão Geral** (a primeira tela que ele vê), além de continuar aparecendo durante a separação e no resumo final — pra não passar batido.
+
+### Foto do vidro + assinatura do cliente, obrigatórias
 Pra qualquer parada com item marcado "🔴 vidro", o freteiro **não consegue** tocar em "Entreguei" (o botão nasce cinza e travado) até fazer duas coisas:
 
 1. **📷 Tirar foto do vidro** — abre a câmera do celular, a foto fica guardada na parada.
@@ -259,7 +283,8 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas 
 | `netlify/functions/relatorio.js` | Estatísticas por freteiro num período |
 | `netlify/functions/minhas-rotas.js` | Rotas de hoje em diante de quem logou |
 | `netlify/functions/equipe-login.js` | Login só por telefone (freteiro/estoquista) |
-| `netlify/functions/parada-separar.js` | Estoquista confirma volume a volume |
+| `netlify/functions/parada-separar.js` | Estoquista confirma (ou desfaz) volume a volume |
+| `netlify/functions/parada-item-carregado.js` | Marca/desmarca um item como "já no frete" |
 | `netlify/functions/foto-upload.js` | Recebe foto (produto/carro) e guarda no Storage |
 | `netlify/functions/conferencia.js` | Entregas aguardando sua conferência (pagamento/estoque) |
 | `netlify/functions/historico-cliente.js` | Problemas anteriores de um cliente |

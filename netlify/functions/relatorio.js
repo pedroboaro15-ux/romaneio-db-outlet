@@ -1,5 +1,6 @@
 // GET /.netlify/functions/relatorio?de=2026-08-01&ate=2026-08-31
-// Quantas paradas cada freteiro levou no período e a % delas com problema atribuído a ele.
+// Quantas paradas cada freteiro levou no período, a % delas com problema atribuído a ele,
+// e quanto ele faturou de frete (soma do valor_frete de cada romaneio dele no período).
 const { requireAdmin } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
@@ -15,7 +16,7 @@ exports.handler = async event => {
   const sb = admin();
   const { data: romaneios, error } = await sb
     .from('romaneios')
-    .select('id, freteiro_id, data_rota, freteiros(nome), paradas(status, tipo, problema, problema_responsavel)')
+    .select('id, freteiro_id, data_rota, valor_frete, freteiros(nome), paradas(status, tipo, problema, problema_responsavel)')
     .gte('data_rota', q.de)
     .lte('data_rota', q.ate);
   if (error) return json(500, { erro: error.message });
@@ -27,9 +28,10 @@ exports.handler = async event => {
     const chave = r.freteiro_id || '__sem_freteiro__';
     const nome = r.freteiros ? r.freteiros.nome : 'Sem freteiro';
     if (!porFreteiro.has(chave)) {
-      porFreteiro.set(chave, { freteiroId: r.freteiro_id, nome, totalParadas: 0, entregues: 0, falharam: 0, comProblema: 0, problemaFreteiro: 0 });
+      porFreteiro.set(chave, { freteiroId: r.freteiro_id, nome, totalParadas: 0, entregues: 0, falharam: 0, comProblema: 0, problemaFreteiro: 0, totalFrete: 0 });
     }
     const acc = porFreteiro.get(chave);
+    acc.totalFrete += Number(r.valor_frete) || 0; // é por romaneio, não por parada — soma 1x aqui fora do loop de baixo
     for (const p of (r.paradas || [])) {
       acc.totalParadas++;
       if (p.status === 'entregue') acc.entregues++;
@@ -44,7 +46,7 @@ exports.handler = async event => {
 
   const porFreteiroLista = [...porFreteiro.values()]
     .map(f => ({ ...f, percProblemaFreteiro: f.totalParadas ? Math.round((f.problemaFreteiro / f.totalParadas) * 1000) / 10 : 0 }))
-    .sort((a, b) => b.totalParadas - a.totalParadas);
+    .sort((a, b) => b.totalFrete - a.totalFrete);
 
   return json(200, { periodo: { de: q.de, ate: q.ate }, porFreteiro: porFreteiroLista, resumoResponsaveis });
 };
