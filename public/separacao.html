@@ -86,6 +86,12 @@ button:disabled{opacity:.5}
 .botaonofrete{flex:0 0 auto;width:auto;padding:7px 11px;font-size:11px;font-weight:700;background:#fff;border:1px solid #ddd;color:#57574e}
 .botaonofrete.marcado{background:#e3f6ec;border-color:#0f8a4a;color:#0f8a4a}
 .chipnofrete{display:inline-block;background:#e3f6ec;color:#0f8a4a;font-weight:800;font-size:11px;padding:3px 9px;border-radius:7px;white-space:nowrap;flex:0 0 auto}
+/* Trava de confirmação do vidro: só libera o botão de confirmar volume depois de marcado. */
+.vidrocheck{margin:10px 0;background:#fdeaea;border:2px solid #eba9a9;border-radius:12px;padding:14px}
+.vidrocheck-titulo{font-size:15px;font-weight:800;color:#7f1d1d;margin-bottom:11px;line-height:1.35}
+.checkvidro{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:#7f1d1d;margin-bottom:11px;cursor:pointer}
+.checkvidro input{width:22px;height:22px;flex:0 0 auto}
+.btnquebrado{width:100%;background:#fff;border:2px solid #b91c1c;color:#b91c1c;font-size:13px;font-weight:700;padding:11px}
 .mut{color:#6f6f66;font-size:12px}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#14140F;color:#F2F250;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:600;z-index:99;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center}
 .toast.show{opacity:1}
@@ -337,7 +343,14 @@ function render(){
 
       ${coresDoPedido.length > 1 ? `<div class="misturado">⚠️ ATENÇÃO: esse pedido tem ${coresDoPedido.length} cores diferentes — confira uma por uma</div>` : ''}
       ${trocouProduto ? `<div class="trocou produto">🔄 Mudou de produto! Os volumes de <b>${esc(itemAnterior.item.descricao||'')}</b> acabaram. Agora é <b>${esc(proximoItem.item.descricao||'')}</b> — confira a cor de novo.</div>` : ''}
-      ${(proximoItem && proximoItem.item.fragil) ? `<div class="misturado">🔴 ESTE VAI COM VIDRO — pegue com cuidado e deixe por cima de tudo</div>` : ''}
+      ${(proximoItem && proximoItem.item.fragil) ? `
+      <div class="vidrocheck">
+        <div class="vidrocheck-titulo">🔴 Este volume é vidro — pegue com cuidado e deixe por cima de tudo</div>
+        <label class="checkvidro">
+          <input type="checkbox" id="chkVidroOk" onchange="atualizarBotaoVolume()"> Conferi — o vidro não está quebrado
+        </label>
+        <button type="button" class="btnquebrado" onclick="reportarVidroQuebrado('${p.id}')">🔴 Está quebrado — avisar o gerente</button>
+      </div>` : ''}
 
       <div class="corcard">
         <div class="corchip" style="background:${corParaSwatch(corAgora)}"></div>
@@ -365,7 +378,7 @@ function render(){
       ${total_vol > 0 ? `
         <div class="vol"><b>${confirmados} / ${total_vol}</b><span>volumes confirmados</span></div>
         ${confirmados < total_vol
-          ? `<button class="ok" id="btnvol" style="margin-top:10px" onclick="confirmarVolume('${p.id}')">Confirmei o volume ${confirmados+1} de ${total_vol}</button>`
+          ? `<button class="ok" id="btnvol" ${(proximoItem && proximoItem.item.fragil)?'disabled':''} style="margin-top:10px" onclick="confirmarVolume('${p.id}')">Confirmei o volume ${confirmados+1} de ${total_vol}</button>`
           : `<div class="done">✓ Separado</div>`}
       ` : `<div class="done" style="margin-top:10px">Sem volumes pra confirmar nessa parada</div>`}
       <div class="nav">
@@ -552,6 +565,22 @@ async function irPara(i){
   render();
 }
 
+// Volume de vidro: só libera o botão de confirmar depois de marcar que conferiu.
+function atualizarBotaoVolume(){
+  const chk = document.getElementById('chkVidroOk');
+  const btn = document.getElementById('btnvol');
+  if(btn) btn.disabled = !!(chk && !chk.checked);
+}
+
+async function reportarVidroQuebrado(paradaId){
+  if(!confirm('Confirma que esse vidro chegou quebrado? Isso avisa o gerente na hora.')) return;
+  try{
+    await api('/.netlify/functions/parada-problema', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ paradaId, problema:true, responsavel:'estoque', motivo:'Móvel quebrado', obs:'Vidro quebrado — avisado pelo estoquista na separação' }) });
+    toast('Avisado! O gerente vai ver isso na aba Romaneios.');
+  }catch(e){ alert('Não foi possível avisar: ' + e.message); }
+}
+
 async function confirmarVolume(paradaId){
   const botao = document.getElementById('btnvol');
   if(botao && botao.disabled) return; // trava clique duplo (não conta o mesmo volume 2x)
@@ -648,6 +677,8 @@ window.verVisaoGeral = verVisaoGeral;
 window.desfazerVolumeResumo = desfazerVolumeResumo;
 window.desfazerCarregamento = desfazerCarregamento;
 window.marcarJaNoFrete = marcarJaNoFrete;
+window.atualizarBotaoVolume = atualizarBotaoVolume;
+window.reportarVidroQuebrado = reportarVidroQuebrado;
 
 checarSessao();
 </script>

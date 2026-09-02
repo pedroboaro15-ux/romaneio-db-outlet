@@ -5,6 +5,11 @@
 
 ## O QUE MUDOU AGORA
 
+### Confirmação de que o vidro não está quebrado (novo)
+Na separação, quando chega a vez de um volume que é vidro, o estoquista **não consegue** tocar em "Confirmei o volume" até marcar uma caixinha: **"Conferi — o vidro não está quebrado"**. Sem marcar, o botão fica cinza e travado.
+
+Se estiver quebrado de verdade, tem um botão **"🔴 Está quebrado — avisar o gerente"** que registra na hora como problema (mesma lógica de "houve problema" que já existia na aba Romaneios, com responsável "estoque" e motivo "Móvel quebrado") — você vê isso no Painel e na aba Romaneios, igual a qualquer outro problema.
+
 ### Panorama da carga: menos poluído, e agora com "já no frete" (dois estoques)
 - **Tirei as setinhas ⬆/⬇ de cada linha** da lista "Do mais caro pro mais barato" — ficavam repetindo em toda linha e viraram poluição visual. Continua avisando "⚠️ Cuidado ao empilhar" quando tem um conflito de verdade (item que precisa ir por cima mas entra cedo no caminhão).
 - **"Já no frete"**: como você tem dois estoques, cada item da lista agora tem um botão pra marcar "já no frete" — pra quando aquele produto já foi separado/carregado em outro estoque antes. Some da cobrança de volume na hora de separar (o app não pede confirmação de novo pra esse item) e o total de volumes da tela já desconta ele. Dá pra desmarcar se foi engano. Aparece tanto no seu painel ("Ver a carga") quanto na tela do estoquista.
