@@ -5,7 +5,15 @@
 
 ## O QUE MUDOU AGORA
 
-### Freteiro e estoquista podem começar uma rota nova, direto do celular (novo)
+### Bolinha vermelha no sino quando chega pedido novo (novo)
+Além da notificação push (que depende de ativar e, no iPhone, instalar), o sino 🔔 no topo da tela do freteiro e do estoquista agora ganha uma **bolinha vermelha** sempre que o total de paradas das rotas deles aumentou desde a última vez que abriram o app — ou seja, chegou pedido novo. Isso funciona **mesmo sem notificação ativada**, é só abrir o app.
+
+- **Freteiro**: conta só as paradas das rotas dele.
+- **Estoquista**: conta as paradas de **todas** as rotas (ele vê rota de todo mundo).
+
+A bolinha some sozinha assim que ele reabre o app de novo (contando aquilo como "já vi"). Entregar/separar não faz a bolinha reaparecer — só pedido novo de verdade aumenta a contagem.
+
+### Freteiro e estoquista podem começar uma rota nova, direto do celular
 Até agora só você montava romaneio. Agora, se não tiver rota criada ainda (ou se quiser adicionar outra), freteiro e estoquista têm um botão **"➕ Começar uma rota agora"** na tela deles. Funciona igualzinho à sua aba "Buscar pedido": digita o número do pedido, o app traz os dados da Omie, eles preenchem cor e volume de cada item, e criam a rota.
 
 Duas travas de segurança que valem a pena você saber:

@@ -91,6 +91,9 @@ button.ok:disabled{background:#e2e2d9;color:#9a9a8e}
 .cancelarassinatura{width:100%;background:none;color:#6f6f66;border:0;padding:8px;font-size:14px;font-weight:600;margin-top:4px}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#14140F;color:#F2F250;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:600;z-index:99;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center}
 .toast.show{opacity:1}
+/* Bolinha vermelha no sino quando chega pedido novo desde a última vez que abriu o app. */
+#btnNotif{position:relative}
+.badgeNotif{position:absolute;top:2px;right:2px;width:10px;height:10px;background:#e74c3c;border-radius:50%;border:2px solid #14140F}
 </style>
 </head>
 <body>
@@ -101,7 +104,7 @@ button.ok:disabled{background:#e2e2d9;color:#9a9a8e}
   <div class="hcima">
     <img src="/logo.svg" alt="Outlet dos Móveis DB">
     <h1 id="titulo">Carregando…</h1>
-    <button id="btnNotif" style="width:auto;flex:none;padding:7px 10px;font-size:16px;background:#ffffff26;color:#fff">🔔</button>
+    <button id="btnNotif" style="width:auto;flex:none;padding:7px 10px;font-size:16px;background:#ffffff26;color:#fff"><span id="notifIcone">🔔</span><span id="notifBadge" class="badgeNotif" hidden></span></button>
     <button id="btnSair" style="width:auto;flex:none;padding:7px 11px;font-size:12px;background:#ffffff26;color:#fff">Sair</button>
   </div>
   <p id="sub"></p>
@@ -205,7 +208,7 @@ async function atualizarBotaoNotif(){
   try{
     const reg = await navigator.serviceWorker.register('/sw.js');
     const sub = await reg.pushManager.getSubscription();
-    btn.textContent = sub ? '🔔' : '🔕';
+    document.getElementById('notifIcone').textContent = sub ? '🔔' : '🔕';
     btn.title = sub ? 'Notificações ativadas' : 'Ativar notificações';
   }catch(e){ /* segue sem notificação, não trava o app */ }
 }
@@ -235,10 +238,23 @@ document.getElementById('btnNotif').onclick = async () => {
   atualizarBotaoNotif();
 };
 
+// Bolinha vermelha no sino: acende quando o total de paradas das suas rotas cresceu
+// desde a última vez que você abriu o app — ou seja, chegou pedido novo. Como só cresce
+// com pedido novo (entregar não diminui o total, só o "entregues"), não confunde
+// "ainda tenho entrega pra fazer" com "chegou algo novo".
+function atualizarBadgeNotif(totalAgora){
+  const badge = document.getElementById('notifBadge');
+  if(!badge) return;
+  const anterior = Number(localStorage.getItem('ultimaContagemParadas') || 0);
+  badge.hidden = !(totalAgora > anterior);
+  localStorage.setItem('ultimaContagemParadas', String(totalAgora));
+}
+
 // Mostra as rotas de HOJE EM DIANTE — não some se você já criou a rota de amanhã.
 async function iniciar(){
   try{
     const rotas = await api('/.netlify/functions/minhas-rotas');
+    atualizarBadgeNotif(rotas.reduce((s,r)=>s+(r.totalParadas||0), 0));
     document.getElementById('rotaCompleta').innerHTML = '';
     document.getElementById('bar').style.width = '0%';
     const btnNovaRota = '<button class="amarelo" onclick="abrirNovaRota()">➕ Começar uma rota agora</button>';
