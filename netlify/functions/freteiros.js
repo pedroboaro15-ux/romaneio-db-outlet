@@ -1,21 +1,27 @@
 // GET/POST/DELETE /.netlify/functions/freteiros
-const { requireAdmin } = require('./lib/auth');
+// GET também é liberado pra freteiro/estoquista — precisam da lista pra "começar uma
+// rota" (estoquista escolhe o freteiro; a lista deles vem enxuta, só id+nome).
+// Cadastrar/editar/remover continua exclusivo do gerente.
+const { requireAdmin, identificar } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 const { derrubarSessoes, soDigitos } = require('./lib/sessao');
 
 exports.handler = async event => {
-  const user = await requireAdmin(event);
-  if (!user) return json(401, { erro: 'não autenticado' });
-
   const sb = admin();
   const q = event.queryStringParameters || {};
 
   if (event.httpMethod === 'GET') {
-    const { data, error } = await sb.from('freteiros').select('*').order('nome');
+    const quem = await identificar(event);
+    if (!quem) return json(401, { erro: 'não autenticado' });
+    const colunas = quem.role === 'admin' ? '*' : 'id, nome';
+    const { data, error } = await sb.from('freteiros').select(colunas).order('nome');
     if (error) return json(500, { erro: error.message });
     return json(200, data);
   }
+
+  const user = await requireAdmin(event);
+  if (!user) return json(401, { erro: 'não autenticado' });
 
   if (event.httpMethod === 'POST') {
     let b;

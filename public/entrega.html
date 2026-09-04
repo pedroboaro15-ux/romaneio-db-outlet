@@ -53,6 +53,20 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 .opcaomotivo{width:100%;background:#fff;color:#14140F;border:2px solid #14140F;margin-bottom:8px;padding:15px;font-size:15px}
 .cancelamotivo{width:100%;background:none;color:#6f6f66;border:0;padding:8px;font-size:14px;font-weight:600}
 .err{background:#fdeaea;color:#7f1d1d;padding:8px 10px;border-radius:8px;font-size:13px;margin-bottom:10px}
+/* Criar rota nova direto do celular */
+.amarelo{background:#F2F250;color:#14140F;margin-top:12px}
+.buscapedido{display:flex;gap:8px}
+.buscapedido input{flex:1;padding:13px;border:2px solid #e2e2d9;border-radius:10px;font:inherit}
+.buscapedido button{flex:0 0 auto;width:auto;padding:13px 18px;background:#14140F;color:#fff}
+.pedidoencontrado{margin-top:12px;background:#fafaf4;border:1px solid #eaeadf;border-radius:11px;padding:14px}
+.itemrota{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eeeee4;flex-wrap:wrap}
+.itemrota:last-child{border-bottom:0}
+.itemrota .desc{flex:1;min-width:120px;font-size:13px}
+.itemrota input{flex:0 0 auto;width:70px;padding:8px;border:1px solid #ddd;border-radius:7px;font:inherit;font-size:13px}
+.pedidoadicionado{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eeeee4}
+.pedidoadicionado .desc{flex:1;font-size:14px}
+.removeritem{flex:0 0 auto;width:auto;padding:6px 10px;font-size:12px;background:#fff;border:1px solid #ddd;color:#b91c1c}
+.cancelarrota{width:100%;background:none;color:#6f6f66;border:0;padding:10px;font-size:14px;font-weight:600;margin-top:8px}
 .rota{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid #e2e2d9;border-left:5px solid #F2F250;text-decoration:none;display:block;color:inherit}
 .avisoOffline{background:#7a5416;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:600}
 /* Mostrinha de cor: borda escura sempre, senão "Branco" some no fundo branco. */
@@ -87,11 +101,13 @@ button.ok:disabled{background:#e2e2d9;color:#9a9a8e}
   <div class="hcima">
     <img src="/logo.svg" alt="Outlet dos Móveis DB">
     <h1 id="titulo">Carregando…</h1>
+    <button id="btnNotif" style="width:auto;flex:none;padding:7px 10px;font-size:16px;background:#ffffff26;color:#fff">🔔</button>
     <button id="btnSair" style="width:auto;flex:none;padding:7px 11px;font-size:12px;background:#ffffff26;color:#fff">Sair</button>
   </div>
   <p id="sub"></p>
   <div class="prog"><i id="bar"></i></div>
 </header>
+<div id="avisoNotif" class="avisoOffline" hidden></div>
 <div id="rotaCompleta"></div>
 <main id="lista"></main>
 </div>
@@ -163,6 +179,7 @@ function checarSessao(){
   if(!localStorage.getItem('equipeToken')){ location.href = '/equipe'; return; }
   document.getElementById('tela-app').hidden = false;
   atualizarAvisoOffline(); processarFila(); iniciar();
+  atualizarBotaoNotif();
 }
 
 document.getElementById('btnSair').onclick = () => {
@@ -171,14 +188,64 @@ document.getElementById('btnSair').onclick = () => {
   location.href = '/equipe';
 };
 
+/* ---------------- notificação push (grátis — recurso do navegador) ---------------- */
+// Chave pública do VAPID — é pra ficar exposta mesmo, é assim que o padrão funciona.
+const VAPID_PUBLIC_KEY = 'BFC7weeC6mlzDogw_rk6P-ot8EbraPh_HfMsgIsylmFZ1nY767H_Q7hJkQPFTpYZHQTivPv4sVY6d3Ig6t8rchM';
+function base64UrlParaBytes(base64){
+  const pad = '='.repeat((4 - base64.length % 4) % 4);
+  const b64 = (base64 + pad).replace(/-/g,'+').replace(/_/g,'/');
+  const raw = atob(b64);
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+const noIOSNaoInstalado = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.navigator.standalone;
+
+async function atualizarBotaoNotif(){
+  const btn = document.getElementById('btnNotif');
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){ btn.hidden = true; return; }
+  try{
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    const sub = await reg.pushManager.getSubscription();
+    btn.textContent = sub ? '🔔' : '🔕';
+    btn.title = sub ? 'Notificações ativadas' : 'Ativar notificações';
+  }catch(e){ /* segue sem notificação, não trava o app */ }
+}
+
+document.getElementById('btnNotif').onclick = async () => {
+  const aviso = document.getElementById('avisoNotif');
+  if(noIOSNaoInstalado()){
+    aviso.hidden = false;
+    aviso.textContent = '📱 No iPhone: toque em Compartilhar → "Adicionar à Tela de Início", abra o app por esse ícone, e toque no 🔔 de novo.';
+    return;
+  }
+  try{
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    const jaTem = await reg.pushManager.getSubscription();
+    if(jaTem){
+      await jaTem.unsubscribe();
+      await api('/.netlify/functions/push-subscrever', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subscription: jaTem, remover: true }) }).catch(()=>{});
+      toast('Notificações desativadas');
+    } else {
+      const permissao = await Notification.requestPermission();
+      if(permissao !== 'granted'){ toast('Sem permissão pra notificar — ative nas configurações do navegador'); return; }
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: base64UrlParaBytes(VAPID_PUBLIC_KEY) });
+      await api('/.netlify/functions/push-subscrever', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subscription: sub }) });
+      toast('Notificações ativadas!');
+    }
+  }catch(e){ toast('Não deu pra mexer nas notificações: ' + e.message); }
+  atualizarBotaoNotif();
+};
+
 // Mostra as rotas de HOJE EM DIANTE — não some se você já criou a rota de amanhã.
 async function iniciar(){
   try{
     const rotas = await api('/.netlify/functions/minhas-rotas');
+    document.getElementById('rotaCompleta').innerHTML = '';
+    document.getElementById('bar').style.width = '0%';
+    const btnNovaRota = '<button class="amarelo" onclick="abrirNovaRota()">➕ Começar uma rota agora</button>';
     if(!rotas.length){
       document.getElementById('titulo').textContent = 'Sem rota';
       document.getElementById('sub').textContent = '';
-      document.getElementById('lista').innerHTML = '<div class="empty">Nenhuma rota agendada pra você ainda. Fale com o gerente.</div>';
+      document.getElementById('lista').innerHTML = '<div class="empty">Nenhuma rota agendada pra você ainda.</div>' + btnNovaRota;
       return;
     }
     if(rotas.length === 1){ idAtual = rotas[0].id; await carregar(); return; }
@@ -188,13 +255,104 @@ async function iniciar(){
       <a class="rota" href="#" onclick="abrirRota('${r.id}');return false;">
         <span class="n">${esc(r.codigo)}</span>
         <div class="end">${esc(r.data||'')} · ${r.entregues}/${r.totalParadas} entregues</div>
-      </a>`).join('');
+      </a>`).join('') + btnNovaRota;
   }catch(e){
     document.getElementById('titulo').textContent = 'Sem internet';
     document.getElementById('lista').innerHTML = '<div class="empty">Não deu pra carregar a rota de hoje. Assim que voltar o sinal, tente de novo.</div>';
   }
 }
 function abrirRota(id){ idAtual = id; carregar(); }
+
+/* ---------------- começar uma rota nova (freteiro monta a dele mesmo) ---------------- */
+let rascunhoNovaRota = [], pedidoBuscadoRota = null;
+const dataBRHoje = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Fortaleza'}).format(new Date());
+
+function abrirNovaRota(){
+  rascunhoNovaRota = []; pedidoBuscadoRota = null;
+  document.getElementById('titulo').textContent = 'Nova rota';
+  document.getElementById('sub').textContent = '';
+  renderNovaRota();
+}
+function fecharNovaRota(){ rascunhoNovaRota = []; pedidoBuscadoRota = null; iniciar(); }
+
+function renderNovaRota(){
+  const listaAdicionados = rascunhoNovaRota.map((d,i)=>{
+    const c = d.cliente||{};
+    return `<div class="pedidoadicionado">
+      <span class="desc"><b>Pedido ${esc(d.numero)}</b> — ${esc(c.nome||'sem cliente')}</span>
+      <button class="removeritem" onclick="removerDaNovaRota(${i})">Remover</button>
+    </div>`;
+  }).join('');
+  document.getElementById('lista').innerHTML = `
+    <div class="p">
+      <h3 style="font-size:19px">Buscar pedido</h3>
+      <div class="buscapedido">
+        <input type="tel" inputmode="numeric" id="numPedidoRota" placeholder="Número do pedido">
+        <button type="button" onclick="buscarPedidoRota()">Buscar</button>
+      </div>
+      <div id="resultadoPedidoRota"></div>
+      ${rascunhoNovaRota.length ? `
+        <h3 style="font-size:15px;margin-top:16px">Pedidos nessa rota (${rascunhoNovaRota.length})</h3>
+        ${listaAdicionados}
+        <div style="margin-top:12px"><label style="font-size:12px;color:#57574e;font-weight:600">Data da rota</label>
+        <input type="date" id="dataNovaRota" value="${dataBRHoje()}" style="width:100%;padding:12px;border:2px solid #e2e2d9;border-radius:10px;font:inherit;margin-top:4px"></div>
+        <button class="ok" style="margin-top:12px" onclick="criarNovaRota()">Criar rota com ${rascunhoNovaRota.length} pedido(s)</button>
+      ` : ''}
+      <button type="button" class="cancelarrota" onclick="fecharNovaRota()">Cancelar</button>
+    </div>`;
+}
+
+async function buscarPedidoRota(){
+  const numero = document.getElementById('numPedidoRota').value.trim();
+  if(!numero) return toast('Digite o número do pedido');
+  const caixa = document.getElementById('resultadoPedidoRota');
+  caixa.innerHTML = '<p class="mut" style="margin-top:10px">Buscando…</p>';
+  try{
+    const p = await api('/.netlify/functions/pedido?numero='+encodeURIComponent(numero));
+    pedidoBuscadoRota = p;
+    const c = p.cliente || {};
+    const itensHtml = (p.itens||[]).map((it,i)=>`<div class="itemrota">
+      <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}</span>
+      <input placeholder="cor" id="corItemRota-${i}">
+      <input type="number" min="0" placeholder="vol" id="volItemRota-${i}">
+    </div>`).join('') || '<p class="mut">Sem itens.</p>';
+    caixa.innerHTML = `
+      <div class="pedidoencontrado">
+        <div style="font-weight:800;font-size:17px">Pedido ${esc(p.numero)}</div>
+        <div style="font-weight:700;margin-top:6px">${esc(c.nome||'(sem cliente)')}</div>
+        <div class="mut">${esc([c.endereco,c.bairro,c.cidade].filter(Boolean).join(' - '))}</div>
+        ${itensHtml}
+        <button class="ok" style="margin-top:10px" onclick="adicionarNaNovaRota()">✓ Adicionar essa rota</button>
+      </div>`;
+  }catch(e){ caixa.innerHTML = `<div class="err" style="margin-top:10px">${esc(e.message)}</div>`; }
+}
+
+function adicionarNaNovaRota(){
+  const p = pedidoBuscadoRota;
+  if(!p) return;
+  const itens = (p.itens||[]).map((it,i)=>({
+    ...it,
+    cor: (document.getElementById('corItemRota-'+i)||{}).value || '',
+    volumes: Number((document.getElementById('volItemRota-'+i)||{}).value) || 0
+  }));
+  rascunhoNovaRota.push({ ...p, itens });
+  pedidoBuscadoRota = null;
+  document.getElementById('numPedidoRota').value = '';
+  toast('Pedido adicionado!');
+  renderNovaRota();
+}
+function removerDaNovaRota(i){ rascunhoNovaRota.splice(i,1); renderNovaRota(); }
+
+async function criarNovaRota(){
+  if(!rascunhoNovaRota.length) return;
+  const dataRota = document.getElementById('dataNovaRota').value;
+  try{
+    await api('/.netlify/functions/romaneios', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dataRota, paradas: rascunhoNovaRota }) });
+    toast('Rota criada!');
+    rascunhoNovaRota = []; pedidoBuscadoRota = null;
+    await iniciar();
+  }catch(e){ alert('Não foi possível criar a rota: ' + e.message); }
+}
 
 async function carregar(){
   try{
@@ -524,6 +682,12 @@ window.confirmarAssinatura = confirmarAssinatura;
 window.abrirRota = abrirRota;
 window.ouvirEndereco = ouvirEndereco;
 window.ouvirTelefone = ouvirTelefone;
+window.abrirNovaRota = abrirNovaRota;
+window.fecharNovaRota = fecharNovaRota;
+window.buscarPedidoRota = buscarPedidoRota;
+window.adicionarNaNovaRota = adicionarNaNovaRota;
+window.removerDaNovaRota = removerDaNovaRota;
+window.criarNovaRota = criarNovaRota;
 
 checarSessao();
 </script>
