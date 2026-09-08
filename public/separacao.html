@@ -404,6 +404,10 @@ async function criarNovaRota(){
   try{
     await api('/.netlify/functions/romaneios', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ freteiroId, dataRota, paradas: rascunhoNovaRota }) });
     toast('Rota criada!');
+    // Já marca essas paradas como "vistas" antes de recarregar — foi ele mesmo que
+    // criou, não faz sentido o sino acender um alerta de "chegou pedido novo" pra ele.
+    const baseline = Number(localStorage.getItem('ultimaContagemParadas') || 0);
+    localStorage.setItem('ultimaContagemParadas', String(baseline + rascunhoNovaRota.length));
     rascunhoNovaRota = []; pedidoBuscadoRota = null;
     await iniciar(true);
   }catch(e){ alert('Não foi possível criar a rota: ' + e.message); }
@@ -666,10 +670,10 @@ function renderResumoFinal(jaConfirmado){
   const linhas = rom.paradas.map((p,i) => {
     const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
     const itens = (p.itens||[]).length
-      ? (p.itens||[]).map(it=>`<div class="itemlinha">
+      ? (p.itens||[]).map(it=>`<div class="itemlinha ${it.jaNoFrete?'jafrete':''}">
           <span class="swmed" style="background:${corParaSwatch(it.cor)}"></span>
           <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}${it.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}</span>
-          <span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>
+          ${it.jaNoFrete ? '<span class="chipnofrete">✓ já no frete</span>' : `<span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>`}
         </div>`).join('')
       : '<div class="mut" style="padding:8px 0">Sem itens cadastrados nesse pedido.</div>';
     // Só dá pra desfazer volume enquanto o carregamento ainda não foi confirmado —

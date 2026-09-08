@@ -365,6 +365,10 @@ async function criarNovaRota(){
   try{
     await api('/.netlify/functions/romaneios', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dataRota, paradas: rascunhoNovaRota }) });
     toast('Rota criada!');
+    // Já marca essas paradas como "vistas" antes de recarregar — foi ele mesmo que
+    // criou, não faz sentido o sino acender um alerta de "chegou pedido novo" pra ele.
+    const baseline = Number(localStorage.getItem('ultimaContagemParadas') || 0);
+    localStorage.setItem('ultimaContagemParadas', String(baseline + rascunhoNovaRota.length));
     rascunhoNovaRota = []; pedidoBuscadoRota = null;
     await iniciar();
   }catch(e){ alert('Não foi possível criar a rota: ' + e.message); }
