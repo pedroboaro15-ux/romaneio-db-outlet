@@ -92,6 +92,12 @@ button:disabled{opacity:.5}
 .cancelarrota{width:100%;background:none;color:#6f6f66;border:0;padding:10px;font-size:14px;font-weight:600;margin-top:8px}
 .rota{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid #e2e2d9;border-left:5px solid #F2F250;text-decoration:none;display:block;color:inherit}
 .avisoOffline{background:#7a5416;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:600}
+/* Falar com o gerente/loja — mesmo padrão dos botões grandes de contato do cliente. */
+.contatosgerente{display:flex;gap:8px;flex-wrap:wrap;padding:12px;background:#fff;border-bottom:1px solid #e2e2d9}
+.botaogrande{flex:1;min-width:130px;text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:14px 6px;border-radius:12px;font-weight:700;font-size:12px;color:#fff}
+.botaogrande .emoji{font-size:26px}
+.btel{background:#0f8a4a}
+.bwpp{background:#25d366}
 .resumoLinha{border-bottom:1px solid #eeeee4;padding:12px 0}
 .resumoLinha:last-of-type{border-bottom:0}
 .desfazervol{margin-top:8px;background:#fff;border:1px solid #ddd;color:#6f6f66;font-size:12px;font-weight:600;padding:8px}
@@ -121,12 +127,19 @@ button:disabled{opacity:.5}
   <div class="hcima">
     <img src="/logo.svg" alt="Outlet dos Móveis DB">
     <h1 id="titulo">Carregando…</h1>
+    <button id="btnContato" style="width:auto;flex:none;padding:7px 10px;font-size:16px;background:#ffffff26;color:#fff">📞</button>
     <button id="btnNotif" style="width:auto;flex:none;padding:7px 10px;font-size:16px;background:#ffffff26;color:#fff"><span id="notifIcone">🔔</span><span id="notifBadge" class="badgeNotif" hidden></span></button>
     <button id="btnSair" style="width:auto;flex:none;padding:7px 11px;font-size:12px;background:#ffffff26;color:#fff">Sair</button>
   </div>
   <p id="sub"></p>
   <div class="prog"><i id="bar"></i></div>
 </header>
+<div id="painelContato" class="contatosgerente" hidden>
+  <a class="botaogrande btel" href="tel:83987919707"><span class="emoji">📞</span>Ligar pro gerente</a>
+  <a class="botaogrande bwpp" target="_blank" href="https://wa.me/5583987919707"><span class="emoji">💬</span>WhatsApp gerente</a>
+  <a class="botaogrande btel" href="tel:83996148397"><span class="emoji">📞</span>Ligar pra loja</a>
+  <a class="botaogrande bwpp" target="_blank" href="https://wa.me/5583996148397"><span class="emoji">💬</span>WhatsApp loja</a>
+</div>
 <div id="avisoNotif" class="avisoOffline" hidden></div>
 <main id="lista"></main>
 </div>
@@ -219,6 +232,11 @@ document.getElementById('btnSair').onclick = () => {
   if(!confirm('Sair do app?')) return;
   localStorage.removeItem('equipeToken'); localStorage.removeItem('equipeTipo');
   location.href = '/equipe';
+};
+
+document.getElementById('btnContato').onclick = () => {
+  const p = document.getElementById('painelContato');
+  p.hidden = !p.hidden;
 };
 
 /* ---------------- notificação push (grátis — recurso do navegador) ---------------- */

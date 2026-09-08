@@ -5,6 +5,12 @@
 
 ## O QUE MUDOU AGORA
 
+### Botão 📞 pra falar com você (gerente) ou com a loja (novo)
+Freteiro e estoquista agora têm um botão 📞 no topo da tela deles — ao lado do sino — que abre 4 opções: ligar ou WhatsApp pro seu número, ligar ou WhatsApp pro número da loja. Os números estão fixos no código (você me passou: gerente `83987919707`, loja `83996148397`) — se algum mudar, é só me avisar que eu atualizo.
+
+### Fotos do freteiro: só duas categorias, bem claras (ajuste)
+Simplifiquei pra exatamente duas, como você pediu: **"📷 Foto do produto na casa do cliente"** e **"💰 Comprovante de pagamento (se houver)"** — as duas continuam opcionais (não travam o "Entreguei"), cada uma mostra "✓ guardado" depois de enviada. A foto do vidro + assinatura continuam separadas dessas duas — aquilo é uma verificação obrigatória (só pra item com vidro), não uma categoria de foto solta.
+
 ### Bolinha vermelha no sino quando chega pedido novo (novo)
 Além da notificação push (que depende de ativar e, no iPhone, instalar), o sino 🔔 no topo da tela do freteiro e do estoquista agora ganha uma **bolinha vermelha** sempre que o total de paradas das rotas deles aumentou desde a última vez que abriram o app — ou seja, chegou pedido novo. Isso funciona **mesmo sem notificação ativada**, é só abrir o app.
 
