@@ -15,7 +15,9 @@ async function criarSessao(tipo, pessoaId, nome) {
   return token;
 }
 
-// Devolve { role, freteiroId, nome } ou null.
+// Devolve { role, freteiroId, pessoaId, nome } ou null. pessoaId é o id da pessoa (freteiro
+// ou estoquista) independente do papel — freteiroId só existe pra freteiro, por compatibilidade
+// com o resto do código que já usava esse nome.
 // Confere de novo se a pessoa ainda existe no cadastro — se você excluir um freteiro/
 // estoquista, o acesso dele cai na hora, mesmo que a sessão ainda não tivesse expirado.
 async function identificarSessao(token) {
@@ -30,8 +32,8 @@ async function identificarSessao(token) {
   const { data: pessoa } = await sb.from(tabela).select('id').eq('id', data.pessoa_id).maybeSingle();
   if (!pessoa) return null;
 
-  if (data.tipo === 'freteiro') return { role: 'freteiro', freteiroId: data.pessoa_id, nome: data.nome };
-  return { role: 'estoquista', freteiroId: null, nome: data.nome };
+  if (data.tipo === 'freteiro') return { role: 'freteiro', freteiroId: data.pessoa_id, pessoaId: data.pessoa_id, nome: data.nome };
+  return { role: 'estoquista', freteiroId: null, pessoaId: data.pessoa_id, nome: data.nome };
 }
 
 // Apaga todas as sessões ativas de uma pessoa — usado quando você remove ela do cadastro.

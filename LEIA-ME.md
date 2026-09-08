@@ -1,11 +1,57 @@
 # Romaneio Omie
 
 > **Atualização mais recente:** ver "O QUE MUDOU AGORA" logo abaixo.
-> **Rode o `supabase/schema.sql` de novo** (é seguro, só cria o que falta — dessa vez tem uma coluna nova, `valor_frete`) e depois suba o código no GitHub do jeito de sempre.
+> **Dessa vez tem 3 passos manuais** (nenhum é difícil, mas nenhum é opcional se você quiser notificação push funcionando): 1) rodar o `schema.sql` de novo, 2) adicionar 3 variáveis de ambiente no Netlify, 3) subir o código no GitHub. Detalhes na seção **"Ativar notificação push (passo a passo)"** logo abaixo.
 
 ## O QUE MUDOU AGORA
 
-### Confirmação de que o vidro não está quebrado (novo)
+### Botão 📞 pra falar com você (gerente) ou com a loja (novo)
+Freteiro e estoquista agora têm um botão 📞 no topo da tela deles — ao lado do sino — que abre 4 opções: ligar ou WhatsApp pro seu número, ligar ou WhatsApp pro número da loja. Os números estão fixos no código (você me passou: gerente `83987919707`, loja `83996148397`) — se algum mudar, é só me avisar que eu atualizo.
+
+### Fotos do freteiro: só duas categorias, bem claras (ajuste)
+Simplifiquei pra exatamente duas, como você pediu: **"📷 Foto do produto na casa do cliente"** e **"💰 Comprovante de pagamento (se houver)"** — as duas continuam opcionais (não travam o "Entreguei"), cada uma mostra "✓ guardado" depois de enviada. A foto do vidro + assinatura continuam separadas dessas duas — aquilo é uma verificação obrigatória (só pra item com vidro), não uma categoria de foto solta.
+
+### Bolinha vermelha no sino quando chega pedido novo (novo)
+Além da notificação push (que depende de ativar e, no iPhone, instalar), o sino 🔔 no topo da tela do freteiro e do estoquista agora ganha uma **bolinha vermelha** sempre que o total de paradas das rotas deles aumentou desde a última vez que abriram o app — ou seja, chegou pedido novo. Isso funciona **mesmo sem notificação ativada**, é só abrir o app.
+
+- **Freteiro**: conta só as paradas das rotas dele.
+- **Estoquista**: conta as paradas de **todas** as rotas (ele vê rota de todo mundo).
+
+A bolinha some sozinha assim que ele reabre o app de novo (contando aquilo como "já vi"). Entregar/separar não faz a bolinha reaparecer — só pedido novo de verdade aumenta a contagem.
+
+### Freteiro e estoquista podem começar uma rota nova, direto do celular
+Até agora só você montava romaneio. Agora, se não tiver rota criada ainda (ou se quiser adicionar outra), freteiro e estoquista têm um botão **"➕ Começar uma rota agora"** na tela deles. Funciona igualzinho à sua aba "Buscar pedido": digita o número do pedido, o app traz os dados da Omie, eles preenchem cor e volume de cada item, e criam a rota.
+
+Duas travas de segurança que valem a pena você saber:
+- **O freteiro só cria rota pra ele mesmo** — o app trava isso no servidor, nem que ele tente forçar outro nome.
+- **O freteiro e o estoquista não colocam valor de frete** — esse campo continua só seu, aparece em branco (R$ 0) quando criado por eles; você ajusta depois se precisar, editando o romaneio.
+- **Estoquista escolhe o freteiro** de uma lista (sem telefone nem outros dados, só nome) — já que ele não é o dono de rota nenhuma.
+
+### Notificação push de verdade (novo, e precisa de um passo seu)
+Agora, sempre que uma rota nova é criada (por você, pelo freteiro ou pelo estoquista) ou quando alguém adiciona mais pedidos numa rota, **o freteiro dono da rota e todos os estoquistas recebem uma notificação no celular**, mesmo com o app fechado — do jeito que qualquer app de verdade notifica.
+
+**Isso é notificação push de navegador — não é SMS nem WhatsApp automático, e não usa o número de telefone pra nada.** Só o login continua sendo o telefone; a notificação é um canal separado que o próprio celular ativa. Fiz assim de propósito: SMS/WhatsApp automático só existe via API paga (custaria dinheiro todo mês), e o site inteiro foi construído pra ser 100% grátis.
+
+**Pegadinha real do iPhone**: notificação push no iPhone só funciona depois que a pessoa "instala" o site (Compartilhar → Adicionar à Tela de Início) e abre por esse ícone — é uma trava da Apple, não tem como contornar de graça. No Android funciona direto do navegador, sem instalar nada. O app já mostra essa instrução na hora certa (quando um iPhone tenta ativar sem ter instalado).
+
+Freteiro/estoquista ativam tocando no sino 🔔 no topo da tela deles.
+
+#### Ativar notificação push (passo a passo — só uma vez)
+1. Rode o `supabase/schema.sql` de novo no Supabase (cria a tabela nova `push_subscriptions`).
+2. No Netlify: **Site configuration → Environment variables → Add a variable**, adicione essas 3:
+
+| Variável | Valor |
+|---|---|
+| `VAPID_PUBLIC_KEY` | (eu te mandei essas duas chaves na nossa conversa — **não** ficam guardadas aqui no código por segurança) |
+| `VAPID_PRIVATE_KEY` | idem — é uma chave privada, tem que ficar só no Netlify, nunca em um arquivo que vai pro GitHub |
+| `VAPID_SUBJECT` | `mailto:` seguido do seu e-mail (ex: `mailto:pedro@exemplo.com`) |
+
+   Essas duas primeiras chaves eu já gerei pra você (é só um par de chaves criptográficas, tipo uma fechadura e uma chave) — copie exatamente como eu mandei na conversa. Se perder, é só pedir que eu gero um par novo (só não pode ficar salvo em nenhum arquivo do projeto).
+3. **Deploys → Trigger deploy** pra aplicar as variáveis, e suba o código no GitHub do jeito de sempre.
+
+Se pular esses passos, nada quebra — o app funciona normal, só que sem mandar notificação (o sino fica sem efeito).
+
+### Confirmação de que o vidro não está quebrado
 Na separação, quando chega a vez de um volume que é vidro, o estoquista **não consegue** tocar em "Confirmei o volume" até marcar uma caixinha: **"Conferi — o vidro não está quebrado"**. Sem marcar, o botão fica cinza e travado.
 
 Se estiver quebrado de verdade, tem um botão **"🔴 Está quebrado — avisar o gerente"** que registra na hora como problema (mesma lógica de "houve problema" que já existia na aba Romaneios, com responsável "estoque" e motivo "Móvel quebrado") — você vê isso no Painel e na aba Romaneios, igual a qualquer outro problema.
@@ -285,6 +331,9 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas 
 | `netlify/functions/equipe-login.js` | Login só por telefone (freteiro/estoquista) |
 | `netlify/functions/parada-separar.js` | Estoquista confirma (ou desfaz) volume a volume |
 | `netlify/functions/parada-item-carregado.js` | Marca/desmarca um item como "já no frete" |
+| `netlify/functions/push-subscrever.js` | Salva/remove a notificação push do celular de quem ativou |
+| `netlify/functions/lib/push.js` | Manda a notificação push (usa a biblioteca `web-push`) |
+| `public/sw.js` | Service worker — só recebe e mostra a notificação push |
 | `netlify/functions/foto-upload.js` | Recebe foto (produto/carro) e guarda no Storage |
 | `netlify/functions/conferencia.js` | Entregas aguardando sua conferência (pagamento/estoque) |
 | `netlify/functions/historico-cliente.js` | Problemas anteriores de um cliente |

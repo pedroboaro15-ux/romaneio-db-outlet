@@ -77,8 +77,27 @@ button:disabled{opacity:.5}
 .done{background:#eafaf1;border:1px solid #c8ecd9;border-radius:10px;padding:12px;text-align:center;color:#215e3f;font-weight:800;margin-top:12px}
 .empty{text-align:center;padding:40px;color:#6f6f66}
 .err{background:#fdeaea;color:#7f1d1d;padding:8px 10px;border-radius:8px;font-size:13px;margin-bottom:10px}
+/* Criar rota nova direto do celular */
+.buscapedido{display:flex;gap:8px}
+.buscapedido input{flex:1;padding:13px;border:2px solid #e2e2d9;border-radius:10px;font:inherit}
+.buscapedido button{flex:0 0 auto;width:auto;padding:13px 18px;background:#14140F;color:#fff}
+.pedidoencontrado{margin-top:12px;background:#fafaf4;border:1px solid #eaeadf;border-radius:11px;padding:14px}
+.itemrota{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eeeee4;flex-wrap:wrap}
+.itemrota:last-child{border-bottom:0}
+.itemrota .desc{flex:1;min-width:120px;font-size:13px}
+.itemrota input{flex:0 0 auto;width:70px;padding:8px;border:1px solid #ddd;border-radius:7px;font:inherit;font-size:13px}
+.pedidoadicionado{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eeeee4}
+.pedidoadicionado .desc{flex:1;font-size:14px}
+.removeritem{flex:0 0 auto;width:auto;padding:6px 10px;font-size:12px;background:#fff;border:1px solid #ddd;color:#b91c1c}
+.cancelarrota{width:100%;background:none;color:#6f6f66;border:0;padding:10px;font-size:14px;font-weight:600;margin-top:8px}
 .rota{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid #e2e2d9;border-left:5px solid #F2F250;text-decoration:none;display:block;color:inherit}
 .avisoOffline{background:#7a5416;color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:600}
+/* Falar com o gerente/loja — mesmo padrão dos botões grandes de contato do cliente. */
+.contatosgerente{display:flex;gap:8px;flex-wrap:wrap;padding:12px;background:#fff;border-bottom:1px solid #e2e2d9}
+.botaogrande{flex:1;min-width:130px;text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:14px 6px;border-radius:12px;font-weight:700;font-size:12px;color:#fff}
+.botaogrande .emoji{font-size:26px}
+.btel{background:#0f8a4a}
+.bwpp{background:#25d366}
 .resumoLinha{border-bottom:1px solid #eeeee4;padding:12px 0}
 .resumoLinha:last-of-type{border-bottom:0}
 .desfazervol{margin-top:8px;background:#fff;border:1px solid #ddd;color:#6f6f66;font-size:12px;font-weight:600;padding:8px}
@@ -95,6 +114,9 @@ button:disabled{opacity:.5}
 .mut{color:#6f6f66;font-size:12px}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#14140F;color:#F2F250;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:600;z-index:99;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center}
 .toast.show{opacity:1}
+/* Bolinha vermelha no sino quando chega pedido novo desde a última vez que abriu o app. */
+#btnNotif{position:relative}
+.badgeNotif{position:absolute;top:2px;right:2px;width:10px;height:10px;background:#e74c3c;border-radius:50%;border:2px solid #14140F}
 </style>
 </head>
 <body>
@@ -105,11 +127,20 @@ button:disabled{opacity:.5}
   <div class="hcima">
     <img src="/logo.svg" alt="Outlet dos Móveis DB">
     <h1 id="titulo">Carregando…</h1>
+    <button id="btnContato" style="width:auto;flex:none;padding:7px 10px;font-size:16px;background:#ffffff26;color:#fff">📞</button>
+    <button id="btnNotif" style="width:auto;flex:none;padding:7px 10px;font-size:16px;background:#ffffff26;color:#fff"><span id="notifIcone">🔔</span><span id="notifBadge" class="badgeNotif" hidden></span></button>
     <button id="btnSair" style="width:auto;flex:none;padding:7px 11px;font-size:12px;background:#ffffff26;color:#fff">Sair</button>
   </div>
   <p id="sub"></p>
   <div class="prog"><i id="bar"></i></div>
 </header>
+<div id="painelContato" class="contatosgerente" hidden>
+  <a class="botaogrande btel" href="tel:83987919707"><span class="emoji">📞</span>Ligar pro gerente</a>
+  <a class="botaogrande bwpp" target="_blank" href="https://wa.me/5583987919707"><span class="emoji">💬</span>WhatsApp gerente</a>
+  <a class="botaogrande btel" href="tel:83996148397"><span class="emoji">📞</span>Ligar pra loja</a>
+  <a class="botaogrande bwpp" target="_blank" href="https://wa.me/5583996148397"><span class="emoji">💬</span>WhatsApp loja</a>
+</div>
+<div id="avisoNotif" class="avisoOffline" hidden></div>
 <main id="lista"></main>
 </div>
 <div class="toast" id="toast"></div>
@@ -195,6 +226,7 @@ function checarSessao(){
   if(!localStorage.getItem('equipeToken')){ location.href = '/equipe'; return; }
   document.getElementById('tela-app').hidden = false;
   atualizarAvisoOffline(); processarFila(); iniciar();
+  atualizarBotaoNotif();
 }
 document.getElementById('btnSair').onclick = () => {
   if(!confirm('Sair do app?')) return;
@@ -202,35 +234,202 @@ document.getElementById('btnSair').onclick = () => {
   location.href = '/equipe';
 };
 
+document.getElementById('btnContato').onclick = () => {
+  const p = document.getElementById('painelContato');
+  p.hidden = !p.hidden;
+};
+
+/* ---------------- notificação push (grátis — recurso do navegador) ---------------- */
+const VAPID_PUBLIC_KEY = 'BFC7weeC6mlzDogw_rk6P-ot8EbraPh_HfMsgIsylmFZ1nY767H_Q7hJkQPFTpYZHQTivPv4sVY6d3Ig6t8rchM';
+function base64UrlParaBytes(base64){
+  const pad = '='.repeat((4 - base64.length % 4) % 4);
+  const b64 = (base64 + pad).replace(/-/g,'+').replace(/_/g,'/');
+  const raw = atob(b64);
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+const noIOSNaoInstalado = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.navigator.standalone;
+
+async function atualizarBotaoNotif(){
+  const btn = document.getElementById('btnNotif');
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){ btn.hidden = true; return; }
+  try{
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    const sub = await reg.pushManager.getSubscription();
+    document.getElementById('notifIcone').textContent = sub ? '🔔' : '🔕';
+    btn.title = sub ? 'Notificações ativadas' : 'Ativar notificações';
+  }catch(e){ /* segue sem notificação, não trava o app */ }
+}
+
+document.getElementById('btnNotif').onclick = async () => {
+  const aviso = document.getElementById('avisoNotif');
+  if(noIOSNaoInstalado()){
+    aviso.hidden = false;
+    aviso.textContent = '📱 No iPhone: toque em Compartilhar → "Adicionar à Tela de Início", abra o app por esse ícone, e toque no 🔔 de novo.';
+    return;
+  }
+  try{
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    const jaTem = await reg.pushManager.getSubscription();
+    if(jaTem){
+      await jaTem.unsubscribe();
+      await api('/.netlify/functions/push-subscrever', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subscription: jaTem, remover: true }) }).catch(()=>{});
+      toast('Notificações desativadas');
+    } else {
+      const permissao = await Notification.requestPermission();
+      if(permissao !== 'granted'){ toast('Sem permissão pra notificar — ative nas configurações do navegador'); return; }
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: base64UrlParaBytes(VAPID_PUBLIC_KEY) });
+      await api('/.netlify/functions/push-subscrever', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subscription: sub }) });
+      toast('Notificações ativadas!');
+    }
+  }catch(e){ toast('Não deu pra mexer nas notificações: ' + e.message); }
+  atualizarBotaoNotif();
+};
+
+// Bolinha vermelha no sino: acende quando o total de paradas de TODAS as rotas (o
+// estoquista vê rota de todo mundo, não só a dele) cresceu desde a última vez que abriu
+// o app — chegou pedido novo em qualquer rota.
+function atualizarBadgeNotif(totalAgora){
+  const badge = document.getElementById('notifBadge');
+  if(!badge) return;
+  const anterior = Number(localStorage.getItem('ultimaContagemParadas') || 0);
+  badge.hidden = !(totalAgora > anterior);
+  localStorage.setItem('ultimaContagemParadas', String(totalAgora));
+}
+
 // Estoquista vê a(s) rota(s) de HOJE EM DIANTE — não some se já tiver rota criada pra depois.
 // forcarLista = veio do botão "Voltar": mostra a lista mesmo tendo só uma rota, senão
 // o botão parecia não fazer nada (reabria a mesma rota na hora).
 async function iniciar(forcarLista){
   try{
     const rotas = await api('/.netlify/functions/minhas-rotas');
+    atualizarBadgeNotif(rotas.reduce((s,r)=>s+(r.totalParadas||0), 0));
+    document.getElementById('bar').style.width = '0%';
+    const btnNovaRota = '<button class="amarelo" style="margin-top:12px" onclick="abrirNovaRota()">➕ Começar uma rota agora</button>';
     if(!rotas.length){
       document.getElementById('titulo').textContent = 'Sem rota';
       document.getElementById('sub').textContent = '';
-      document.getElementById('lista').innerHTML = '<div class="empty">Nenhuma rota criada ainda. Fale com o gerente.</div>';
+      document.getElementById('lista').innerHTML = '<div class="empty">Nenhuma rota criada ainda.</div>' + btnNovaRota;
       return;
     }
     if(rotas.length === 1 && !forcarLista){ idAtual = rotas[0].id; await carregar(); return; }
     document.getElementById('titulo').textContent = rotas.length === 1 ? 'Sua rota' : 'Rotas';
     document.getElementById('sub').textContent = rotas.length === 1 ? 'Só essa rota por enquanto:' : 'Escolha qual rota separar:';
-    document.getElementById('bar').style.width = '0%';
     document.getElementById('lista').innerHTML = rotas.map(r => `
       <a class="rota" href="#" onclick="abrirRota('${r.id}');return false;">
         <span class="n">${esc(r.codigo)}</span>
         ${r.carregado?'<span class="n" style="background:#eafaf1;color:#215e3f">✓ já carregada</span>':''}
         <div style="font-size:18px;font-weight:800;margin-top:7px">${esc(r.freteiroNome||'sem freteiro')}</div>
         <div class="mut">${esc(r.data||'')} · ${r.totalParadas} parada(s)</div>
-      </a>`).join('');
+      </a>`).join('') + btnNovaRota;
   }catch(e){
     document.getElementById('titulo').textContent = 'Sem internet';
     document.getElementById('lista').innerHTML = '<div class="empty">Não deu pra carregar a rota agora. Assim que voltar o sinal, tente de novo.</div>';
   }
 }
 function abrirRota(id){ idAtual = id; carregar(); }
+
+/* ---------------- começar uma rota nova (estoquista escolhe o freteiro) ---------------- */
+let rascunhoNovaRota = [], pedidoBuscadoRota = null, freteirosParaEscolher = [];
+const dataBRHoje = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Fortaleza'}).format(new Date());
+
+async function abrirNovaRota(){
+  rascunhoNovaRota = []; pedidoBuscadoRota = null;
+  document.getElementById('titulo').textContent = 'Nova rota';
+  document.getElementById('sub').textContent = '';
+  try{ freteirosParaEscolher = await api('/.netlify/functions/freteiros'); }catch(e){ freteirosParaEscolher = []; }
+  renderNovaRota();
+}
+function fecharNovaRota(){ rascunhoNovaRota = []; pedidoBuscadoRota = null; iniciar(true); }
+
+function renderNovaRota(){
+  const listaAdicionados = rascunhoNovaRota.map((d,i)=>{
+    const c = d.cliente||{};
+    return `<div class="pedidoadicionado">
+      <span class="desc"><b>Pedido ${esc(d.numero)}</b> — ${esc(c.nome||'sem cliente')}</span>
+      <button class="removeritem" onclick="removerDaNovaRota(${i})">Remover</button>
+    </div>`;
+  }).join('');
+  const opcoesFr = freteirosParaEscolher.map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join('');
+  document.getElementById('lista').innerHTML = `
+    <div class="p">
+      <h3 style="font-size:19px;margin-top:0">Buscar pedido</h3>
+      <div class="buscapedido">
+        <input type="tel" inputmode="numeric" id="numPedidoRota" placeholder="Número do pedido">
+        <button type="button" onclick="buscarPedidoRota()">Buscar</button>
+      </div>
+      <div id="resultadoPedidoRota"></div>
+      ${rascunhoNovaRota.length ? `
+        <h3 style="font-size:15px;margin-top:16px">Pedidos nessa rota (${rascunhoNovaRota.length})</h3>
+        ${listaAdicionados}
+        <div style="margin-top:12px"><label style="font-size:12px;color:#57574e;font-weight:600">Freteiro *</label>
+        <select id="freteiroNovaRota" style="width:100%;padding:12px;border:2px solid #e2e2d9;border-radius:10px;font:inherit;margin-top:4px">
+          <option value="">— escolher —</option>${opcoesFr}
+        </select></div>
+        <div style="margin-top:10px"><label style="font-size:12px;color:#57574e;font-weight:600">Data da rota</label>
+        <input type="date" id="dataNovaRota" value="${dataBRHoje()}" style="width:100%;padding:12px;border:2px solid #e2e2d9;border-radius:10px;font:inherit;margin-top:4px"></div>
+        <button class="ok" style="margin-top:12px" onclick="criarNovaRota()">Criar rota com ${rascunhoNovaRota.length} pedido(s)</button>
+      ` : ''}
+      <button type="button" class="cancelarrota" onclick="fecharNovaRota()">Cancelar</button>
+    </div>`;
+}
+
+async function buscarPedidoRota(){
+  const numero = document.getElementById('numPedidoRota').value.trim();
+  if(!numero) return toast('Digite o número do pedido');
+  const caixa = document.getElementById('resultadoPedidoRota');
+  caixa.innerHTML = '<p class="mut" style="margin-top:10px">Buscando…</p>';
+  try{
+    const p = await api('/.netlify/functions/pedido?numero='+encodeURIComponent(numero));
+    pedidoBuscadoRota = p;
+    const c = p.cliente || {};
+    const itensHtml = (p.itens||[]).map((it,i)=>`<div class="itemrota">
+      <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}</span>
+      <input placeholder="cor" id="corItemRota-${i}">
+      <input type="number" min="0" placeholder="vol" id="volItemRota-${i}">
+    </div>`).join('') || '<p class="mut">Sem itens.</p>';
+    caixa.innerHTML = `
+      <div class="pedidoencontrado">
+        <div style="font-weight:800;font-size:17px">Pedido ${esc(p.numero)}</div>
+        <div style="font-weight:700;margin-top:6px">${esc(c.nome||'(sem cliente)')}</div>
+        <div class="mut">${esc([c.endereco,c.bairro,c.cidade].filter(Boolean).join(' - '))}</div>
+        ${itensHtml}
+        <button class="ok" style="margin-top:10px" onclick="adicionarNaNovaRota()">✓ Adicionar essa rota</button>
+      </div>`;
+  }catch(e){ caixa.innerHTML = `<div class="err" style="margin-top:10px">${esc(e.message)}</div>`; }
+}
+
+function adicionarNaNovaRota(){
+  const p = pedidoBuscadoRota;
+  if(!p) return;
+  const itens = (p.itens||[]).map((it,i)=>({
+    ...it,
+    cor: (document.getElementById('corItemRota-'+i)||{}).value || '',
+    volumes: Number((document.getElementById('volItemRota-'+i)||{}).value) || 0
+  }));
+  rascunhoNovaRota.push({ ...p, itens });
+  pedidoBuscadoRota = null;
+  document.getElementById('numPedidoRota').value = '';
+  toast('Pedido adicionado!');
+  renderNovaRota();
+}
+function removerDaNovaRota(i){ rascunhoNovaRota.splice(i,1); renderNovaRota(); }
+
+async function criarNovaRota(){
+  if(!rascunhoNovaRota.length) return;
+  const freteiroId = document.getElementById('freteiroNovaRota').value;
+  const dataRota = document.getElementById('dataNovaRota').value;
+  if(!freteiroId) return toast('Escolha o freteiro dessa rota');
+  try{
+    await api('/.netlify/functions/romaneios', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ freteiroId, dataRota, paradas: rascunhoNovaRota }) });
+    toast('Rota criada!');
+    // Já marca essas paradas como "vistas" antes de recarregar — foi ele mesmo que
+    // criou, não faz sentido o sino acender um alerta de "chegou pedido novo" pra ele.
+    const baseline = Number(localStorage.getItem('ultimaContagemParadas') || 0);
+    localStorage.setItem('ultimaContagemParadas', String(baseline + rascunhoNovaRota.length));
+    rascunhoNovaRota = []; pedidoBuscadoRota = null;
+    await iniciar(true);
+  }catch(e){ alert('Não foi possível criar a rota: ' + e.message); }
+}
 
 // Carregar o caminhão é o CONTRÁRIO da ordem de entrega: quem sai primeiro do caminhão
 // tem que ter entrado por último. Por isso mostramos a rota de trás pra frente aqui.
@@ -489,10 +688,10 @@ function renderResumoFinal(jaConfirmado){
   const linhas = rom.paradas.map((p,i) => {
     const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
     const itens = (p.itens||[]).length
-      ? (p.itens||[]).map(it=>`<div class="itemlinha">
+      ? (p.itens||[]).map(it=>`<div class="itemlinha ${it.jaNoFrete?'jafrete':''}">
           <span class="swmed" style="background:${corParaSwatch(it.cor)}"></span>
           <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}${it.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}</span>
-          <span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>
+          ${it.jaNoFrete ? '<span class="chipnofrete">✓ já no frete</span>' : `<span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>`}
         </div>`).join('')
       : '<div class="mut" style="padding:8px 0">Sem itens cadastrados nesse pedido.</div>';
     // Só dá pra desfazer volume enquanto o carregamento ainda não foi confirmado —
@@ -679,6 +878,12 @@ window.desfazerCarregamento = desfazerCarregamento;
 window.marcarJaNoFrete = marcarJaNoFrete;
 window.atualizarBotaoVolume = atualizarBotaoVolume;
 window.reportarVidroQuebrado = reportarVidroQuebrado;
+window.abrirNovaRota = abrirNovaRota;
+window.fecharNovaRota = fecharNovaRota;
+window.buscarPedidoRota = buscarPedidoRota;
+window.adicionarNaNovaRota = adicionarNaNovaRota;
+window.removerDaNovaRota = removerDaNovaRota;
+window.criarNovaRota = criarNovaRota;
 
 checarSessao();
 </script>

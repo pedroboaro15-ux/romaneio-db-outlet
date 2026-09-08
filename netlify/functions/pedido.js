@@ -1,6 +1,7 @@
 // GET /.netlify/functions/pedido?numero=1234
 // Busca UM pedido de venda na Omie pelo número + endereço de entrega.
-const { requireAdmin } = require('./lib/auth');
+// Freteiro/estoquista também usam isso pra "começar uma rota" direto do celular.
+const { identificar } = require('./lib/auth');
 const { json } = require('./lib/http');
 const omie = require('./lib/omie');
 const { buscarCliente } = require('./lib/clientes');
@@ -83,8 +84,8 @@ function normalizarPedido(raw) {
 
 exports.handler = async event => {
   if (event.httpMethod !== 'GET') return json(405, { erro: 'método não permitido' });
-  const user = await requireAdmin(event);
-  if (!user) return json(401, { erro: 'não autenticado' });
+  const quem = await identificar(event);
+  if (!quem) return json(401, { erro: 'não autenticado' });
 
   const numero = (event.queryStringParameters || {}).numero;
   if (!numero) return json(400, { erro: 'informe o número do pedido' });

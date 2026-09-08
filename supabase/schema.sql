@@ -185,6 +185,21 @@ create table if not exists public.clientes_cache (
   atualizado_em timestamptz default now()
 );
 
+-- Notificação push (grátis, é recurso do navegador — não usa telefone nem SMS/WhatsApp).
+-- Cada linha é um "canal" de notificação: um navegador de um freteiro/estoquista que
+-- ativou. A mesma pessoa pode ter mais de um (celular + outro aparelho).
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  pessoa_id uuid not null,
+  tipo text not null, -- 'freteiro' | 'estoquista'
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  criado_em timestamptz default now()
+);
+create index if not exists push_subscriptions_pessoa_idx on public.push_subscriptions(pessoa_id);
+alter table public.push_subscriptions enable row level security;
+
 alter table public.freteiros enable row level security;
 alter table public.romaneios enable row level security;
 alter table public.paradas enable row level security;
