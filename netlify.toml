@@ -8,6 +8,13 @@
 [build.environment]
   SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL"
 
+# Ingestão diária dos pedidos de venda da Omie, que alimenta a aba Vendas.
+# O horário do cron é sempre em UTC: 08:10 UTC = 05:10 na Paraíba. Roda de
+# madrugada, então quando alguém abre o painel de manhã o número já está lá.
+# A função reprocessa os últimos dias (não só ontem) pra pegar pedido lançado atrasado.
+[functions."ingerir-pedidos-omie"]
+  schedule = "10 8 * * *"
+
 # Links dos freteiros e estoquistas: /entrega/<id> e /separacao/<id>
 # (sem id, /entrega e /separacao mostram a lista de rotas de quem logou)
 [[redirects]]
