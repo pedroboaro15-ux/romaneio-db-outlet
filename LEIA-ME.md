@@ -1,7 +1,7 @@
 # Romaneio Omie
 
 > **Atualização mais recente:** ver "O QUE MUDOU AGORA" logo abaixo.
-> **Dessa vez tem 3 passos manuais** (nenhum é difícil, mas nenhum é opcional se você quiser notificação push funcionando): 1) rodar o `schema.sql` de novo, 2) adicionar 3 variáveis de ambiente no Netlify, 3) subir o código no GitHub. Detalhes na seção **"Ativar notificação push (passo a passo)"** logo abaixo.
+> **Dessa vez tem 3 passos manuais** (nenhum é difícil, mas nenhum é opcional pra aba Vendas funcionar): 1) rodar o `schema.sql` de novo, 2) subir o código no GitHub, 3) clicar em "Conferir campos da Omie" na aba Vendas **antes** de puxar o histórico. Detalhes na seção **"Aba Vendas"** logo abaixo.
 
 ## O QUE MUDOU AGORA
 
