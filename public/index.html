@@ -320,6 +320,16 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
       </table></div>
     </div>
 
+    <div class="card" id="cardMeses" hidden>
+      <h2>Mês a mês</h2>
+      <p class="mut" style="margin-top:-6px">Quanto cada vendedor fez em cada mês do período escolhido. Serve pra comparar se está subindo ou caindo. Escolha um período de vários meses pra essa tabela ficar útil.</p>
+      <div style="overflow-x:auto"><table>
+        <thead><tr id="cabMeses"></tr></thead>
+        <tbody id="tabMeses"></tbody>
+        <tfoot id="rodMeses"></tfoot>
+      </table></div>
+    </div>
+
     <div class="card" id="cardRevisar" hidden>
       <h2>Pedidos que não bateram o padrão</h2>
       <p class="mut" style="margin-top:-6px">Esses ficaram de fora da conta acima porque não deu pra saber o vendedor pela observação. Arrume aqui e eles entram no relatório. O que você corrigir na mão não é desfeito pela carga da madrugada.</p>
@@ -1266,7 +1276,7 @@ function renderVendas(r){
     </div>`).join('') : '';
 
   $('#tabVendas').innerHTML = r.porVendedor.length ? r.porVendedor.map(v => `<tr>
-    <td>${esc(v.vendedor)}</td>
+    <td>${esc(v.vendedor)}${v.semComissao ? '<span class="mut"> · sem comissão</span>' : ''}</td>
     <td class="right">${money(v.valor)}</td>
     <td class="center">${v.pedidos}</td>
     <td class="center">${money(v.ticketMedio)}</td>
@@ -1290,23 +1300,55 @@ function renderVendas(r){
         <div><label>Canal</label><input class="vdCanal" list="canaisConhecidos" placeholder="PRESENCIAL"></div>
         <div><label>Vendedor</label><input class="vdVendedor" list="vendedoresConhecidos" placeholder="Nome de quem vendeu"></div>
         <div class="auto"><button class="btn sm vdSalvar">Salvar</button></div>
+        <div class="auto"><button class="btn ghost sm vdSemVendedor">Foi venda sua, sem comissão</button></div>
       </div>
     </div>`).join('')
     + (r.revisarTruncado ? '<p class="mut">Mostrando os primeiros. Corrija esses e busque de novo pra ver o resto.</p>' : '');
 
-  $$('#listaRevisar .vdSalvar').forEach(b => b.onclick = async () => {
-    const linha = b.closest('.linharevisar');
-    const canal = linha.querySelector('.vdCanal').value.trim();
-    const vendedor = linha.querySelector('.vdVendedor').value.trim();
-    if(!canal || !vendedor) return toast('Preencha canal e vendedor');
-    b.disabled = true;
+  async function corrigirPedido(botao, canal, vendedor){
+    const linha = botao.closest('.linharevisar');
+    botao.disabled = true;
     try{
       await api('/.netlify/functions/relatorio-vendas',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({pedidoId: linha.dataset.pedido, canal, vendedor})});
       toast('Pedido corrigido');
       $('#vdBuscar').click();
-    }catch(e){ b.disabled = false; erro(e.message); }
+    }catch(e){ botao.disabled = false; erro(e.message); }
+  }
+
+  $$('#listaRevisar .vdSalvar').forEach(b => b.onclick = () => {
+    const linha = b.closest('.linharevisar');
+    const canal = linha.querySelector('.vdCanal').value.trim();
+    const vendedor = linha.querySelector('.vdVendedor').value.trim();
+    if(!canal || !vendedor) return toast('Preencha canal e vendedor');
+    corrigirPedido(b, canal, vendedor);
   });
+
+  // Pedido que o próprio dono lançou: não teve vendedor e não gera comissão.
+  // Não é erro, é categoria — por isso sai da lista de pendências num clique só.
+  $$('#listaRevisar .vdSemVendedor').forEach(b => b.onclick = () => {
+    const linha = b.closest('.linharevisar');
+    corrigirPedido(b, linha.querySelector('.vdCanal').value.trim(), 'SEM VENDEDOR');
+  });
+
+  // Comparação mês a mês: vendedores nas linhas, meses nas colunas.
+  const meses = r.meses || [];
+  $('#cardMeses').hidden = meses.length < 2;
+  if(meses.length >= 2){
+    const rotulo = m => { const [a,mm] = m.split('-'); return ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][Number(mm)-1] + '/' + a.slice(2); };
+    $('#cabMeses').innerHTML = '<th>Vendedor</th>' + meses.map(m=>`<th class="right">${rotulo(m)}</th>`).join('') + '<th class="right">Total</th>';
+    $('#tabMeses').innerHTML = r.porVendedor.map(v => `<tr>
+      <td>${esc(v.vendedor)}${v.semComissao ? '<span class="mut"> · sem comissão</span>' : ''}</td>
+      ${meses.map(m => `<td class="right">${(v.porMes||{})[m] ? money(v.porMes[m].valor) : '<span class="mut">-</span>'}</td>`).join('')}
+      <td class="right"><strong>${money(v.valor)}</strong></td>
+    </tr>`).join('');
+    const tm = r.totaisPorMes || {};
+    $('#rodMeses').innerHTML = `<tr>
+      <td><strong>Total do mês</strong></td>
+      ${meses.map(m => `<td class="right"><strong>${tm[m] ? money(tm[m].valor) : '-'}</strong></td>`).join('')}
+      <td></td>
+    </tr>`;
+  }
 
   const ia = r.conferirIA || [];
   $('#cardIA').hidden = !ia.length;

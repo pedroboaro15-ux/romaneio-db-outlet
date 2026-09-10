@@ -20,6 +20,7 @@ const { gerarJSON, temChave } = require('./lib/gemini');
 
 const LOTE = 25;          // observações por chamada ao Gemini
 const ORCAMENTO_MS = 7000;
+const SEM_VENDEDOR = 'SEM VENDEDOR';   // venda do próprio dono, sem comissão
 
 function montarPrompt(vendedores, canais, itens) {
   return [
@@ -31,6 +32,8 @@ function montarPrompt(vendedores, canais, itens) {
     '',
     'VENDEDORES QUE EXISTEM NA LOJA (responda EXATAMENTE um destes nomes):',
     ...vendedores.map(v => '- ' + v),
+    '- SEM VENDEDOR  (use quando o texto indicar que foi o próprio dono/a loja que',
+    '  lançou o pedido, sem vendedor envolvido)',
     '',
     'CANAIS CONHECIDOS: ' + canais.join(', '),
     '',
@@ -38,6 +41,7 @@ function montarPrompt(vendedores, canais, itens) {
     '- Se o texto não deixar claro quem vendeu, responda "DESCONHECIDO". Não chute.',
     '- Nome parecido só vale se for claramente a mesma pessoa (erro de digitação).',
     '- Nunca invente um vendedor que não está na lista.',
+    '- "DESCONHECIDO" (não sei dizer) é diferente de "SEM VENDEDOR" (não teve vendedor).',
     '- Se o canal não aparecer, responda "DESCONHECIDO" no canal.',
     '',
     'OBSERVAÇÕES:',
@@ -103,8 +107,10 @@ exports.handler = async event => {
         const vend = String((r && r.vendedor) || '').trim().toUpperCase();
         const canal = String((r && r.canal) || '').trim().toUpperCase();
 
-        // A trava: só aceita nome que existe de verdade na loja.
-        if (!vend || vend === 'DESCONHECIDO' || !vendedores.includes(vend)) { desconhecidos++; continue; }
+        // A trava: só aceita nome que existe de verdade na loja (mais "SEM VENDEDOR",
+        // que é a venda do próprio dono). Qualquer outra coisa é chute e vai pro manual.
+        const permitido = vendedores.includes(vend) || vend === SEM_VENDEDOR;
+        if (!vend || vend === 'DESCONHECIDO' || !permitido) { desconhecidos++; continue; }
 
         const { error } = await sb.from('vendas_observacoes').update({
           canal: (canal && canal !== 'DESCONHECIDO') ? canal : '',

@@ -30,12 +30,28 @@ const ORCAMENTO_MS = 7000;      // para antes do corte de 10s do Netlify
 const CAMPOS = {
   id:      ['cabecalho.codigo_pedido'],
   numero:  ['cabecalho.numero_pedido'],
-  data:    ['cabecalho.data_previsao', 'informacoes_adicionais.dInc', 'cabecalho.data_emissao'],
+  // Data da VENDA, ou seja, quando o pedido foi lançado. NÃO é a previsão de entrega
+  // ("data_previsao") nem a data da nota: um pedido vendido em janeiro pra entregar em
+  // março é venda de janeiro. Por isso a data de inclusão vem primeiro na lista, e a
+  // previsão ficou por último, só como último recurso.
+  data:    ['infoCadastro.dInc', 'informacoes_adicionais.dInc', 'cabecalho.data_pedido', 'cabecalho.data_previsao'],
   valor:   ['total_pedido.valor_total_pedido', 'total_pedido.valor_mercadorias'],
   cliente: ['cabecalho.codigo_cliente'],
   etapa:   ['cabecalho.etapa'],
   obs:     ['observacoes.obs_venda', 'informacoes_adicionais.obs_venda', 'observacoes.obsVenda']
 };
+
+// Só pro diagnóstico: mostra o que CADA caminho candidato achou, pra dar pra escolher
+// olhando, em vez de confiar na ordem que eu chutei.
+function candidatos(obj, caminhos) {
+  const fora = {};
+  for (const caminho of caminhos) {
+    let v = obj;
+    for (const parte of caminho.split('.')) { if (v == null) break; v = v[parte]; }
+    fora[caminho] = (v == null || v === '') ? null : v;
+  }
+  return fora;
+}
 
 // Pega o primeiro caminho que existir de verdade no objeto.
 function pegar(obj, caminhos) {
@@ -178,6 +194,10 @@ exports.handler = async event => {
         totalDeRegistros: r.total_de_registros,
         // o que os caminhos configurados acham hoje
         lidoPelosCampos: montarLinha(primeiro),
+        // CONFIRA ESTES DOIS. A data tem que ser a da VENDA, não a previsão de entrega,
+        // e a observação tem que vir com o texto "CANAL||VENDEDOR||OBS: ...".
+        candidatosDeData: candidatos(primeiro, CAMPOS.data),
+        candidatosDeObservacao: candidatos(primeiro, CAMPOS.obs),
         // as chaves de primeiro nível, pra bater o olho rápido
         blocosDoPedido: Object.keys(primeiro),
         pedidoCru: primeiro

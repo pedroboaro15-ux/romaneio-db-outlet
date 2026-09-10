@@ -12,6 +12,12 @@ Os pedidos são trazidos da Omie **de madrugada, sozinho** (05h10 da Paraíba), 
 
 Os pedidos cuja observação não bateu o padrão **não somem e não entram errado na conta**: aparecem num quadro embaixo, "Pedidos que não bateram o padrão", com a observação original, e você arruma canal e vendedor ali mesmo. O que você corrigir na mão fica marcado e **não é desfeito** pela carga da madrugada.
 
+**Pedido de venda, não faturamento.** O que entra aqui são os pedidos de venda lançados na Omie, e a data usada é a de **quando o pedido foi lançado**, não a previsão de entrega nem a data da nota. Um móvel vendido em janeiro pra entregar em março conta como venda de janeiro.
+
+**Venda sem vendedor.** Quando você mesmo lança um pedido, não teve vendedor e não tem comissão. Isso não é erro: no quadro de revisão tem um botão **"Foi venda sua, sem comissão"**, que resolve num clique. Esses pedidos viram uma linha `SEM VENDEDOR` no relatório, marcada como sem comissão, pra você enxergar o quanto disso acontece sem misturar com a venda do time.
+
+**Mês a mês.** Se o período escolhido pegar dois meses ou mais, aparece uma tabela de comparação com os vendedores nas linhas e os meses nas colunas, pra ver quem está subindo e quem está caindo.
+
 ### Fallback de IA com o Gemini (opcional)
 Se sobrar pedido que o parser não entendeu, tem um botão **"Tentar identificar com IA"** no quadro de revisão. Ele manda essas observações pro Gemini e pergunta quem vendeu.
 
