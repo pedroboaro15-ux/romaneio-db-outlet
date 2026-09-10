@@ -12,7 +12,18 @@ Os pedidos são trazidos da Omie **de madrugada, sozinho** (05h10 da Paraíba), 
 
 Os pedidos cuja observação não bateu o padrão **não somem e não entram errado na conta**: aparecem num quadro embaixo, "Pedidos que não bateram o padrão", com a observação original, e você arruma canal e vendedor ali mesmo. O que você corrigir na mão fica marcado e **não é desfeito** pela carga da madrugada.
 
-Não tem inteligência artificial nem serviço pago no meio. É só leitura de texto, custo zero.
+### Fallback de IA com o Gemini (opcional)
+Se sobrar pedido que o parser não entendeu, tem um botão **"Tentar identificar com IA"** no quadro de revisão. Ele manda essas observações pro Gemini e pergunta quem vendeu.
+
+**É opcional.** Sem a chave configurada, o app funciona igual, só que esses pedidos ficam pra você arrumar na mão.
+
+Duas travas fazem esse fallback ser seguro. A IA recebe a **lista de vendedores que já existem** nos seus pedidos e tem que escolher um deles ou responder `DESCONHECIDO`. E mesmo assim a resposta é conferida pelo servidor: nome que não está na lista é recusado e o pedido volta pra revisão manual. Vendedor inventado no relatório seria pior que pedido de fora, porque ninguém percebe.
+
+O que a IA resolveu entra na conta mas fica **marcado**, num quadro "Identificados pela IA" com a observação original do lado, pra você bater o olho. Cada pedido só é perguntado uma vez, então clicar no botão de novo não repete a consulta nem gasta cota à toa.
+
+**Para ligar:** no Netlify, em Site settings → Environment variables, adicione `GEMINI_API_KEY` com uma chave do Google AI Studio (começa com `AIza`). Nunca coloque a chave dentro de arquivo do projeto. Se um dia o Google aposentar o modelo, dá pra trocar pela variável `GEMINI_MODEL` sem mexer em código.
+
+A carga da madrugada **não** usa IA, de propósito: ela precisa ser rápida. A IA só roda quando você clica no botão, então você controla quando gasta.
 
 **Para essa aba funcionar, 3 passos manuais:**
 
@@ -370,6 +381,8 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas 
 | `netlify/functions/lib/observacao.js` | Lê `CANAL\|\|VENDEDOR\|\|OBS:` da observação do pedido |
 | `netlify/functions/ingerir-pedidos-omie.js` | Traz os pedidos da Omie (madrugada + histórico) |
 | `netlify/functions/relatorio-vendas.js` | Vendas por vendedor/canal + correção manual |
+| `netlify/functions/lib/gemini.js` | Chamada ao Gemini (opcional, só pro fallback) |
+| `netlify/functions/resolver-observacoes.js` | Pergunta pro Gemini quem vendeu, nas sobras |
 | `public/index.html` | Painel (você) |
 | `public/logo.svg` | Logo da loja (usada em todas as telas) |
 | `public/equipe.html` | Entrada única da equipe — escolher papel + telefone |

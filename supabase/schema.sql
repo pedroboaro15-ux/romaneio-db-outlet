@@ -253,3 +253,10 @@ create table if not exists public.ingestao_estado (
   atualizado_em timestamptz default now()
 );
 alter table public.ingestao_estado enable row level security;
+
+-- Fallback de IA (Gemini) pras observações que o parser não entendeu.
+-- Marca que a IA já tentou aquele pedido, pra não ficar reperguntando (e repagando)
+-- pelo mesmo pedido toda vez que o gerente clicar no botão.
+-- status_parse ganhou mais um valor: 'ia' = quem preencheu canal/vendedor foi a IA.
+alter table public.vendas_observacoes
+  add column if not exists ia_tentou boolean default false;
