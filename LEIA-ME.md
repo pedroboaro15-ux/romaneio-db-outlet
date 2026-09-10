@@ -1,9 +1,46 @@
 # Romaneio Omie
 
 > **Atualização mais recente:** ver "O QUE MUDOU AGORA" logo abaixo.
-> **Dessa vez tem 3 passos manuais** (nenhum é difícil, mas nenhum é opcional pra aba Vendas funcionar): 1) rodar o `schema.sql` de novo, 2) subir o código no GitHub, 3) clicar em "Conferir campos da Omie" na aba Vendas **antes** de puxar o histórico. Detalhes na seção **"Aba Vendas"** logo abaixo.
+> **O app mudou de hospedagem: agora roda no Cloudflare Workers, não mais no Netlify.** Comece cadastrando as variáveis de ambiente no painel do Cloudflare e conferindo o nome do Worker — lista completa e passo a passo na primeira seção abaixo. Depois: 1) rodar o `schema.sql` de novo, 2) subir o código no GitHub, 3) clicar em "Conferir campos da Omie" na aba Vendas **antes** de puxar o histórico.
 
 ## O QUE MUDOU AGORA
+
+### Mudança de hospedagem: saiu do Netlify, entrou no Cloudflare Workers
+
+O app foi migrado do Netlify pro Cloudflare Workers. As 24 funções do servidor **não foram reescritas**: entrou um tradutor (`src/index.mjs`) que converte o formato do Cloudflare pro formato que elas já falavam. Isso reduz muito a chance de algo que funcionava parar de funcionar.
+
+O que mudou por baixo: o módulo `https` do Node não existe no Cloudflare, então as chamadas pra Omie, pro Gemini e pro mapa (Nominatim) passaram a usar `fetch`, que funciona nos dois lugares. Os endereços `/entrega`, `/separacao` e `/equipe` e o horário da carga diária, que moravam no `netlify.toml`, agora estão no `wrangler.toml` e no tradutor.
+
+**Nenhum endereço mudou.** As páginas continuam chamando `/.netlify/functions/...`, e o tradutor entende. Foi de propósito: mudar isso obrigaria a mexer em centenas de lugares no HTML sem ganho nenhum.
+
+#### Passo 1 — as variáveis de ambiente
+
+No painel do Cloudflare: **Workers & Pages** → seu Worker → **Settings** → **Variables and Secrets**. Marque como **Secret** (e não como Text) as que estão assinaladas, pra ficarem criptografadas.
+
+| Variável | Tipo | O que é |
+|---|---|---|
+| `OMIE_APP_KEY` | Secret | App Key da Omie |
+| `OMIE_APP_SECRET` | Secret | App Secret da Omie |
+| `SUPABASE_URL` | Text | Endereço do projeto Supabase (não é segredo) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Secret** | A mais perigosa: dá acesso total ao banco |
+| `ADMIN_EMAIL` | Text | Seu e-mail do Supabase Auth, o único que loga no painel |
+| `VAPID_PUBLIC_KEY` | Text | Notificação push (ver aviso abaixo) |
+| `VAPID_PRIVATE_KEY` | **Secret** | Notificação push |
+| `VAPID_SUBJECT` | Text | `mailto:` com o seu e-mail |
+| `GEMINI_API_KEY` | **Secret** | Fallback de IA da aba Vendas (opcional) |
+| `GEMINI_MODEL` | Text | Opcional, só se o Google aposentar o modelo padrão |
+
+#### Passo 2 — conferir o nome do Worker
+
+Abra o `wrangler.toml` e veja a linha `name = "romaneio-omie"`. Ela precisa ser **igual** ao nome do Worker que aparece no painel do Cloudflare. Se for diferente, o deploy cria um Worker novo em vez de atualizar o seu. Se não bater, é só trocar o nome no arquivo.
+
+#### O que fica temporariamente parado
+
+**A notificação push no celular não funciona no Cloudflare por enquanto.** A biblioteca que assina essas notificações depende do Node e não roda lá. Isso foi deixado pra depois de propósito, pra o resto do app voltar ao ar primeiro.
+
+O que **continua funcionando** é a bolinha vermelha no sino: ela é feita no próprio celular, não depende do servidor. Freteiro e estoquista continuam vendo que chegou pedido novo assim que abrem o app. Na prática é o que mais era usado.
+
+O `netlify.toml` foi mantido no projeto, inerte, caso um dia você queira voltar ou publicar nos dois lugares. O Cloudflare ignora esse arquivo.
 
 ### Aba Vendas: quanto cada vendedor vendeu (novo)
 Tem uma aba **Vendas** nova no painel. Ela mostra, por período, quanto cada vendedor vendeu, em quantos pedidos, o ticket médio e quantos foram presencial ou online. Sai da observação do pedido de venda, no formato que vocês já usam: `CANAL||VENDEDOR||OBS: texto`.
@@ -27,7 +64,7 @@ Duas travas fazem esse fallback ser seguro. A IA recebe a **lista de vendedores 
 
 O que a IA resolveu entra na conta mas fica **marcado**, num quadro "Identificados pela IA" com a observação original do lado, pra você bater o olho. Cada pedido só é perguntado uma vez, então clicar no botão de novo não repete a consulta nem gasta cota à toa.
 
-**Para ligar:** no Netlify, em Site settings → Environment variables, adicione `GEMINI_API_KEY` com uma chave do Google AI Studio (começa com `AIza`). Nunca coloque a chave dentro de arquivo do projeto. Se um dia o Google aposentar o modelo, dá pra trocar pela variável `GEMINI_MODEL` sem mexer em código.
+**Para ligar:** no Cloudflare, em Settings → Variables and Secrets, adicione `GEMINI_API_KEY` (como **Secret**) com uma chave do Google AI Studio (começa com `AIza`). Nunca coloque a chave dentro de arquivo do projeto. Se um dia o Google aposentar o modelo, dá pra trocar pela variável `GEMINI_MODEL` sem mexer em código.
 
 A carga da madrugada **não** usa IA, de propósito: ela precisa ser rápida. A IA só roda quando você clica no botão, então você controla quando gasta.
 
@@ -41,7 +78,7 @@ A carga da madrugada **não** usa IA, de propósito: ela precisa ser rápida. A 
 
 **Sobre o passo 3, é importante.** A observação do pedido normalmente vem no campo `observacoes.obs_venda` da Omie, mas isso muda de conta pra conta. O botão "Conferir campos da Omie" pega um pedido de verdade e mostra na tela o que foi lido, sem gravar nada no banco. Olhe a linha `obs_bruta` no resultado: se ela vier com o texto certo (`PRESENCIAL||ALGUÉM||OBS: ...`), está tudo certo. Se vier vazia, me mande o resultado que eu ajusto o campo. **Não puxe o histórico antes de conferir isso**, senão você enche a tabela com observação em branco.
 
-**Puxar o histórico.** Depois de conferir, no mesmo quadro escolha o período e clique em "Puxar histórico". Ele traz de pouquinho em pouquinho (função do Netlify no plano grátis corta em 10 segundos), mostrando o progresso, e continua sozinho até acabar. Deixe a aba aberta. Se cair no meio, é só clicar de novo que ele continua de onde parou.
+**Puxar o histórico.** Depois de conferir, no mesmo quadro escolha o período e clique em "Puxar histórico". Ele traz de pouquinho em pouquinho, salvando onde parou, mostrando o progresso, e continua sozinho até acabar. Deixe a aba aberta. Se cair no meio, é só clicar de novo que ele continua de onde parou.
 
 ### Botão 📞 pra falar com você (gerente) ou com a loja (novo)
 Freteiro e estoquista agora têm um botão 📞 no topo da tela deles — ao lado do sino — que abre 4 opções: ligar ou WhatsApp pro seu número, ligar ou WhatsApp pro número da loja. Os números estão fixos no código (você me passou: gerente `83987919707`, loja `83996148397`) — se algum mudar, é só me avisar que eu atualizo.
@@ -76,12 +113,12 @@ Freteiro/estoquista ativam tocando no sino 🔔 no topo da tela deles.
 
 #### Ativar notificação push (passo a passo — só uma vez)
 1. Rode o `supabase/schema.sql` de novo no Supabase (cria a tabela nova `push_subscriptions`).
-2. No Netlify: **Site configuration → Environment variables → Add a variable**, adicione essas 3:
+2. No Cloudflare: **Workers & Pages → seu Worker → Settings → Variables and Secrets**, adicione essas 3:
 
 | Variável | Valor |
 |---|---|
 | `VAPID_PUBLIC_KEY` | (eu te mandei essas duas chaves na nossa conversa — **não** ficam guardadas aqui no código por segurança) |
-| `VAPID_PRIVATE_KEY` | idem — é uma chave privada, tem que ficar só no Netlify, nunca em um arquivo que vai pro GitHub |
+| `VAPID_PRIVATE_KEY` | idem — é uma chave privada, tem que ficar só no painel da hospedagem (como Secret), nunca em um arquivo que vai pro GitHub |
 | `VAPID_SUBJECT` | `mailto:` seguido do seu e-mail (ex: `mailto:pedro@exemplo.com`) |
 
    Essas duas primeiras chaves eu já gerei pra você (é só um par de chaves criptográficas, tipo uma fechadura e uma chave) — copie exatamente como eu mandei na conversa. Se perder, é só pedir que eu gero um par novo (só não pode ficar salvo em nenhum arquivo do projeto).
@@ -214,7 +251,7 @@ App pessoal (só você usa) que puxa **pedidos de venda** do Omie pelo número, 
 - **Freteiro**: vê a rota, abre no Google Maps, marca entregue/não entregue com GPS.
 - **Estoquista**: vê, por pedido, os itens e a **quantidade de volumes** que você informou — uma lista de separação.
 
-Roda 100% grátis em **Netlify** (site + backend) + **Supabase** (banco de dados e seu login). Sem servidor pra manter, sem custo.
+Roda 100% grátis em **Cloudflare Workers** (site + backend) + **Supabase** (banco de dados e seu login). Sem servidor pra manter, sem custo. (Até setembro de 2026 rodava no Netlify; as seções mais antigas deste arquivo ainda falam dele.)
 
 > Existe uma versão anterior, que rodava só no seu computador, guardada em `legado-app-local/` — pode ignorar essa pasta, ela não é usada por este app novo.
 
@@ -251,7 +288,9 @@ Essa chave "anon" é feita pra ficar exposta no navegador — não é a `service
 
 ---
 
-## 4. Publicar no Netlify
+## 4. Publicar (esta seção é do tempo do Netlify)
+
+> **Desatualizada.** O app agora roda no Cloudflare Workers — veja a primeira seção do arquivo. Isto fica aqui só como histórico.
 
 O jeito mais simples de manter isso atualizado é conectar essa pasta a um repositório no GitHub e importar no Netlify:
 
@@ -394,4 +433,6 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas 
 | `public/equipe.html` | Entrada única da equipe — escolher papel + telefone |
 | `public/entrega.html` | Página do freteiro (celular) |
 | `public/separacao.html` | Página do estoquista (celular) |
+| `src/index.mjs` | Tradutor: faz as 24 funções rodarem no Cloudflare Workers |
+| `wrangler.toml` | Configuração do Cloudflare (nome, arquivos, cron) |
 | `supabase/schema.sql` | Script pra criar as tabelas no Supabase |

@@ -7,8 +7,7 @@
 // O modelo é configurável por GEMINI_MODEL porque o Google renomeia e aposenta modelo
 // com frequência. Se um dia der erro de modelo não encontrado, é só trocar essa
 // variável no Netlify — não precisa mexer em código.
-const https = require('https');
-
+// Usa fetch (e não o módulo https do Node) pra rodar igual no Cloudflare Workers.
 const HOST = 'generativelanguage.googleapis.com';
 const MODELO_PADRAO = 'gemini-2.0-flash';
 
@@ -16,9 +15,9 @@ function temChave() {
   return !!process.env.GEMINI_API_KEY;
 }
 
-function gerar(prompt, { timeoutMs = 20000 } = {}) {
+async function gerar(prompt, { timeoutMs = 20000 } = {}) {
   const chave = process.env.GEMINI_API_KEY;
-  if (!chave) return Promise.reject(new Error('GEMINI_API_KEY não configurada nas variáveis de ambiente do Netlify.'));
+  if (!chave) throw new Error('GEMINI_API_KEY não configurada nas variáveis de ambiente.');
   const modelo = process.env.GEMINI_MODEL || MODELO_PADRAO;
 
   const corpo = JSON.stringify({
@@ -29,44 +28,44 @@ function gerar(prompt, { timeoutMs = 20000 } = {}) {
     }
   });
 
-  return new Promise((resolve, reject) => {
-    const req = https.request({
-      hostname: HOST,
-      path: `/v1beta/models/${encodeURIComponent(modelo)}:generateContent`,
+  const ctrl = new AbortController();
+  const alarme = setTimeout(() => ctrl.abort(), timeoutMs);
+
+  let res, dados;
+  try {
+    res = await fetch(`https://${HOST}/v1beta/models/${encodeURIComponent(modelo)}:generateContent`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(corpo),
         'x-goog-api-key': chave        // no header, nunca na URL (URL vai pra log)
       },
-      timeout: timeoutMs
-    }, res => {
-      let dados = '';
-      res.on('data', c => { dados += c; });
-      res.on('end', () => {
-        let parsed;
-        try { parsed = JSON.parse(dados); }
-        catch (e) { return reject(new Error(`Resposta inválida do Gemini (HTTP ${res.statusCode}): ${dados.slice(0, 300)}`)); }
-
-        if (parsed.error) {
-          // Repassa o texto do Google como veio — é o que diz se é modelo errado,
-          // chave inválida ou cota estourada.
-          const err = new Error(parsed.error.message || `Erro do Gemini (HTTP ${res.statusCode})`);
-          err.status = parsed.error.status || res.statusCode;
-          return reject(err);
-        }
-
-        const cand = (parsed.candidates || [])[0];
-        const texto = cand && cand.content && (cand.content.parts || []).map(p => p.text || '').join('');
-        if (!texto) return reject(new Error('O Gemini respondeu sem conteúdo.'));
-        resolve(texto);
-      });
+      body: corpo,
+      signal: ctrl.signal
     });
-    req.on('timeout', () => req.destroy(new Error('Timeout ao chamar o Gemini')));
-    req.on('error', reject);
-    req.write(corpo);
-    req.end();
-  });
+    dados = await res.text();
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Timeout ao chamar o Gemini');
+    throw e;
+  } finally {
+    clearTimeout(alarme);
+  }
+
+  let parsed;
+  try { parsed = JSON.parse(dados); }
+  catch (e) { throw new Error(`Resposta inválida do Gemini (HTTP ${res.status}): ${dados.slice(0, 300)}`); }
+
+  if (parsed.error) {
+    // Repassa o texto do Google como veio — é o que diz se é modelo errado,
+    // chave inválida ou cota estourada.
+    const err = new Error(parsed.error.message || `Erro do Gemini (HTTP ${res.status})`);
+    err.status = parsed.error.status || res.status;
+    throw err;
+  }
+
+  const cand = (parsed.candidates || [])[0];
+  const texto = cand && cand.content && (cand.content.parts || []).map(p => p.text || '').join('');
+  if (!texto) throw new Error('O Gemini respondeu sem conteúdo.');
+  return texto;
 }
 
 // Igual a gerar(), mas já devolve o JSON parseado. O modelo às vezes embrulha a

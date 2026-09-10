@@ -3,7 +3,6 @@
 // o resultado direto na parada. O navegador não pode chamar o Nominatim direto porque
 // precisa de um User-Agent identificando a aplicação — por isso passa por aqui.
 // Chame no máximo 1x por segundo (o cliente é quem espaça as chamadas entre paradas).
-const https = require('https');
 const { requireAdmin } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
@@ -21,17 +20,23 @@ function normalizarChave(s) {
   return limpo.replace(/\s+/g, ' ').trim();
 }
 
-function nominatim(query) {
-  return new Promise((resolve, reject) => {
-    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=' + encodeURIComponent(query);
-    https.get(url, { headers: { 'User-Agent': 'RomaneioOmie/1.0 (uso pessoal, contato via app)' }, timeout: 12000 }, res => {
-      let data = '';
-      res.on('data', c => { data += c; });
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
-      });
-    }).on('error', reject).on('timeout', function () { this.destroy(new Error('timeout no Nominatim')); });
-  });
+// fetch em vez do módulo https do Node, pra rodar igual no Cloudflare Workers.
+async function nominatim(query) {
+  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=' + encodeURIComponent(query);
+  const ctrl = new AbortController();
+  const alarme = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'RomaneioOmie/1.0 (uso pessoal, contato via app)' },
+      signal: ctrl.signal
+    });
+    return JSON.parse(await res.text());
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('timeout no Nominatim');
+    throw e;
+  } finally {
+    clearTimeout(alarme);
+  }
 }
 
 function candidatos(c) {

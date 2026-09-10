@@ -5,10 +5,14 @@
   "private": true,
   "engines": { "node": ">=18" },
   "scripts": {
-    "dev": "netlify dev"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
     "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
   }
 }

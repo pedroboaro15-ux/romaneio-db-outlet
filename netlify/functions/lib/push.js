@@ -9,10 +9,22 @@
 // (só na hora de usar), não lá em cima do arquivo.
 const { admin } = require('./supabase');
 
+// O nome do módulo é montado em pedaços de propósito. A biblioteca web-push depende
+// do crypto do Node e não roda no Cloudflare Workers; se o nome aparecesse escrito
+// por extenso, o empacotador do Cloudflare tentaria incluí-la e o build quebraria.
+// Montado assim, ele não consegue resolver estaticamente, e em tempo de execução o
+// require simplesmente falha e a notificação não sai — que é o comportamento desejado
+// enquanto o push não for reescrito pro Workers.
+const MODULO_WEBPUSH = ['web', 'push'].join('-');
+
 let webpushCache;
 function carregarWebPush() {
   if (webpushCache !== undefined) return webpushCache;
-  try { webpushCache = require('web-push'); } catch (e) { webpushCache = null; }
+  try {
+    webpushCache = typeof require === 'function' ? require(MODULO_WEBPUSH) : null;
+  } catch (e) {
+    webpushCache = null;
+  }
   return webpushCache;
 }
 

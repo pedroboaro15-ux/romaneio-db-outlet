@@ -1,0 +1,22 @@
+# Configuração do Cloudflare Workers.
+#
+# O "name" precisa ser igual ao nome do Worker no painel do Cloudflare. Se lá estiver
+# outro nome, troque aqui — senão o deploy cria um Worker novo em vez de atualizar o seu.
+name = "romaneio-omie"
+main = "src/index.mjs"
+compatibility_date = "2026-09-01"
+
+# Liga as partes do Node que o Cloudflare sabe imitar. É o que faz "require",
+# "process.env" e o cliente do Supabase funcionarem aqui dentro.
+compatibility_flags = ["nodejs_compat"]
+
+# As páginas (HTML, logo, service worker) são servidas direto como arquivo.
+# Só o que não for arquivo existente cai no código do src/index.js.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Carga diária dos pedidos de venda da Omie, que alimenta a aba Vendas.
+# O horário do cron é sempre em UTC: 08:10 UTC = 05:10 na Paraíba.
+[triggers]
+crons = ["10 8 * * *"]
