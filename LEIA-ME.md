@@ -5,6 +5,27 @@
 
 ## O QUE MUDOU AGORA
 
+### Aba Vendas: quanto cada vendedor vendeu (novo)
+Tem uma aba **Vendas** nova no painel. Ela mostra, por período, quanto cada vendedor vendeu, em quantos pedidos, o ticket médio e quantos foram presencial ou online. Sai da observação do pedido de venda, no formato que vocês já usam: `CANAL||VENDEDOR||OBS: texto`.
+
+Os pedidos são trazidos da Omie **de madrugada, sozinho** (05h10 da Paraíba), e guardados numa tabela. A tela lê só dessa tabela, então abre rápido mesmo com período grande, e não fica consultando a Omie toda vez.
+
+Os pedidos cuja observação não bateu o padrão **não somem e não entram errado na conta**: aparecem num quadro embaixo, "Pedidos que não bateram o padrão", com a observação original, e você arruma canal e vendedor ali mesmo. O que você corrigir na mão fica marcado e **não é desfeito** pela carga da madrugada.
+
+Não tem inteligência artificial nem serviço pago no meio. É só leitura de texto, custo zero.
+
+**Para essa aba funcionar, 3 passos manuais:**
+
+| # | O que fazer | Onde |
+|---|---|---|
+| 1 | Rodar o `supabase/schema.sql` de novo (é seguro repetir, só cria o que falta). Isso cria as tabelas `vendas_observacoes` e `ingestao_estado`. | Supabase → SQL Editor → New query → colar → Run |
+| 2 | Subir o código no GitHub, como você já faz. | GitHub |
+| 3 | Abrir a aba Vendas e clicar em **"Conferir campos da Omie"** antes de qualquer outra coisa. Ver abaixo. | Painel → Vendas |
+
+**Sobre o passo 3, é importante.** A observação do pedido normalmente vem no campo `observacoes.obs_venda` da Omie, mas isso muda de conta pra conta. O botão "Conferir campos da Omie" pega um pedido de verdade e mostra na tela o que foi lido, sem gravar nada no banco. Olhe a linha `obs_bruta` no resultado: se ela vier com o texto certo (`PRESENCIAL||ALGUÉM||OBS: ...`), está tudo certo. Se vier vazia, me mande o resultado que eu ajusto o campo. **Não puxe o histórico antes de conferir isso**, senão você enche a tabela com observação em branco.
+
+**Puxar o histórico.** Depois de conferir, no mesmo quadro escolha o período e clique em "Puxar histórico". Ele traz de pouquinho em pouquinho (função do Netlify no plano grátis corta em 10 segundos), mostrando o progresso, e continua sozinho até acabar. Deixe a aba aberta. Se cair no meio, é só clicar de novo que ele continua de onde parou.
+
 ### Botão 📞 pra falar com você (gerente) ou com a loja (novo)
 Freteiro e estoquista agora têm um botão 📞 no topo da tela deles — ao lado do sino — que abre 4 opções: ligar ou WhatsApp pro seu número, ligar ou WhatsApp pro número da loja. Os números estão fixos no código (você me passou: gerente `83987919707`, loja `83996148397`) — se algum mudar, é só me avisar que eu atualizo.
 
@@ -346,6 +367,9 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas 
 | `netlify/functions/parada-status.js` | Entrega/falha/desfazer, gerente remove parada |
 | `netlify/functions/omie-raw.js` | Diagnóstico — chama qualquer método da Omie |
 | `netlify/functions/lib/datas.js` | Data/hora sempre no fuso da loja, não do servidor |
+| `netlify/functions/lib/observacao.js` | Lê `CANAL\|\|VENDEDOR\|\|OBS:` da observação do pedido |
+| `netlify/functions/ingerir-pedidos-omie.js` | Traz os pedidos da Omie (madrugada + histórico) |
+| `netlify/functions/relatorio-vendas.js` | Vendas por vendedor/canal + correção manual |
 | `public/index.html` | Painel (você) |
 | `public/logo.svg` | Logo da loja (usada em todas as telas) |
 | `public/equipe.html` | Entrada única da equipe — escolher papel + telefone |

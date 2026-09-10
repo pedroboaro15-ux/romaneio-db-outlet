@@ -73,6 +73,9 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
 .loginbox{max-width:360px;margin:70px auto}
 .loginmarca{text-align:center;margin-bottom:18px}
 .loginmarca img{width:92px;height:92px;border-radius:14px}
+/* Cada pedido que não bateu o padrão da observação, pro gerente arrumar na mão. */
+.linharevisar{border:1px solid var(--linha,#e2e2d9);border-radius:10px;padding:12px;margin-bottom:10px}
+.linharevisar+.linharevisar{margin-top:0}
 .subnav{display:flex;gap:6px;margin-bottom:14px}
 .subnav button{background:#edede4;border:0;padding:7px 12px;border-radius:20px;font:inherit;font-size:12px;font-weight:600;color:var(--mut);cursor:pointer}
 .subnav button.on{background:var(--ink);color:var(--amarelo)}
@@ -131,6 +134,7 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
     <button data-t="revisao">Conferência</button>
     <button data-t="fret">Freteiros</button>
     <button data-t="rel">Relatórios</button>
+    <button data-t="vendas">Vendas</button>
     <button data-t="diag">Diagnóstico</button>
   </nav>
   <button class="btn ghost sm" id="sair">Sair</button>
@@ -297,6 +301,45 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
     </div>
   </section>
 
+  <!-- ===================== VENDAS ===================== -->
+  <section id="t-vendas" hidden>
+    <div class="card">
+      <h2>Quanto cada vendedor vendeu, e por qual canal</h2>
+      <p class="mut" style="margin-top:-6px">Sai da observação do pedido de venda, no formato <code>CANAL||VENDEDOR||OBS: texto</code>. Os pedidos são trazidos da Omie de madrugada e guardados aqui — esta tela não consulta a Omie, então abre rápido mesmo com período grande.</p>
+      <div class="row">
+        <div><label>De</label><input type="date" id="vdDe"></div>
+        <div><label>Até</label><input type="date" id="vdAte"></div>
+        <div class="auto"><button class="btn" id="vdBuscar">Buscar</button></div>
+      </div>
+      <div id="vdResumo" class="mut" style="margin-top:12px"></div>
+      <div id="vdGrafico" style="margin-top:14px"></div>
+      <div style="margin-top:10px"><button class="btn ghost sm" id="vdExportar" hidden>Exportar CSV</button></div>
+      <div style="overflow-x:auto;margin-top:12px"><table>
+        <thead><tr><th>Vendedor</th><th class="right">Valor vendido</th><th class="center">Pedidos</th><th class="center">Ticket médio</th><th class="center">Presencial</th><th class="center">Online</th><th class="center">Outros</th></tr></thead>
+        <tbody id="tabVendas"><tr><td colspan="7"><div class="empty">Escolha um período e clique em Buscar.</div></td></tr></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" id="cardRevisar" hidden>
+      <h2>Pedidos que não bateram o padrão</h2>
+      <p class="mut" style="margin-top:-6px">Esses ficaram de fora da conta acima porque não deu pra saber o vendedor pela observação. Arrume aqui e eles entram no relatório. O que você corrigir na mão não é desfeito pela carga da madrugada.</p>
+      <div id="listaRevisar"></div>
+    </div>
+
+    <div class="card">
+      <h2>Carga dos pedidos</h2>
+      <p class="mut" style="margin-top:-6px">A carga diária roda sozinha de madrugada. Use os botões abaixo só para conferir os campos antes da primeira vez, ou para puxar o histórico.</p>
+      <div class="row" style="margin-top:10px">
+        <div class="auto"><button class="btn ghost" id="vdDiag">Conferir campos da Omie</button></div>
+        <div><label>Histórico de</label><input type="date" id="vdBfDe"></div>
+        <div><label>até</label><input type="date" id="vdBfAte"></div>
+        <div class="auto"><button class="btn ghost" id="vdBfIniciar">Puxar histórico</button></div>
+      </div>
+      <div id="vdBfStatus" class="mut" style="margin-top:10px"></div>
+      <pre id="vdDiagOut" hidden style="background:#0f1115;color:#d5dae1;padding:12px;border-radius:8px;overflow:auto;max-height:340px;font-size:12px;margin-top:10px"></pre>
+    </div>
+  </section>
+
   <!-- ===================== DIAGNÓSTICO ===================== -->
   <section id="t-diag" hidden>
     <div class="card">
@@ -315,6 +358,10 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
 </main>
 </div>
 
+<datalist id="canaisConhecidos">
+  <option value="PRESENCIAL"><option value="ONLINE">
+</datalist>
+<datalist id="vendedoresConhecidos"></datalist>
 <datalist id="coresPadrao">
   <option value="Branco"><option value="Off"><option value="Nature">
   <option value="Nature/Off"><option value="Off/Nature">
@@ -395,12 +442,13 @@ $('#sair').onclick = async () => { await sb.auth.signOut(); mostrarLogin(); };
 /* ---------------- navegação ---------------- */
 $$('nav button').forEach(b => b.onclick = () => {
   $$('nav button').forEach(x=>x.classList.toggle('on', x===b));
-  ['painel','pedido','rom','revisao','fret','rel','diag'].forEach(t => $('#t-'+t).hidden = t !== b.dataset.t);
+  ['painel','pedido','rom','revisao','fret','rel','vendas','diag'].forEach(t => $('#t-'+t).hidden = t !== b.dataset.t);
   erro('');
   if(b.dataset.t==='painel') carregarPainelDia();
   if(b.dataset.t==='rom') carregarRomaneios();
   if(b.dataset.t==='revisao') carregarRevisoes();
   if(b.dataset.t==='rel') $('#relBuscar').click();
+  if(b.dataset.t==='vendas') abrirVendas();
 });
 $$('#t-pedido .subnav button').forEach(b => b.onclick = () => {
   $$('#t-pedido .subnav button').forEach(x=>x.classList.toggle('on', x===b));
@@ -1160,6 +1208,154 @@ $('#relExportar').onclick = () => {
   a.download = `relatorio_${relatorioAtual.periodo.de}_a_${relatorioAtual.periodo.ate}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
+};
+
+/* ---------------- vendas ---------------- */
+let vendasAtual = null;
+
+function abrirVendas(){
+  if(!$('#vdDe').value || !$('#vdAte').value){
+    const ate = new Date(), de = new Date(); de.setDate(de.getDate() - 30);
+    $('#vdDe').value = dataBR(de); $('#vdAte').value = dataBR(ate);
+  }
+  $('#vdBuscar').click();
+}
+
+$('#vdBuscar').onclick = async () => {
+  const de = $('#vdDe').value, ate = $('#vdAte').value;
+  if(!de || !ate) return toast('Informe o período');
+  if(ate < de) return toast('A data "até" não pode ser antes da data "de"');
+  try{
+    vendasAtual = await api('/.netlify/functions/relatorio-vendas?de='+de+'&ate='+ate);
+    renderVendas(vendasAtual);
+  }catch(e){ erro(e.message); }
+};
+
+function renderVendas(r){
+  const t = r.totais;
+  const pendentes = t.naoReconhecidos + t.vazios;
+  $('#vdResumo').innerHTML =
+    `<strong>${t.pedidos}</strong> pedido(s) no período · <strong>${money(t.valor)}</strong> vendidos · `
+    + `presencial: <strong>${t.presencial}</strong> · online: <strong>${t.online}</strong>`
+    + (t.outros ? ` · outros canais: <strong>${t.outros}</strong>` : '')
+    + (t.corrigidosNaMao ? ` · <span class="mut">${t.corrigidosNaMao} corrigido(s) na mão</span>` : '')
+    + (pendentes ? `<div class="err" style="margin-top:8px">${pendentes} pedido(s) sem vendedor identificado — estão fora da conta acima. Veja o quadro abaixo.</div>` : '');
+
+  $('#vdExportar').hidden = !r.porVendedor.length;
+
+  const maior = Math.max(1, ...r.porVendedor.map(v=>v.valor||0));
+  $('#vdGrafico').innerHTML = r.porVendedor.some(v=>v.valor>0) ? r.porVendedor.map(v => `
+    <div class="barrafrete">
+      <span class="barrafrete-nome">${esc(v.vendedor)}</span>
+      <div class="barrafrete-trilho"><div class="barrafrete-cheio" style="width:${Math.max(2, v.valor/maior*100)}%"></div></div>
+      <span class="barrafrete-valor">${money(v.valor)}</span>
+    </div>`).join('') : '';
+
+  $('#tabVendas').innerHTML = r.porVendedor.length ? r.porVendedor.map(v => `<tr>
+    <td>${esc(v.vendedor)}</td>
+    <td class="right">${money(v.valor)}</td>
+    <td class="center">${v.pedidos}</td>
+    <td class="center">${money(v.ticketMedio)}</td>
+    <td class="center">${v.presencial}</td>
+    <td class="center">${v.online}</td>
+    <td class="center">${v.outros}</td>
+  </tr>`).join('') : '<tr><td colspan="7"><div class="empty">Nenhum pedido nesse período. Se você ainda não puxou o histórico, use o quadro "Carga dos pedidos" logo abaixo.</div></td></tr>';
+
+  // sugestões pro campo vendedor: quem já apareceu no período
+  $('#vendedoresConhecidos').innerHTML = r.porVendedor.map(v=>`<option value="${esc(v.vendedor)}">`).join('');
+
+  $('#cardRevisar').hidden = !r.revisar.length;
+  $('#listaRevisar').innerHTML = r.revisar.map(p => `
+    <div class="linharevisar" data-pedido="${esc(p.pedidoId)}">
+      <div>
+        <strong>Pedido ${esc(p.numeroPedido || p.pedidoId)}</strong>
+        <span class="mut"> · ${p.dataPedido ? esc(p.dataPedido.split('-').reverse().join('/')) : 'sem data'} · ${money(p.valor)}</span>
+        <div class="mut" style="margin-top:2px">${p.obsBruta ? 'Observação: ' + esc(p.obsBruta) : 'Pedido sem observação nenhuma.'}</div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label>Canal</label><input class="vdCanal" list="canaisConhecidos" placeholder="PRESENCIAL"></div>
+        <div><label>Vendedor</label><input class="vdVendedor" list="vendedoresConhecidos" placeholder="Nome de quem vendeu"></div>
+        <div class="auto"><button class="btn sm vdSalvar">Salvar</button></div>
+      </div>
+    </div>`).join('')
+    + (r.revisarTruncado ? '<p class="mut">Mostrando os primeiros. Corrija esses e busque de novo pra ver o resto.</p>' : '');
+
+  $$('#listaRevisar .vdSalvar').forEach(b => b.onclick = async () => {
+    const linha = b.closest('.linharevisar');
+    const canal = linha.querySelector('.vdCanal').value.trim();
+    const vendedor = linha.querySelector('.vdVendedor').value.trim();
+    if(!canal || !vendedor) return toast('Preencha canal e vendedor');
+    b.disabled = true;
+    try{
+      await api('/.netlify/functions/relatorio-vendas',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({pedidoId: linha.dataset.pedido, canal, vendedor})});
+      toast('Pedido corrigido');
+      $('#vdBuscar').click();
+    }catch(e){ b.disabled = false; erro(e.message); }
+  });
+
+  mostrarBackfill(r.backfill);
+}
+
+function mostrarBackfill(b){
+  if(!b){ $('#vdBfStatus').textContent = 'Nenhum histórico puxado ainda.'; return; }
+  if(b.erro){ $('#vdBfStatus').innerHTML = `<span class="err">Parou com erro: ${esc(b.erro)}</span>`; return; }
+  const dia = d => d ? String(d).split('-').reverse().join('/') : '?';
+  const per = `${esc(dia(b.de))} a ${esc(dia(b.ate))}`;
+  $('#vdBfStatus').textContent = b.concluido
+    ? `Histórico de ${per} concluído. ${b.pedidos_gravados} pedido(s) trazidos.`
+    : `Histórico de ${per} em andamento: página ${b.pagina} de ${b.total_paginas||'?'}, ${b.pedidos_gravados} pedido(s) até agora.`;
+}
+
+$('#vdExportar').onclick = () => {
+  if(!vendasAtual) return;
+  const linhas = [['Vendedor','Valor vendido','Pedidos','Ticket médio','Presencial','Online','Outros']];
+  vendasAtual.porVendedor.forEach(v => linhas.push([v.vendedor, v.valor, v.pedidos, v.ticketMedio, v.presencial, v.online, v.outros]));
+  const csv = linhas.map(l => l.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  const blob = new Blob(['﻿'+csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `vendas_${vendasAtual.periodo.de}_a_${vendasAtual.periodo.ate}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+// Confere de qual campo da Omie sai a observação, sem gravar nada no banco.
+$('#vdDiag').onclick = async () => {
+  $('#vdDiagOut').hidden = false;
+  $('#vdDiagOut').textContent = 'consultando a Omie…';
+  try{
+    const r = await api('/.netlify/functions/ingerir-pedidos-omie?diagnostico=1');
+    $('#vdDiagOut').textContent = JSON.stringify(r, null, 2);
+  }catch(e){ $('#vdDiagOut').textContent = 'Erro: ' + e.message; }
+};
+
+// Puxa o histórico em pedaços: cada chamada processa o que dá em ~7s e diz se tem mais.
+let backfillRodando = false;
+$('#vdBfIniciar').onclick = async () => {
+  if(backfillRodando) return;
+  const de = $('#vdBfDe').value, ate = $('#vdBfAte').value;
+  if(!de || !ate) return toast('Informe o período do histórico');
+  if(ate < de) return toast('A data "até" não pode ser antes da data "de"');
+
+  backfillRodando = true;
+  $('#vdBfIniciar').disabled = true;
+  let url = '/.netlify/functions/ingerir-pedidos-omie?backfill=1&de='+de+'&ate='+ate;
+  try{
+    for(;;){
+      $('#vdBfStatus').textContent = 'Puxando da Omie… pode levar alguns minutos, deixe esta aba aberta.';
+      const r = await api(url);
+      $('#vdBfStatus').textContent = `Página ${r.pagina} de ${r.totalPaginas||'?'} · ${r.gravadosNoTotal} pedido(s) trazidos.`;
+      if(!r.temMais){ $('#vdBfStatus').textContent = `Pronto. ${r.gravadosNoTotal} pedido(s) trazidos de ${de} a ${ate}.`; break; }
+      url = '/.netlify/functions/ingerir-pedidos-omie?backfill=1'; // continua de onde parou
+    }
+    $('#vdBuscar').click();
+  }catch(e){
+    $('#vdBfStatus').innerHTML = `<span class="err">Parou: ${esc(e.message)}. Clique de novo em "Puxar histórico" pra continuar de onde parou.</span>`;
+  }finally{
+    backfillRodando = false;
+    $('#vdBfIniciar').disabled = false;
+  }
 };
 
 /* ---------------- diagnóstico ---------------- */

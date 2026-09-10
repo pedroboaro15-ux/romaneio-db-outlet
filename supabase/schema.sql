@@ -205,3 +205,51 @@ alter table public.romaneios enable row level security;
 alter table public.paradas enable row level security;
 alter table public.geo_cache enable row level security;
 alter table public.clientes_cache enable row level security;
+
+-- ===================== RELATÓRIO DE VENDAS =====================
+-- Tabela já processada: uma linha por pedido de venda da Omie, com o vendedor e o
+-- canal já extraídos da observação. O relatório lê SÓ daqui — nunca consulta a Omie
+-- na hora de abrir a tela. Quem enche essa tabela é a function "ingerir-pedidos-omie"
+-- (roda sozinha de madrugada pelo cron do netlify.toml, e sob demanda no backfill).
+--
+-- Formato combinado da observação: "CANAL||VENDEDOR||OBS: texto livre"
+-- Ex.: "PRESENCIAL||ADELAIDE||OBS: cliente pediu pra entregar depois do dia 10"
+create table if not exists public.vendas_observacoes (
+  pedido_id text primary key,        -- codigo_pedido da Omie (id interno, não muda)
+  numero_pedido text default '',
+  data_pedido date,
+  valor numeric default 0,
+  cliente_codigo text default '',
+  cliente_nome text default '',
+  etapa text default '',
+  canal text default '',             -- PRESENCIAL | ONLINE | o que vier escrito
+  vendedor text default '',
+  obs_livre text default '',         -- o que veio depois do "OBS:"
+  obs_bruta text default '',         -- a observação inteira, como veio da Omie
+  status_parse text default 'ok',    -- 'ok' | 'nao_reconhecido' | 'vazio'
+  -- Quando o gerente arruma na mão um pedido que não bateu o padrão, isso vira true
+  -- e a ingestão para de sobrescrever canal/vendedor daquele pedido.
+  corrigido_manual boolean default false,
+  atualizado_em timestamptz default now()
+);
+create index if not exists vendas_obs_data_idx on public.vendas_observacoes(data_pedido);
+create index if not exists vendas_obs_vendedor_idx on public.vendas_observacoes(vendedor);
+create index if not exists vendas_obs_status_idx on public.vendas_observacoes(status_parse);
+alter table public.vendas_observacoes enable row level security;
+
+-- Onde o backfill parou. Function do Netlify no plano grátis corta em 10 segundos,
+-- então trazer meses de pedidos não cabe numa chamada só: cada execução processa
+-- algumas páginas, salva a página aqui e devolve "tem mais". O gerente clica
+-- "Continuar" na aba Vendas até terminar.
+create table if not exists public.ingestao_estado (
+  chave text primary key,            -- por enquanto só 'backfill'
+  de date,
+  ate date,
+  pagina int default 1,
+  total_paginas int default 0,
+  pedidos_gravados int default 0,
+  concluido boolean default false,
+  erro text default '',
+  atualizado_em timestamptz default now()
+);
+alter table public.ingestao_estado enable row level security;
