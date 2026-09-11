@@ -90,7 +90,11 @@ exports.handler = async event => {
       cor: texto(it && it.cor, MAX_TEXTO),
       volumes: numeroPositivo(it && it.volumes, MAX_VOLUMES),
       fragil: !!(it && it.fragil),
-      jaNoFrete: !!(it && it.jaNoFrete)
+      jaNoFrete: !!(it && it.jaNoFrete),
+      // "vai por cima, deixa pro final" — quem marca é o estoquista, durante a
+      // separação. Entra aqui pra não ser jogado fora pelo saneamento caso um
+      // dia uma parada seja recriada a partir de outra.
+      adiado: !!(it && it.adiado)
     });
 
     const montarLinha = (p, romaneioId, ordem) => {

@@ -129,4 +129,84 @@ function conferir(paradas, contagem) {
   return { ok: divergencias.length === 0, totalLinhas: linhas.length, divergencias };
 }
 
-module.exports = { consolidar, conferir, versaoDaCarga, normalizar };
+/**
+ * A fila de volumes de UMA parada, na ordem em que serão confirmados.
+ *
+ * Existe por causa do móvel que vai por cima. Colchão, cama, espelho: coisa que
+ * não pode ter peso em cima. Mas a ordem de carregamento é ditada pela ordem de
+ * ENTREGA ao contrário (quem sai primeiro entra por último), e essas duas regras
+ * brigam — o colchão da última entrega deveria entrar primeiro, lá no fundo, e
+ * acabar esmagado por tudo.
+ *
+ * A saída é o estoquista marcar "vai por cima" e o móvel voltar no fim da
+ * separação. Esta função é o que torna isso simples: devolve a fila inteira com
+ * os adiados NO FINAL, então o contador da parada (um número só,
+ * volumes_confirmados) continua sendo um índice direto nesta lista. Sem ela,
+ * seria preciso guardar quais volumes de quais itens já foram — e aí o estado
+ * vira um problema de verdade.
+ *
+ * Cada elemento: { indiceItem, descricao, cor, fragil, unidade, totalDoItem, porCima }
+ */
+function filaDeVolumes(parada) {
+  const itens = Array.isArray(parada && parada.itens) ? parada.itens : [];
+  const fila = [];
+
+  const empilhar = porCima => {
+    itens.forEach((it, indiceItem) => {
+      // "Já no frete" não entra na fila: veio carregado de outro estoque, não há
+      // o que confirmar — só o que conferir no fim, na contagem do caminhão.
+      if (it && it.jaNoFrete) return;
+      if (!!(it && it.adiado) !== porCima) return;
+
+      const total = Number(it && it.volumes) || 0;
+      for (let unidade = 1; unidade <= total; unidade++) {
+        fila.push({
+          indiceItem,
+          descricao: String((it && it.descricao) || ''),
+          cor: String((it && it.cor) || ''),
+          fragil: !!(it && it.fragil),
+          unidade,
+          totalDoItem: total,
+          porCima
+        });
+      }
+    });
+  };
+
+  empilhar(false);  // o que vai agora
+  empilhar(true);   // e, depois de tudo, o que vai por cima
+
+  return fila;
+}
+
+/**
+ * Em que pé está uma parada.
+ *
+ *   confirmarAgora  - quantos volumes ela cobra NESTA passada
+ *   confirmarTotal  - quantos ela cobra no fim das contas (com os adiados)
+ *   separado        - já cobriu tudo
+ *
+ * O "separado" nasce aqui, e não em cada endpoint, por um motivo: ele já estava
+ * divergindo. parada-separar comparava com o volume BRUTO da parada, ignorando o
+ * que estava "já no frete" — então marcar um item como já-no-frete e confirmar o
+ * resto nunca deixava a parada separada no banco. A tela mostrava "✓ Separado"
+ * (ela fazia a conta certa), mas ao recarregar o app voltava pra essa parada e
+ * não havia botão nenhum pra sair dela.
+ */
+function situacaoParada(parada) {
+  const fila = filaDeVolumes(parada);
+  const confirmados = Number(parada && parada.volumes_confirmados) || 0;
+  const confirmarAgora = fila.filter(v => !v.porCima).length;
+
+  return {
+    fila,
+    confirmados,
+    confirmarAgora,
+    confirmarTotal: fila.length,
+    temPorCima: fila.length > confirmarAgora,
+    prontoPorAgora: confirmados >= confirmarAgora,
+    separado: confirmados >= fila.length
+  };
+}
+
+module.exports = { consolidar, conferir, versaoDaCarga, normalizar, filaDeVolumes, situacaoParada };

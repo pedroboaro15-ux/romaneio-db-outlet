@@ -13,6 +13,50 @@
 
 ## O QUE MUDOU AGORA
 
+### Conferência final: o estoquista conta o caminhão carregado
+
+Depois de separar tudo, entra uma etapa nova antes de fechar o carregamento.
+
+**A lista é por PRODUTO, não por pedido.** Com o caminhão carregado ninguém
+enxerga pedido, enxerga móvel empilhado. Guarda-roupa branco que aparece em dois
+pedidos vira uma linha só, de 4 volumes — que é como a pilha se parece de fora.
+
+**A contagem é cega.** A tela não recebe quanto deveria ter, nem escondido num
+campo que ninguém mostra. Se mostrasse, o que se mede é a disposição de tocar num
+botão — todo mundo confirma. Contando primeiro e comparando depois, "bateu" quer
+dizer alguma coisa.
+
+Quando não bate, o app diz **o que falta, quanto, e em quais pedidos procurar**.
+Recontar devolve só as linhas erradas em branco (recontar tudo no fim do dia faz
+gente cansada chutar). Linha deixada em branco conta como divergência, não zero.
+
+Fechar o carregamento agora exige a conferência ter batido. Tem saída pela
+divergência — o móvel quebrou no galpão e vai faltar mesmo — mas ela pede um
+motivo escrito e marca o romaneio. No painel você vê: conferido de primeira,
+conferido na 2ª contagem (tinha erro e foi achado), ou saiu com falta e o porquê.
+
+### "Vai por cima": adiar o colchão pro fim da separação
+
+Carregar é o contrário de entregar: quem sai primeiro do caminhão tem que ter
+entrado por último. Só que "vai por cima" é uma regra física que não tem nada a
+ver com a ordem das entregas, e as duas brigam — o colchão da última entrega
+deveria entrar primeiro, no fundo, e sair de lá esmagado por tudo.
+
+Agora, na tela de cada volume, tem **⬆️ Vai por cima — deixar pro final**. O
+móvel sai da fila de agora e volta numa etapa própria, depois que todo o resto
+está no caminhão. Entre os adiados vale a mesma regra de sempre: o da última
+entrega entra primeiro.
+
+Detalhes que importam:
+
+- **adiar não é dar como separado** — o volume continua devendo, e a parada só
+  fecha quando ele for confirmado;
+- não dá pra adiar um móvel que **já começou** a ser carregado (o app manda
+  desfazer os volumes dele antes) — senão os volumes já confirmados mudariam de
+  dono;
+- colchão, cama, box, espelho e cabeceira ganham uma **sugestão** na tela. É só
+  sugestão: quem decide é quem está olhando o móvel.
+
 ### Um site só: romaneio + estoque, uma porta de entrada, um login
 
 Antes eram dois apps separados, em dois endereços, com dois logins. Agora é um
@@ -533,6 +577,9 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas 
 | `netlify/functions/equipe-login.js` | Login só por telefone (freteiro/estoquista) |
 | `netlify/functions/parada-separar.js` | Estoquista confirma (ou desfaz) volume a volume |
 | `netlify/functions/parada-item-carregado.js` | Marca/desmarca um item como "já no frete" |
+| `netlify/functions/parada-item-adiar.js` | "Vai por cima": manda um móvel pro fim da separação |
+| `netlify/functions/conferencia-final.js` | A contagem cega do caminhão carregado |
+| `netlify/functions/lib/carga.js` | Consolida a carga por produto e monta a fila de volumes |
 | `netlify/functions/push-subscrever.js` | Salva/remove a notificação push do celular de quem ativou |
 | `netlify/functions/lib/push.js` | Manda a notificação push (usa a biblioteca `web-push`) |
 | `public/sw.js` | Service worker — só recebe e mostra a notificação push |

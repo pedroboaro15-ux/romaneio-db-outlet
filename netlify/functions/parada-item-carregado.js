@@ -5,6 +5,7 @@
 const { identificar } = require('./lib/auth');
 const { json, lerCorpo } = require('./lib/http');
 const { admin } = require('./lib/supabase');
+const { situacaoParada } = require('./lib/carga');
 
 exports.handler = async event => {
   if (event.httpMethod !== 'POST') return json(405, { erro: 'método não permitido' });
@@ -42,12 +43,9 @@ exports.handler = async event => {
   }
   itens[indice].jaNoFrete = !!b.jaNoFrete;
 
-  // Recalcula quanto ainda falta confirmar, descontando o que já foi marcado como
-  // já-no-frete — e se já bate tudo, marca a parada como separada sozinho.
-  const somaJaNoFrete = itens.reduce((s, it) => s + (it.jaNoFrete ? (Number(it.volumes) || 0) : 0), 0);
-  const efetivoTotal = Math.max((Number(parada.volumes) || 0) - somaJaNoFrete, 0);
-  const confirmados = Number(parada.volumes_confirmados) || 0;
-  const separado = confirmados >= efetivoTotal;
+  // A conta de "acabou?" vem da lib, a mesma que parada-separar e parada-item-adiar
+  // usam. Antes cada um fazia a sua, e elas discordavam.
+  const { separado } = situacaoParada({ ...parada, itens });
 
   const { data: atualizada, error } = await sb
     .from('paradas')

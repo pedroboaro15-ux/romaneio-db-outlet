@@ -24,6 +24,7 @@ import ingerirPedidosOmie from '../netlify/functions/ingerir-pedidos-omie.js';
 import minhasRotas from '../netlify/functions/minhas-rotas.js';
 import omieRaw from '../netlify/functions/omie-raw.js';
 import painelDia from '../netlify/functions/painel-dia.js';
+import paradaItemAdiar from '../netlify/functions/parada-item-adiar.js';
 import paradaItemCarregado from '../netlify/functions/parada-item-carregado.js';
 import paradaProblema from '../netlify/functions/parada-problema.js';
 import paradaSeparar from '../netlify/functions/parada-separar.js';
@@ -54,6 +55,7 @@ const FUNCOES = {
   'minhas-rotas': minhasRotas,
   'omie-raw': omieRaw,
   'painel-dia': painelDia,
+  'parada-item-adiar': paradaItemAdiar,
   'parada-item-carregado': paradaItemCarregado,
   'parada-problema': paradaProblema,
   'parada-separar': paradaSeparar,
