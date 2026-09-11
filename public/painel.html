@@ -694,6 +694,7 @@ function renderListaRom(){
           <span class="tag ${ok===r.paradas.length && r.paradas.length?'ok':'pend'}">${ok}/${r.paradas.length} entregues</span>
           ${falhou?`<span class="tag falhou">⚠️ ${falhou} não realizada${falhou>1?'s':''}</span>`:''}
           ${r.carregamento_confirmado?`<span class="tag ok">✓ carregamento conferido</span>`:''}
+          ${etiquetaConferencia(r)}
           <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
             ${telFr?`<button class="btn ghost sm" onclick="window.open('https://wa.me/55${telFr}?text=${msgWpp}','_blank')">Avisar no WhatsApp</button>`:''}
             <button class="btn ghost sm" onclick="abrirRotaCompleta('${r.id}')">Rota no Maps</button>
@@ -757,6 +758,34 @@ function renderListaRom(){
     }).join('');
   lista.forEach(r => r.paradas.forEach(p => atualizarMotivos(p.id)));
   window.scrollTo(0, scroll);
+}
+
+/* ---------------- conferência final do estoquista ----------------
+   O estoquista conta o caminhão carregado, produto por produto, sem ver quanto
+   deveria ter (contagem cega — ver netlify/functions/conferencia-final.js).
+   Aqui o resultado vira uma etiqueta no cartão do romaneio, porque três coisas
+   diferentes precisam saltar aos olhos:
+
+     · bateu de primeira      -> tudo certo, nem precisa olhar
+     · bateu na 2ª ou 3ª      -> tinha erro e foi achado. O caminhão saiu certo,
+                                 mas alguma coisa no galpão está confundindo.
+     · fechou com ressalva    -> saiu faltando móvel, de propósito e registrado.
+                                 É o que você precisa ver ANTES do cliente ligar. */
+function etiquetaConferencia(r){
+  if(r.carregado_com_divergencia){
+    return `<span class="tag falhou" title="${esc(r.divergencia_motivo||'')}">🚨 saiu com falta: ${esc(r.divergencia_motivo||'sem motivo escrito')}</span>`;
+  }
+  if(r.conferencia_ok){
+    const t = Number(r.conferencia_tentativas||1);
+    const quem = r.conferencia_por ? ' por ' + esc(r.conferencia_por) : '';
+    return t > 1
+      ? `<span class="tag pend" title="Contou ${t} vezes até bater${quem}">🔁 conferido na ${t}ª contagem${quem}</span>`
+      : `<span class="tag ok" title="Bateu de primeira${quem}">📦 conferido${quem}</span>`;
+  }
+  if(r.conferencia_tentativas > 0){
+    return `<span class="tag pend">⏳ conferência não bateu ainda</span>`;
+  }
+  return '';
 }
 
 /* ---------------- painel do dia ---------------- */

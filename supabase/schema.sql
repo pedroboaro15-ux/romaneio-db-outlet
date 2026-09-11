@@ -92,6 +92,25 @@ alter table public.romaneios add column if not exists criado_em timestamptz defa
 alter table public.romaneios add column if not exists carregamento_confirmado boolean default false;
 alter table public.romaneios add column if not exists carregamento_confirmado_em timestamptz;
 
+-- Conferência final: a contagem cega que o estoquista faz com o caminhão já
+-- carregado, produto por produto (não pedido por pedido — ver lib/carga.js).
+--
+-- "conferencia_divergencias" guarda o que NÃO bateu, inclusive quando bateu na
+-- segunda tentativa. É o dado que responde "qual produto vive dando errado?" —
+-- e produto que erra toda semana não é descuido de ninguém, é etiqueta ruim ou
+-- lugar errado no galpão.
+alter table public.romaneios add column if not exists conferencia_ok boolean default false;
+alter table public.romaneios add column if not exists conferencia_em timestamptz;
+alter table public.romaneios add column if not exists conferencia_por text default '';
+alter table public.romaneios add column if not exists conferencia_tentativas int default 0;
+alter table public.romaneios add column if not exists conferencia_divergencias jsonb default '[]'::jsonb;
+
+-- Fechou o carregamento mesmo com a conta não batendo (acontece: o móvel quebrou
+-- e vai faltar mesmo). Guarda o porquê, pra você ver no painel em vez de
+-- descobrir quando o cliente ligar.
+alter table public.romaneios add column if not exists carregado_com_divergencia boolean default false;
+alter table public.romaneios add column if not exists divergencia_motivo text default '';
+
 -- Quanto você paga de frete pro freteiro nessa rota — pra saber quanto cada um está
 -- faturando (aba Relatórios). Não tem nada a ver com o valor que o cliente paga.
 alter table public.romaneios add column if not exists valor_frete numeric default 0;

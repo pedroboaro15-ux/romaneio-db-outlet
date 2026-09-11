@@ -38,6 +38,44 @@ main{padding:12px}
 .trocou.produto{background:#fff3d6;border:2px solid #f0d495;color:#7a5416}
 .trocou.pedido{background:#e7f0ff;border:2px solid #b6cdf5;color:#1c3d73}
 .tagpos{display:inline-block;font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+
+/* ---- CONFERÊNCIA FINAL: a contagem às cegas, com o caminhão carregado ----
+   A tela NUNCA mostra quanto deveria ter antes da pessoa digitar. Se mostrasse,
+   o que se mede é a disposição de tocar num botão, não quantos móveis tem no
+   baú — todo mundo confirma. Contando primeiro e comparando depois, "bateu"
+   quer dizer alguma coisa. */
+.confcabeca{background:#14140F;color:#fff;border-radius:14px;padding:15px 16px;margin-bottom:12px}
+.confcabeca h3{margin:0 0 6px;font-size:19px;color:#F2F250}
+.confcabeca p{margin:0;font-size:13.5px;color:#c9c9bd}
+.conflinha{background:#fff;border:2px solid #e2e2d9;border-radius:13px;padding:13px;margin-bottom:10px}
+.conflinha.preenchida{border-color:#14140F}
+.conflinha.errou{border-color:#b91c1c;background:#fdeaea}
+.conflinha.bateu{border-color:#1c7a3d;background:#eefaf1}
+.confprod{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.confprod .swmed{width:26px;height:26px;border-radius:6px;border:1.5px solid #9a9a8e;flex:0 0 auto}
+.confprod .txt{font-size:16.5px;font-weight:800;line-height:1.25;min-width:0}
+.confcor{font-size:13px;font-weight:700;color:#57574e;text-transform:uppercase;letter-spacing:.03em}
+.confonde{font-size:12.5px;color:#6f6f66;margin-top:3px}
+/* Contador de dedão: nada de teclado no meio do galpão, com a mão suja. */
+.contador{display:flex;align-items:center;gap:10px;margin-top:10px}
+.contador button{width:52px;height:52px;border-radius:13px;border:2px solid #14140F;background:#fff;font-size:26px;font-weight:900;color:#14140F;flex:0 0 auto;padding:0;line-height:1}
+.contador button:active{background:#F2F250}
+.contador input{flex:1;min-width:0;height:52px;text-align:center;font-size:26px;font-weight:900;border:2px solid #d8d8cd;border-radius:13px;font-family:inherit;color:#14140F;background:#fff}
+.contador input:focus{outline:none;border-color:#14140F}
+.contador .rot{font-size:11.5px;color:#6f6f66;text-transform:uppercase;letter-spacing:.06em;font-weight:700;flex:0 0 auto;width:62px;text-align:center;line-height:1.2}
+.confdiverg{background:#fff;border:2px solid #b91c1c;border-radius:13px;padding:13px;margin-bottom:10px}
+.confdiverg .titulo{font-size:17px;font-weight:900;color:#b91c1c;margin-bottom:3px}
+.confdiverg .conta{font-size:14.5px;font-weight:700;margin:6px 0}
+.confdiverg .onde{font-size:13px;color:#57574e}
+.confsaldo{display:inline-block;font-size:13px;font-weight:900;padding:3px 10px;border-radius:20px;margin-left:6px}
+.confsaldo.falta{background:#fdeaea;color:#7f1d1d}
+.confsaldo.sobra{background:#fff3d6;color:#7a5416}
+.confok{background:#eefaf1;border:2px solid #1c7a3d;color:#14532d;border-radius:13px;padding:15px;text-align:center;font-size:17px;font-weight:900;margin-bottom:12px}
+.confaviso{background:#fff3d6;border:2px solid #f0d495;color:#7a5416;border-radius:11px;padding:11px 13px;font-size:13.5px;font-weight:700;margin-bottom:10px}
+.confmotivo{width:100%;min-height:80px;border:2px solid #d8d8cd;border-radius:11px;padding:11px;font:inherit;font-size:15px;color:#14140F;margin-top:8px;font-family:inherit}
+.confmotivo:focus{outline:none;border-color:#14140F}
+.btnsec{width:100%;padding:14px;border-radius:12px;font:inherit;font-weight:800;font-size:15px;margin-top:10px;background:#fff;border:2px solid #14140F;color:#14140F}
+.btnperigo{width:100%;padding:14px;border-radius:12px;font:inherit;font-weight:800;font-size:15px;margin-top:10px;background:#fff;border:2px solid #b91c1c;color:#b91c1c}
 .tagpos.ultima{background:#fdeaea;color:#7f1d1d}
 .tagpos.primeira{background:#eafaf1;color:#215e3f}
 .tagpos.meio{background:#efefe6;color:#57574e}
@@ -503,6 +541,8 @@ function render(){
   if(paradaAguardandoFoto){ renderDialogoFoto(paradaAguardandoFoto); return; }
 
   if(rom.carregamento_confirmado){ renderResumoFinal(true); return; }
+  // A conferência tem prioridade sobre tudo enquanto estiver aberta.
+  if(conf){ renderConferencia(); return; }
   if(mostrandoVisaoGeral){ renderVisaoGeral(); return; }
   if(passo >= total){ renderResumoFinal(false); return; }
 
@@ -716,11 +756,221 @@ function renderResumoFinal(jaConfirmado){
         ? `<div class="done" style="margin-top:14px">Carregamento confirmado ✓</div>
            <button style="margin-top:10px;background:#fff;border:2px solid #b91c1c;color:#b91c1c" onclick="desfazerCarregamento()">↩️ Desfazer carregamento</button>
            <button style="margin-top:10px;background:#fff;border:2px solid #14140F;color:#14140F" onclick="voltarParaRotas()">◀ Voltar — ver outras rotas</button>`
-        : `<button class="ok" style="margin-top:14px" onclick="confirmarCarregamento()">Confirmar carregamento</button>`}
+        : rom.conferencia_ok
+          // Já conferiu: não obriga a contar tudo de novo, mas deixa reconferir.
+          ? `<div class="confok" style="margin-top:14px">✓ Conferência final já bateu</div>
+             <button class="ok" onclick="confirmarCarregamento()">Confirmar carregamento</button>
+             <button class="btnsec" onclick="abrirConferencia()">Conferir de novo</button>`
+          // O caminho normal. A lista acima é por PEDIDO e serve pra revisar; a
+          // conferência é por PRODUTO, com o caminhão já carregado, e é ela que
+          // pega móvel trocado — porque é assim que a carga se parece de fora.
+          : `<button class="ok" style="margin-top:14px" onclick="abrirConferencia()">Fazer a conferência final ▶</button>
+             <div class="mut" style="text-align:center;font-size:13px;margin-top:8px">Com o caminhão carregado, você conta produto por produto. Leva um minuto e é o que pega móvel trocado.</div>`}
     </div>`;
 }
 
-function voltarParaRotas(){ idAtual = null; rom = null; iniciar(true); }
+/* ================= CONFERÊNCIA FINAL =================
+   Última etapa antes de fechar o caminhão. Três estados:
+     conf = null            -> não está na conferência
+     conf.fase = 'contando' -> lista de produtos pra contar, sem número na tela
+     conf.fase = 'resultado'-> o que bateu e o que não bateu
+
+   A lista é por PRODUTO, não por pedido, e isso é o ponto. Com o caminhão
+   carregado ninguém enxerga pedido, enxerga móvel empilhado — conferir por
+   pedido obrigaria a andar pedido por pedido na cabeça, que é onde se erra. */
+let conf = null;
+
+/** "falta 1" / "faltam 2" — a tela fala com gente, não com banco de dados. */
+function plural(n, verbo){
+  return n === 1 ? `${verbo} 1` : `${verbo}m ${n}`;
+}
+
+async function abrirConferencia(){
+  try{
+    const dados = await api('/.netlify/functions/conferencia-final?romaneioId=' + encodeURIComponent(idAtual));
+    conf = { fase:'contando', ...dados, contagem:{}, resultado:null };
+    render();
+  }catch(e){ alert('Não deu pra abrir a conferência: ' + e.message); }
+}
+
+function sairDaConferencia(){ conf = null; render(); }
+
+function mudarContagem(id, delta){
+  const atual = conf.contagem[id];
+  const base = Number.isFinite(Number(atual)) && atual !== '' ? Number(atual) : 0;
+  const novo = Math.max(0, base + delta);
+  conf.contagem[id] = novo;
+  const campo = document.getElementById('cnt-' + id);
+  if(campo) campo.value = novo;
+  const caixa = document.getElementById('lin-' + id);
+  if(caixa) caixa.classList.add('preenchida');
+  atualizarBotaoConferir();
+}
+
+function digitouContagem(id, valor){
+  if(valor === ''){ delete conf.contagem[id]; }
+  else {
+    const n = Math.max(0, Math.min(9999, Math.floor(Number(valor) || 0)));
+    conf.contagem[id] = n;
+  }
+  const caixa = document.getElementById('lin-' + id);
+  if(caixa) caixa.classList.toggle('preenchida', conf.contagem[id] !== undefined);
+  atualizarBotaoConferir();
+}
+
+function atualizarBotaoConferir(){
+  const btn = document.getElementById('btnConferir');
+  if(!btn) return;
+  const faltam = conf.linhas.filter(l => conf.contagem[l.id] === undefined).length;
+  btn.disabled = faltam > 0;
+  btn.textContent = faltam > 0
+    ? ('Falta contar ' + faltam + ' produto' + (faltam > 1 ? 's' : ''))
+    : 'Conferir a contagem';
+}
+
+async function enviarConferencia(){
+  const btn = document.getElementById('btnConferir');
+  if(btn){ btn.disabled = true; btn.textContent = 'Conferindo…'; }
+  try{
+    const r = await api('/.netlify/functions/conferencia-final', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ romaneioId: idAtual, versao: conf.versao, contagem: conf.contagem })
+    });
+    conf.fase = 'resultado';
+    conf.resultado = r;
+    if(r.ok) rom.conferencia_ok = true;
+    render();
+  }catch(e){
+    // 409: você mexeu na rota pelo painel enquanto ele contava. A contagem dele
+    // valia pra uma carga que não existe mais — recomeça com a lista nova.
+    if(/carga mudou/i.test(e.message)){
+      alert('A rota mudou enquanto você contava (entrou ou saiu pedido). Vou abrir a lista nova pra conferir de novo.');
+      abrirConferencia();
+      return;
+    }
+    alert('Não deu pra conferir: ' + e.message);
+    if(btn){ btn.disabled = false; btn.textContent = 'Conferir a contagem'; }
+  }
+}
+
+function recontar(){
+  // Mantém só o que bateu: recontar tudo de novo seria castigo, e quem está
+  // cansado no fim do dia acaba chutando. O que errou volta em branco.
+  const erradas = new Set((conf.resultado.divergencias || []).map(d => d.id));
+  for(const id of Object.keys(conf.contagem)) if(erradas.has(id)) delete conf.contagem[id];
+  conf.fase = 'contando';
+  conf.soAsErradas = erradas;
+  render();
+}
+
+async function fecharComDivergencia(){
+  const motivo = (document.getElementById('motivoDiverg') || {}).value || '';
+  if(motivo.trim().length < 5){
+    alert('Escreva o que está faltando ou sobrando — é isso que o gerente vai ler.');
+    return;
+  }
+  if(!confirm('Fechar o carregamento com a conta não batendo?\n\nIsso fica marcado no romaneio e o gerente é avisado.')) return;
+  try{
+    await api('/.netlify/functions/romaneio-carregado', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ romaneioId: idAtual, mesmoComDivergencia: true, motivo })
+    });
+    rom.carregamento_confirmado = true;
+    conf = null;
+    toast('Carregamento fechado com ressalva');
+    render();
+  }catch(e){ alert('Não deu pra fechar: ' + e.message); }
+}
+
+function renderConferencia(){
+  const el = document.getElementById('lista');
+
+  /* ---------------- fase 1: contando às cegas ---------------- */
+  if(conf.fase === 'contando'){
+    const soErradas = conf.soAsErradas;
+    const linhas = conf.linhas.filter(l => !soErradas || soErradas.has(l.id));
+
+    el.innerHTML = `
+      <div class="confcabeca">
+        <h3>${soErradas ? 'Conta de novo, só o que não bateu' : 'Conferência final'}</h3>
+        <p>${soErradas
+          ? 'Só estes produtos. Conte olhando o caminhão, sem pressa.'
+          : 'Olhe o caminhão carregado e conte quantos volumes de cada produto estão lá. Não tem resposta na tela de propósito — é a contagem que vale.'}</p>
+      </div>
+      ${linhas.map(l => `
+        <div class="conflinha ${conf.contagem[l.id] !== undefined ? 'preenchida' : ''}" id="lin-${l.id}">
+          <div class="confprod">
+            <span class="swmed" style="background:${corParaSwatch(l.cor)}"></span>
+            <span class="txt">${esc(l.descricao)}${l.fragil ? ' <span class="selovidro">🔴 VIDRO</span>' : ''}</span>
+          </div>
+          <div class="confcor">${l.cor ? esc(l.cor) : 'sem cor cadastrada'}</div>
+          <div class="confonde">Aparece em: ${l.pedidos.map(esc).join(' · ')}${l.temJaNoFrete ? ' · <b>parte já veio no frete — procure no fundo</b>' : ''}</div>
+          <div class="contador">
+            <span class="rot">quantos você vê</span>
+            <button type="button" onclick="mudarContagem('${l.id}', -1)">−</button>
+            <input type="number" inputmode="numeric" pattern="[0-9]*" id="cnt-${l.id}"
+                   value="${conf.contagem[l.id] !== undefined ? conf.contagem[l.id] : ''}"
+                   placeholder="?" onchange="digitouContagem('${l.id}', this.value)"
+                   oninput="digitouContagem('${l.id}', this.value)">
+            <button type="button" onclick="mudarContagem('${l.id}', 1)">+</button>
+          </div>
+        </div>`).join('')}
+      <button class="ok" id="btnConferir" onclick="enviarConferencia()">Conferir a contagem</button>
+      <button class="btnsec" onclick="sairDaConferencia()">◀ Voltar pra lista de pedidos</button>`;
+
+    atualizarBotaoConferir();
+    return;
+  }
+
+  /* ---------------- fase 2: o resultado ---------------- */
+  const r = conf.resultado;
+
+  if(r.ok){
+    el.innerHTML = `
+      <div class="confok">✓ A conta bateu${r.tentativas > 1 ? ' (na ' + r.tentativas + 'ª contagem)' : ''}<br>
+        <span style="font-size:14px;font-weight:700">${r.totalLinhas} produto(s) conferido(s) — pode fechar o caminhão</span></div>
+      <button class="ok" onclick="confirmarCarregamento()">Confirmar carregamento</button>
+      <button class="btnsec" onclick="sairDaConferencia()">◀ Ver a lista de pedidos</button>`;
+    return;
+  }
+
+  const naoContadas = r.divergencias.filter(d => d.motivo === 'nao_contado');
+  const erradas = r.divergencias.filter(d => d.motivo !== 'nao_contado');
+
+  el.innerHTML = `
+    <div class="confcabeca" style="background:#b91c1c">
+      <h3 style="color:#fff">A conta não bateu</h3>
+      <p style="color:#ffe4e4">${r.divergencias.length} de ${r.totalLinhas} produto(s) fora. Procure antes de fechar o caminhão — é mais barato agora do que na porta do cliente.</p>
+    </div>
+    ${naoContadas.length ? `<div class="confaviso">⚠️ ${naoContadas.length} produto(s) você não chegou a contar. Eles entram como divergência: em branco não é zero.</div>` : ''}
+    ${erradas.map(d => `
+      <div class="confdiverg">
+        <div class="titulo">${esc(d.descricao)}${d.cor ? ' · ' + esc(d.cor) : ''}</div>
+        <div class="conta">
+          Você contou <b>${d.contado}</b> · deveria ter <b>${d.esperado}</b>
+          <span class="confsaldo ${d.motivo}">${plural(Math.abs(d.diferenca), d.motivo === 'falta' ? 'falta' : 'sobra')}</span>
+        </div>
+        <div class="onde">Procure em: ${(d.pedidos||[]).map(esc).join(' · ')}</div>
+      </div>`).join('')}
+    ${naoContadas.map(d => `
+      <div class="confdiverg" style="border-color:#f0d495">
+        <div class="titulo" style="color:#7a5416">${esc(d.descricao)}${d.cor ? ' · ' + esc(d.cor) : ''}</div>
+        <div class="conta">Não contado — deveria ter <b>${d.esperado}</b></div>
+        <div class="onde">Procure em: ${(d.pedidos||[]).map(esc).join(' · ')}</div>
+      </div>`).join('')}
+
+    <button class="ok" onclick="recontar()">Achei — contar de novo</button>
+    <button class="btnsec" onclick="sairDaConferencia()">◀ Ver a lista de pedidos</button>
+
+    <div class="p" style="margin-top:16px">
+      <div style="font-weight:800;font-size:15px;margin-bottom:4px">Está faltando mesmo?</div>
+      <div class="mut" style="font-size:13.5px">Acontece: o móvel quebrou no galpão, ou a fábrica não entregou. Escreva o que houve e feche assim mesmo — fica registrado e o gerente vê no painel.</div>
+      <textarea class="confmotivo" id="motivoDiverg" placeholder="Ex.: a mesa de jantar do pedido 1042 quebrou no galpão, vai faltar mesmo"></textarea>
+      <button class="btnperigo" onclick="fecharComDivergencia()">Fechar assim mesmo, com ressalva</button>
+    </div>`;
+}
+
+function voltarParaRotas(){ idAtual = null; rom = null; conf = null; iniciar(true); }
 
 async function desfazerVolumeResumo(paradaId){
   try{
@@ -874,6 +1124,13 @@ window.voltarParaRotas = voltarParaRotas;
 window.comecarSeparacao = comecarSeparacao;
 window.verVisaoGeral = verVisaoGeral;
 window.desfazerVolumeResumo = desfazerVolumeResumo;
+window.abrirConferencia = abrirConferencia;
+window.sairDaConferencia = sairDaConferencia;
+window.mudarContagem = mudarContagem;
+window.digitouContagem = digitouContagem;
+window.enviarConferencia = enviarConferencia;
+window.recontar = recontar;
+window.fecharComDivergencia = fecharComDivergencia;
 window.desfazerCarregamento = desfazerCarregamento;
 window.marcarJaNoFrete = marcarJaNoFrete;
 window.atualizarBotaoVolume = atualizarBotaoVolume;
