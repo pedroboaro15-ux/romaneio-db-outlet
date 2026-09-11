@@ -4,7 +4,7 @@
 // marcado sem querer. Só funciona se o carregamento do romaneio ainda não foi confirmado
 // (senão teria que desfazer o carregamento primeiro, na tela de resumo).
 const { identificar } = require('./lib/auth');
-const { json } = require('./lib/http');
+const { json, lerCorpo } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 
 exports.handler = async event => {
@@ -13,8 +13,8 @@ exports.handler = async event => {
   if (!quem) return json(401, { erro: 'não autenticado' });
   if (quem.role === 'freteiro') return json(403, { erro: 'freteiro não separa estoque' });
 
-  let b;
-  try { b = JSON.parse(event.body || '{}'); } catch (e) { return json(400, { erro: 'JSON inválido' }); }
+  const { ok: corpoOk, corpo: b } = lerCorpo(event);
+  if (!corpoOk) return json(400, { erro: 'JSON inválido' });
   if (!b.paradaId) return json(400, { erro: 'informe paradaId' });
 
   const sb = admin();

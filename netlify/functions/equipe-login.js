@@ -4,15 +4,15 @@
 // pessoa. Como o telefone é um número curto e adivinhável, o freio de tentativas
 // (lib/limite.js) é o que segura força bruta — sem ele, isto seria só uma porta
 // destrancada. Ver também: a sessão dura 30 dias, não 90.
-const { json } = require('./lib/http');
+const { json, lerCorpo } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 const { criarSessao, soDigitos } = require('./lib/sessao');
 const { ipDe, bloqueado, errou, acertou } = require('./lib/limite');
 
 exports.handler = async event => {
   if (event.httpMethod !== 'POST') return json(405, { erro: 'método não permitido' });
-  let b;
-  try { b = JSON.parse(event.body || '{}'); } catch (e) { return json(400, { erro: 'JSON inválido' }); }
+  const { ok: corpoOk, corpo: b } = lerCorpo(event);
+  if (!corpoOk) return json(400, { erro: 'JSON inválido' });
 
   const telefone = soDigitos(b.telefone);
   const tipo = b.tipo === 'estoquista' ? 'estoquista' : 'freteiro';

@@ -167,13 +167,19 @@ async function processarPeriodo(sb, de, ate, paginaInicial) {
 exports.handler = async event => {
   const q = event.queryStringParameters || {};
 
-  // O cron do Netlify chama sem header de login — ele manda um corpo com "next_run".
-  // Só a ingestão do dia aceita esse caminho; diagnóstico e backfill exigem o gerente.
-  let corpo = null;
-  try { corpo = JSON.parse(event.body || 'null'); } catch (e) { corpo = null; }
-  const ehCron = !!(corpo && corpo.next_run);
-
-  if (!ehCron) {
+  // Quem chamou: o cron do Worker, ou uma pessoa?
+  //
+  // No tempo do Netlify o cron chegava por HTTP, sem header de login, e se
+  // identificava mandando "next_run" no corpo. No Cloudflare isso mudou: o cron
+  // NÃO passa pela internet — o src/index.mjs chama esta função direto, dentro
+  // do Worker. O caminho antigo deixou de servir pro cron e continuou servindo
+  // pra qualquer um: bastava POSTar {"next_run":1} pra disparar a carga da Omie,
+  // sem senha, quantas vezes quisesse.
+  //
+  // Agora a marca é "event.interno", posta pelo src/index.mjs na hora de chamar.
+  // Ela não pode vir de fora: o event de uma requisição HTTP é montado campo a
+  // campo (montarEvent), e "interno" não é um dos campos.
+  if (event.interno !== true) {
     const user = await requireAdmin(event);
     if (!user) return json(401, { erro: 'não autenticado' });
   }

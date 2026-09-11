@@ -22,9 +22,17 @@ async function post(path, call, param, c) {
   const ctrl = new AbortController();
   const alarme = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
 
+  // Segunda trava, aqui embaixo: mesmo que um dia alguém chame post() de um lugar
+  // novo sem validar o path, o endereço final tem que continuar sendo a Omie.
+  // A checagem é no host exato — "app.omie.com.br.atacante.com" não passa.
+  const destino = new URL(path, BASE);
+  if (destino.origin !== new URL(BASE).origin) {
+    throw new Error('caminho fora da API da Omie: ' + destino.origin);
+  }
+
   let res, texto;
   try {
-    res = await fetch(new URL(path, BASE).toString(), {
+    res = await fetch(destino.toString(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body,

@@ -3,7 +3,7 @@
 // outro estoque e já foi carregado antes) — some da cobrança de volume desse item sem
 // precisar confirmar de novo. Dá pra desmarcar também, se foi engano.
 const { identificar } = require('./lib/auth');
-const { json } = require('./lib/http');
+const { json, lerCorpo } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 
 exports.handler = async event => {
@@ -12,8 +12,8 @@ exports.handler = async event => {
   if (!quem) return json(401, { erro: 'não autenticado' });
   if (quem.role === 'freteiro') return json(403, { erro: 'freteiro não mexe na separação' });
 
-  let b;
-  try { b = JSON.parse(event.body || '{}'); } catch (e) { return json(400, { erro: 'JSON inválido' }); }
+  const { ok: corpoOk, corpo: b } = lerCorpo(event);
+  if (!corpoOk) return json(400, { erro: 'JSON inválido' });
   if (!b.paradaId || b.indice == null) return json(400, { erro: 'informe paradaId e indice' });
 
   const sb = admin();
@@ -26,8 +26,21 @@ exports.handler = async event => {
   if (!parada) return json(404, { erro: 'parada não encontrada' });
 
   const itens = Array.isArray(parada.itens) ? parada.itens.map(it => ({ ...it })) : [];
-  if (!itens[b.indice]) return json(400, { erro: 'item não encontrado' });
-  itens[b.indice].jaNoFrete = !!b.jaNoFrete;
+
+  // O índice precisa ser um inteiro dentro da lista — conferido ANTES de tocar
+  // em itens[indice].
+  //
+  // Não é preciosismo. Todo array tem "__proto__" e "constructor": itens['__proto__']
+  // existe, é o Array.prototype, e escrever nele sujaria o protótipo do isolate
+  // inteiro. Como o Cloudflare reaproveita o isolate entre requisições, "jaNoFrete"
+  // passaria a valer true pra TODO item de TODA parada que aquele isolate atendesse
+  // depois — e o app marcaria como separada uma parada em que ninguém encostou.
+  // Um caminhão sairia sem a mercadoria, e a tela diria que estava tudo certo.
+  const indice = Number(b.indice);
+  if (!Number.isInteger(indice) || indice < 0 || indice >= itens.length) {
+    return json(400, { erro: 'item não encontrado' });
+  }
+  itens[indice].jaNoFrete = !!b.jaNoFrete;
 
   // Recalcula quanto ainda falta confirmar, descontando o que já foi marcado como
   // já-no-frete — e se já bate tudo, marca a parada como separada sozinho.

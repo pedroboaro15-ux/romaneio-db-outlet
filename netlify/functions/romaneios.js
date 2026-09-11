@@ -10,6 +10,37 @@ const { admin } = require('./lib/supabase');
 const { hojeBR } = require('./lib/datas');
 const { notificarPessoa, notificarTodosEstoquistas } = require('./lib/push');
 
+// Limites do que cabe numa chamada.
+//
+// Não existiam, e o buraco era grande: uma chamada com 5.000 paradas criava 5.000
+// linhas de uma vez, e o romaneio ficava impossível de abrir — inclusive no seu
+// painel. Um único item com 2 MB de texto entrava inteiro na coluna jsonb. Nada
+// disso vem da tela; vem de quem monta a chamada na mão. São números folgados:
+// a maior rota real tem dezenas de paradas, não centenas.
+const MAX_PARADAS = 200;
+const MAX_ITENS = 100;
+const MAX_TEXTO = 500;        // descrição de item, cor, número do pedido
+const MAX_OBSERVACAO = 4000;  // a observação do pedido é o campo mais longo que existe
+const MAX_VOLUMES = 999;
+const MAX_VALOR = 10000000;   // dez milhões: nenhum pedido de móvel chega perto
+
+/** Corta texto no tamanho e tira espaço das pontas. */
+const texto = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
+
+/**
+ * Número que não pode ser negativo nem absurdo.
+ *
+ * Volume e valor negativos entravam direto. Um "-3" em volumes some da conta do
+ * estoquista (ele nunca termina de separar) e o valor negativo estraga o relatório
+ * do mês inteiro — do tipo de erro que ninguém vê na hora, só quando o total do
+ * fim do mês não bate e não dá pra saber por quê.
+ */
+function numeroPositivo(v, max) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(n, max);
+}
+
 exports.handler = async event => {
   const q = event.queryStringParameters || {};
   const sb = admin();
@@ -46,26 +77,46 @@ exports.handler = async event => {
     let b;
     try { b = JSON.parse(event.body || '{}'); } catch (e) { return json(400, { erro: 'JSON inválido' }); }
     const paradas = Array.isArray(b.paradas) ? b.paradas : [];
+    if (paradas.length > MAX_PARADAS) {
+      return json(400, { erro: `no máximo ${MAX_PARADAS} paradas por vez (vieram ${paradas.length})` });
+    }
+    if (paradas.some(p => !p || typeof p !== 'object' || Array.isArray(p))) {
+      return json(400, { erro: 'cada parada precisa ser um objeto' });
+    }
+
+    /** Deixa um item só com os campos que o app usa, nos tamanhos que ele aceita. */
+    const limparItem = it => ({
+      descricao: texto(it && it.descricao, MAX_TEXTO),
+      cor: texto(it && it.cor, MAX_TEXTO),
+      volumes: numeroPositivo(it && it.volumes, MAX_VOLUMES),
+      fragil: !!(it && it.fragil),
+      jaNoFrete: !!(it && it.jaNoFrete)
+    });
 
     const montarLinha = (p, romaneioId, ordem) => {
-      const itens = p.itens || [];
+      // Só os MAX_ITENS primeiros, e cada um passado no filtro: a coluna é jsonb e
+      // aceitaria qualquer coisa que chegasse, inclusive campos que ninguém lê e
+      // que só ocupam espaço.
+      const itens = (Array.isArray(p.itens) ? p.itens : []).slice(0, MAX_ITENS).map(limparItem);
       // O total de volumes é sempre a soma dos volumes de cada item — nunca um número
       // digitado à parte, pra nunca ficar destoante do que tem item por item.
-      const somaVolumes = itens.reduce((s, it) => s + (Number(it.volumes) || 0), 0);
+      const somaVolumes = itens.reduce((s, it) => s + it.volumes, 0);
       return {
         romaneio_id: romaneioId,
         ordem,
-        tipo: p.tipo || 'pedido',
-        numero: String(p.numero || ''),
-        doc_id: p.docId != null ? String(p.docId) : '',
-        data_doc: p.data || '',
-        cliente: p.cliente ? { ...p.cliente, codigo: p.codigoCliente != null ? String(p.codigoCliente) : null } : null,
+        tipo: p.tipo === 'assistencia' ? 'assistencia' : 'pedido',
+        numero: texto(p.numero, MAX_TEXTO),
+        doc_id: texto(p.docId, MAX_TEXTO),
+        data_doc: texto(p.data, 40),
+        cliente: p.cliente && typeof p.cliente === 'object' && !Array.isArray(p.cliente)
+          ? { ...p.cliente, codigo: p.codigoCliente != null ? texto(p.codigoCliente, 40) : null }
+          : null,
         itens,
-        volumes: somaVolumes || Number(p.volumes) || 0,
-        peso: Number(p.peso) || 0,
-        valor: Number(p.valor) || 0,
-        observacao: p.observacao || '',
-        cor: p.cor || '',
+        volumes: somaVolumes || numeroPositivo(p.volumes, MAX_VOLUMES),
+        peso: numeroPositivo(p.peso, 100000),
+        valor: numeroPositivo(p.valor, MAX_VALOR),
+        observacao: texto(p.observacao, MAX_OBSERVACAO),
+        cor: texto(p.cor, MAX_TEXTO),
         status: 'pendente'
       };
     };

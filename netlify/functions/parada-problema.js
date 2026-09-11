@@ -4,7 +4,7 @@
 // chegou quebrado no estoque (responsavel='estoque', motivo='Móvel quebrado') — o resto
 // da tela de problemas continua exclusiva do gerente.
 const { identificar } = require('./lib/auth');
-const { json } = require('./lib/http');
+const { json, lerCorpo } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 
 const MOTIVOS = {
@@ -20,8 +20,8 @@ exports.handler = async event => {
   if (!quem) return json(401, { erro: 'não autenticado' });
   if (quem.role === 'freteiro') return json(403, { erro: 'freteiro não registra problema' });
 
-  let b;
-  try { b = JSON.parse(event.body || '{}'); } catch (e) { return json(400, { erro: 'JSON inválido' }); }
+  const { ok: corpoOk, corpo: b } = lerCorpo(event);
+  if (!corpoOk) return json(400, { erro: 'JSON inválido' });
   if (!b.paradaId) return json(400, { erro: 'informe paradaId' });
 
   if (quem.role === 'estoquista' && !(b.problema && b.responsavel === 'estoque' && b.motivo === 'Móvel quebrado')) {

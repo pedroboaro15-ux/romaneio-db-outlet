@@ -242,9 +242,13 @@ export default {
       try {
         const saida = await ingerirPedidosOmie.handler({
           httpMethod: 'POST', headers: {}, queryStringParameters: {},
-          // "next_run" é o que a função usa pra saber que quem chamou foi o cron,
-          // e não uma pessoa — é o único caminho que dispensa login.
-          body: JSON.stringify({ next_run: controller.scheduledTime })
+          body: JSON.stringify({ agendadoEm: controller.scheduledTime }),
+          // A marca de que quem chamou foi o cron, e não uma pessoa — é o único
+          // caminho que dispensa login. Ela só existe aqui: o event de uma
+          // requisição HTTP é montado por montarEvent(), que não tem este campo.
+          // Antes a marca vinha DENTRO do corpo ("next_run"), o que qualquer um
+          // podia mandar — e mandava, sem senha nenhuma.
+          interno: true
         });
         console.log('carga diária:', saida && saida.body);
       } catch (e) {

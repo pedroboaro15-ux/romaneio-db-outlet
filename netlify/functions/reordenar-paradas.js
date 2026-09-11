@@ -1,7 +1,7 @@
 // POST /.netlify/functions/reordenar-paradas  { romaneioId, ordem: [paradaId, paradaId, ...] }
 // Grava a nova ordem das paradas depois que o gerente confirma (nunca reordena sozinho).
 const { requireAdmin } = require('./lib/auth');
-const { json } = require('./lib/http');
+const { json, lerCorpo } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 
 exports.handler = async event => {
@@ -9,8 +9,8 @@ exports.handler = async event => {
   const user = await requireAdmin(event);
   if (!user) return json(401, { erro: 'não autenticado' });
 
-  let b;
-  try { b = JSON.parse(event.body || '{}'); } catch (e) { return json(400, { erro: 'JSON inválido' }); }
+  const { ok: corpoOk, corpo: b } = lerCorpo(event);
+  if (!corpoOk) return json(400, { erro: 'JSON inválido' });
   if (!b.romaneioId || !Array.isArray(b.ordem) || !b.ordem.length) return json(400, { erro: 'informe romaneioId e ordem' });
 
   const sb = admin();
