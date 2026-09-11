@@ -9,11 +9,10 @@
 //
 // Ele faz três coisas:
 //   1. Traduz /.netlify/functions/<nome> pra função correspondente.
-//   2. Refaz os endereços amigáveis (/entrega, /separacao, /equipe) que moravam no
+//   2. Refaz os endereços amigáveis (/painel, /entrega, /separacao) que moravam no
 //      netlify.toml.
 //   3. Roda a carga diária dos pedidos no horário do cron (ver wrangler.toml).
 
-import conferencia from '../netlify/functions/conferencia.js';
 import equipeLogin from '../netlify/functions/equipe-login.js';
 import estoquistas from '../netlify/functions/estoquistas.js';
 import fotoUpload from '../netlify/functions/foto-upload.js';
@@ -38,9 +37,11 @@ import romaneioCarregado from '../netlify/functions/romaneio-carregado.js';
 import romaneioPublico from '../netlify/functions/romaneio-publico.js';
 import romaneios from '../netlify/functions/romaneios.js';
 
+// O app de estoque trouxe um endpoint proprio junto (ver src/planilha.mjs).
+import { buscarPlanilha } from './planilha.mjs';
+
 // O nome na URL continua igual ao de antes, então nada muda no HTML das páginas.
 const FUNCOES = {
-  'conferencia': conferencia,
   'equipe-login': equipeLogin,
   'estoquistas': estoquistas,
   'foto-upload': fotoUpload,
@@ -68,7 +69,76 @@ const FUNCOES = {
 
 // Endereços amigáveis que moravam no netlify.toml. O que vem depois da barra
 // (/entrega/<id>) é lido pelo JavaScript da própria página, então basta entregar o HTML.
-const PAGINAS = { '/entrega': '/entrega.html', '/separacao': '/separacao.html', '/equipe': '/equipe.html' };
+// A raiz (/) agora e a porta de entrada que pergunta quem voce e; o painel do
+// gerente mora em /painel. /equipe era a porta antiga da equipe e continua
+// respondendo, mandando pra nova, pra nao quebrar link salvo em celular.
+const PAGINAS = {
+  // A raiz precisa aparecer aqui porque o wrangler.toml desligou o html_handling:
+  // nada mais serve index.html sozinho, e é isso que queremos — quem decide é este
+  // arquivo, não uma regra escondida do Cloudflare.
+  '/': '/index.html',
+  '/painel': '/painel.html',
+  '/entrega': '/entrega.html',
+  '/separacao': '/separacao.html',
+  '/equipe': '/index.html'
+};
+
+// Onde o app de estoque (o SPA buildado pelo Vite) foi publicado.
+const ESTOQUE = '/estoque';
+
+// ---------------------------------------------------------------- segurança
+//
+// Estes cabeçalhos moravam no public/_headers e voltaram pra cá por um motivo
+// concreto: o Cloudflare SOMA as regras que casam, em vez de a mais específica
+// substituir a mais geral. Com "/*" e "/estoque/*" no arquivo, a resposta saía
+// com DUAS linhas de Content-Security-Policy — e o navegador aplica a
+// interseção das duas, a mais apertada. Resultado: a fonte do app de estoque
+// era bloqueada por uma regra escrita pro romaneio.
+//
+// Aqui cada endereço recebe UMA política, escolhida por um if. Sem soma, sem
+// surpresa, e testes/rotas.test.mjs confere.
+//
+// São duas porque os dois apps são escritos de formas diferentes:
+//
+//   romaneio  — JavaScript dentro do próprio HTML, com onclick= nos botões.
+//               Exige 'unsafe-inline' no script-src. Não é o ideal; é o preço
+//               de não reescrever 4.000 linhas que já funcionam na rua.
+//               Precisa também do cdn.jsdelivr.net (o supabase-js) e da
+//               geolocalização (onde a entrega foi confirmada).
+//
+//   estoque   — compilado pelo Vite, nada inline. Mantém a política apertada
+//               que já tinha: script-src 'self', e a geolocalização bloqueada.
+const SEGURANCA_COMUM = {
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin'
+};
+
+const CSP_ROMANEIO =
+  "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
+  "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; " +
+  "font-src 'self'; connect-src 'self' https://*.supabase.co; " +
+  "frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+
+const CSP_ESTOQUE =
+  "default-src 'self'; script-src 'self'; " +
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+  "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; " +
+  "connect-src 'self' https://*.supabase.co; " +
+  "frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+
+/** Devolve a mesma resposta, assinada com a política do endereço pedido. */
+function assinar(resposta, caminho) {
+  const saida = new Response(resposta.body, resposta);
+  for (const [k, v] of Object.entries(SEGURANCA_COMUM)) saida.headers.set(k, v);
+
+  const noEstoque = caminho === ESTOQUE || caminho.startsWith(ESTOQUE + '/');
+  saida.headers.set('Content-Security-Policy', noEstoque ? CSP_ESTOQUE : CSP_ROMANEIO);
+  saida.headers.set('Permissions-Policy',
+    noEstoque ? 'geolocation=(), microphone=(), camera=()' : 'microphone=(), camera=()');
+
+  return saida;
+}
 
 // As funções leem configuração de process.env (jeito do Node). No Cloudflare a
 // configuração chega no parâmetro "env" de cada requisição. Esta ponte copia uma
@@ -135,14 +205,33 @@ export default {
       return rodarFuncao(nome, request, env);
     }
 
-    // /entrega, /entrega/<id>, /separacao/<id>, /equipe...
+    // Importacao de planilha do app de estoque. Nao passa pelas funcoes do
+    // Netlify porque nasceu no outro app, com outro formato.
+    if (caminho === '/api/planilha') return buscarPlanilha(request);
+
+    // /entrega, /entrega/<id>, /separacao/<id>, /painel, /equipe...
+    // O que vem depois da barra (/entrega/<id>) e lido pelo JavaScript da propria
+    // pagina, entao a mesma pagina atende com e sem id — e o id chega intacto.
     for (const prefixo of Object.keys(PAGINAS)) {
-      if (caminho === prefixo || caminho.startsWith(prefixo + '/')) {
-        return env.ASSETS.fetch(new Request(new URL(PAGINAS[prefixo], url.origin), request));
+      if (caminho === prefixo || (prefixo !== '/' && caminho.startsWith(prefixo + '/'))) {
+        const pagina = await env.ASSETS.fetch(new Request(new URL(PAGINAS[prefixo], url.origin), request));
+        return assinar(pagina, caminho);
       }
     }
 
-    return env.ASSETS.fetch(request);
+    // O estoque e um app de pagina unica: o endereco de dentro dele (/estoque/
+    // qualquer-coisa) nao existe como arquivo, quem le e o JavaScript. Entao
+    // quando nao ha arquivo, entrega o index.html dele em vez de um 404.
+    if (caminho === ESTOQUE || caminho.startsWith(ESTOQUE + '/')) {
+      const resposta = await env.ASSETS.fetch(request);
+      if (resposta.status !== 404) return assinar(resposta, caminho);
+      const spa = await env.ASSETS.fetch(new Request(new URL(ESTOQUE + '/index.html', url.origin), request));
+      return assinar(spa, caminho);
+    }
+
+    // Nem /estoque nem página conhecida: se for arquivo (logo.svg, sw.js), sai
+    // daqui assinado igual. Se não for nada, 404 — nosso, não do Cloudflare.
+    return assinar(await env.ASSETS.fetch(request), caminho);
   },
 
   // Carga diária dos pedidos de venda. O horário está no wrangler.toml.

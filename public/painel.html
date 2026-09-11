@@ -1,0 +1,1456 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Romaneio — Outlet dos Móveis DB</title>
+<link rel="icon" href="/logo.svg">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#f4f4f0; --card:#fff; --line:#e2e2d9; --ink:#14140F; --mut:#6f6f66;
+  --amarelo:#F2F250; --amarelo-forte:#E4E42F;
+  --brand:#14140F; --brand-ink:#fff; --ok:#0f8a4a; --warn:#b45309; --bad:#b91c1c;
+  --radius:10px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{background:var(--ink);padding:0 16px;position:sticky;top:0;z-index:20}
+.hrow{display:flex;align-items:center;gap:14px;max-width:1100px;margin:0 auto;height:60px}
+.marca{display:flex;align-items:center;gap:10px}
+.marca img{width:38px;height:38px;border-radius:7px;display:block}
+.logo{font-weight:700;font-size:15px;letter-spacing:-.02em;color:#fff;line-height:1.15}
+.logo span{display:block;font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--amarelo)}
+nav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+nav button{background:none;border:0;padding:8px 13px;border-radius:7px;cursor:pointer;color:#b9b9ae;font:inherit;font-weight:600;font-size:13px}
+nav button:hover{background:#ffffff1a;color:#fff}
+nav button.on{background:var(--amarelo);color:var(--ink)}
+.navlink{padding:8px 13px;border-radius:7px;color:#b9b9ae;font-weight:600;font-size:13px;text-decoration:none;align-self:center}
+.navlink:hover{background:#ffffff1a;color:#fff}
+main{max-width:1100px;margin:20px auto;padding:0 16px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+h2{font-size:15px;margin:0 0 12px;letter-spacing:-.01em}
+h3{font-size:13px;margin:0 0 8px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px;font-weight:500}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+input:focus,select:focus{outline:2px solid var(--brand);outline-offset:-1px;border-color:transparent}
+button.btn,a.btn{background:var(--brand);color:var(--brand-ink);border:0;padding:9px 16px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+button.btn:hover,a.btn:hover{filter:brightness(1.25)}
+button.btn:disabled{opacity:.45;cursor:not-allowed}
+/* Ação principal da tela: amarelo da marca, preto por cima — impossível não ver. */
+button.cta,a.cta{background:var(--amarelo);color:var(--ink);border:0;font-weight:700}
+button.cta:hover,a.cta:hover{background:var(--amarelo-forte);filter:none}
+button.ghost,a.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+button.ghost:hover,a.ghost:hover{background:#f4f4ee;filter:none}
+button.sm,a.sm{padding:5px 10px;font-size:12px;font-weight:500}
+button.danger,a.danger{color:var(--bad);border-color:#f0c9c9;background:#fff}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.row>div{flex:1;min-width:130px}
+.row>.auto{flex:0 0 auto;min-width:0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 8px;border-bottom:1px solid #f0f2f4;vertical-align:top}
+tr:hover td{background:#fbfbf7}
+.mut{color:var(--mut);font-size:12px}
+.right{text-align:right}.center{text-align:center}
+.tag{display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:600;background:#edede4;color:var(--mut)}
+.tag.ok{background:#e3f6ec;color:var(--ok)}
+.tag.pend{background:#fef3e2;color:var(--warn)}
+.tag.falhou{background:#fdeaea;color:var(--bad)}
+.tag.alt{background:#fef3e2;color:var(--warn)}
+.tag.marca{background:var(--amarelo);color:var(--ink)}
+.empty{padding:34px;text-align:center;color:var(--mut)}
+.itens{margin-top:5px;padding-left:9px;border-left:2px solid var(--line);font-size:12px;color:#444}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--amarelo);padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:99;opacity:0;transition:.2s;pointer-events:none}
+.toast.show{opacity:1}
+.err{background:#fdeaea;border:1px solid #f5c6c6;color:#7f1d1d;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;white-space:pre-line}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rm{border:1px solid var(--line);border-left:4px solid var(--ink);border-radius:var(--radius);padding:12px;margin-bottom:10px;background:#fff}
+.rm .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.rm .cod{font-weight:800;font-size:15px;letter-spacing:-.01em}
+details>summary{cursor:pointer;color:var(--ink);font-size:12px;font-weight:600;margin-top:8px}
+code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #fff6;border-top-color:#fff;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px}
+@keyframes s{to{transform:rotate(360deg)}}
+.loginbox{max-width:360px;margin:70px auto}
+.loginmarca{text-align:center;margin-bottom:18px}
+.loginmarca img{width:92px;height:92px;border-radius:14px}
+/* Cada pedido que não bateu o padrão da observação, pro gerente arrumar na mão. */
+.linharevisar{border:1px solid var(--linha,#e2e2d9);border-radius:10px;padding:12px;margin-bottom:10px}
+.linharevisar+.linharevisar{margin-top:0}
+.subnav{display:flex;gap:6px;margin-bottom:14px}
+.subnav button{background:#edede4;border:0;padding:7px 12px;border-radius:20px;font:inherit;font-size:12px;font-weight:600;color:var(--mut);cursor:pointer}
+.subnav button.on{background:var(--ink);color:var(--amarelo)}
+.volinput{width:64px;padding:5px 6px;text-align:center}
+.semgeo{background:#fef3e2;border:1px solid #fbe0b0;border-radius:8px;padding:8px 10px;margin-top:8px;font-size:12px;color:#7a5416}
+.editrom{background:#fbfbf4;border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:8px}
+/* Galeria de fotos direto na tabela — pra ver vidro/assinatura/pagamento/entrega sem
+   precisar abrir o Supabase. */
+.galeriafotos{margin-top:6px;display:flex;gap:8px;flex-wrap:wrap}
+.fotoadm{display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none}
+.fotoadm img{width:58px;height:58px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+.fotoadm span{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--mut)}
+.barrafrete{display:grid;grid-template-columns:120px 1fr 90px;align-items:center;gap:10px;margin-bottom:8px;font-size:13px}
+.barrafrete-nome{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.barrafrete-trilho{background:#edede4;border-radius:6px;height:20px;overflow:hidden}
+.barrafrete-cheio{background:var(--amarelo);height:100%;border-radius:6px 0 0 6px}
+.barrafrete-valor{text-align:right;font-weight:700;white-space:nowrap}
+/* Mostrinha de cor: sempre com borda escura, senão "Branco" some no fundo branco. */
+.sw{display:inline-block;border-radius:4px;border:1.5px solid #9a9a8e;flex:0 0 auto}
+.fragilcheck{display:flex;align-items:center;gap:4px;flex:0 0 auto;margin:0;font-size:12px;font-weight:600;color:var(--ink);text-transform:none;white-space:nowrap;cursor:pointer}
+.fragilcheck input{width:auto;margin:0}
+.tag.fragil{background:#fdeaea;color:var(--bad)}
+@media(max-width:640px){
+  .grid2{grid-template-columns:1fr}
+  .hrow{height:auto;padding:10px 0;flex-wrap:wrap}
+  nav{margin-left:0;width:100%}
+  nav button{padding:7px 10px;font-size:12px}
+  .navlink{padding:7px 10px;font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="tela-login" class="loginbox" hidden>
+  <div class="loginmarca"><img src="/logo.svg" alt="Outlet dos Móveis DB"></div>
+  <div class="card">
+  <h2>Entrar no painel</h2>
+  <div id="erroLogin"></div>
+  <div style="margin-bottom:10px"><label>E-mail</label><input id="lEmail" type="email" autocomplete="username"></div>
+  <div style="margin-bottom:12px"><label>Senha</label><input id="lSenha" type="password" autocomplete="current-password"></div>
+  <button class="btn cta" id="btnLogin" style="width:100%">Entrar</button>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="tela-app" hidden>
+<header><div class="hrow">
+  <div class="marca">
+    <img src="/logo.svg" alt="Outlet dos Móveis DB">
+    <div class="logo">Romaneio<span>Outlet dos Móveis DB</span></div>
+  </div>
+  <nav>
+    <button data-t="painel" class="on">Painel</button>
+    <button data-t="pedido">Buscar pedido</button>
+    <button data-t="rom">Romaneios</button>
+    <button data-t="fret">Freteiros</button>
+    <button data-t="rel">Relatórios</button>
+    <button data-t="vendas">Vendas</button>
+    <button data-t="diag">Diagnóstico</button>
+    <!-- O estoque é outro app, servido pelo mesmo site em /estoque. Não é uma aba:
+         é uma ida pra lá, com a mesma sessão (mesma origem, mesmo login). -->
+    <a class="navlink" href="/estoque/">Estoque ↗</a>
+  </nav>
+  <button class="btn ghost sm" id="sair">Sair</button>
+</div></header>
+
+<main>
+  <div id="erro"></div>
+
+  <!-- ===================== PAINEL DO DIA ===================== -->
+  <section id="t-painel">
+    <div class="card">
+      <h2>Como está o dia de hoje</h2>
+      <div id="painelResumo"></div>
+    </div>
+    <div class="card">
+      <h2>Rotas de hoje</h2>
+      <div id="painelRotas"></div>
+    </div>
+  </section>
+
+  <!-- ===================== BUSCAR PEDIDO ===================== -->
+  <section id="t-pedido" hidden>
+    <div class="card">
+      <div class="subnav">
+        <button data-m="numero" class="on">Por número</button>
+        <button data-m="assistencia">Assistência técnica</button>
+      </div>
+
+      <!-- --- por número --- -->
+      <div id="modo-numero">
+        <h2>Buscar 1 pedido de venda na Omie</h2>
+        <div class="row">
+          <div><label>Número do pedido</label><input id="numPedido" placeholder="Ex: 1234"></div>
+          <div class="auto"><button class="btn" id="buscarPedido">Buscar</button></div>
+        </div>
+      </div>
+
+      <!-- --- assistência técnica (usa o mesmo pedido, você só complementa o motivo) --- -->
+      <div id="modo-assistencia" hidden>
+        <h2>Assistência técnica de um pedido já vendido</h2>
+        <p class="mut" style="margin-top:-6px">Digite o número do pedido — os dados do cliente e do produto vêm iguaizinho à busca por número. Você só diz qual foi o problema.</p>
+        <div class="row">
+          <div><label>Número do pedido</label><input id="numAssist" placeholder="Ex: 1234"></div>
+          <div class="auto"><button class="btn" id="buscarAssistencia">Buscar</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="cardResultado" hidden>
+      <h2 id="tituloResultado">Pedido encontrado</h2>
+      <div id="historicoCliente"></div>
+      <div id="resultado"></div>
+      <div class="row" style="margin-top:12px">
+        <div id="wTipoProblema" hidden><label>Tipo de problema</label>
+          <select id="rTipoProblema">
+            <option value="cor">Cor</option>
+            <option value="defeito">Defeito na peça</option>
+            <option value="esquecimento">Esquecimento</option>
+          </select>
+        </div>
+        <div><label>Total de volumes</label><input id="rVolumesTotal" disabled value="0" style="background:#f4f6f8;font-weight:700"></div>
+        <div style="flex:2"><label>Observação (opcional)</label><input id="rObs"></div>
+        <div class="auto"><button class="btn cta" id="addRascunho">Adicionar ao romaneio</button></div>
+      </div>
+    </div>
+
+    <div class="card" id="cardRascunho" hidden style="padding:0;overflow:hidden">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center">
+        <h2 style="margin:0">Romaneio em montagem</h2>
+        <span class="mut" id="contagem" style="margin-left:auto"></span>
+      </div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>Doc.</th><th>Cliente</th><th>Destino</th><th class="center">Vol.</th><th>Cor</th><th class="right">Valor</th><th></th></tr></thead>
+        <tbody id="tabRascunho"></tbody>
+      </table></div>
+      <div style="padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div style="min-width:200px"><label>Adicionar a</label>
+          <select id="romDestino">
+            <option value="">— novo romaneio —</option>
+          </select>
+        </div>
+        <div style="min-width:180px" id="wFrSel"><label>Freteiro *</label><select id="frSel"></select></div>
+        <div style="min-width:150px" id="wDataRota"><label>Data da rota</label><input type="date" id="dataRota"></div>
+        <div style="min-width:130px" id="wValorFrete"><label>Valor do frete (R$)</label><input type="number" min="0" step="0.01" id="valorFrete" placeholder="0,00"></div>
+        <button class="btn cta" id="gerar">Gerar romaneio</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ROMANEIOS ===================== -->
+  <section id="t-rom" hidden>
+    <div class="card">
+      <h2>Romaneios</h2>
+      <div class="subnav" id="filtroRom">
+        <button data-filtro="ativos" class="on">Em rota</button>
+        <button data-filtro="concluidos">Entregues</button>
+        <button data-filtro="todos">Todos</button>
+      </div>
+      <div id="listaRom"></div>
+    </div>
+  </section>
+
+  <!-- ===================== FRETEIROS ===================== -->
+  <section id="t-fret" hidden>
+    <div class="card">
+      <h2 id="tituloFr">Cadastrar freteiro</h2>
+      <p class="mut" style="margin-top:-6px">O freteiro abre o site, toca em 🚚 Freteiro e entra com esse telefone — sem senha.</p>
+      <input type="hidden" id="fId">
+      <div class="row">
+        <div><label>Nome</label><input id="fNome" placeholder="João Silva"></div>
+        <div><label>Telefone (login) *</label><input id="fTel" placeholder="(11) 99999-0000"></div>
+        <div><label>Veículo</label><input id="fVeic" placeholder="Fiorino"></div>
+        <div><label>Placa</label><input id="fPlaca" placeholder="ABC1D23"></div>
+        <div class="auto"><button class="btn" id="addFr">Adicionar</button></div>
+        <div class="auto"><button class="btn ghost" id="cancelarFr" hidden>Cancelar edição</button></div>
+      </div>
+    </div>
+    <div class="card" style="padding:0"><div style="overflow-x:auto"><table id="tabFr">
+      <thead><tr><th>Nome</th><th>Telefone</th><th>Veículo</th><th>Placa</th><th></th></tr></thead>
+      <tbody></tbody></table></div></div>
+
+    <div class="card">
+      <h2 id="tituloEs">Cadastrar estoquista</h2>
+      <p class="mut" style="margin-top:-6px">O estoquista abre o site, toca em 📦 Estoquista e entra com esse telefone; vê todas as rotas (não precisa vincular a um romaneio específico).</p>
+      <input type="hidden" id="eId">
+      <div class="row">
+        <div><label>Nome</label><input id="eNome" placeholder="Maria"></div>
+        <div><label>Telefone (login) *</label><input id="eTel" placeholder="(11) 99999-0000"></div>
+        <div class="auto"><button class="btn" id="addEs">Adicionar</button></div>
+        <div class="auto"><button class="btn ghost" id="cancelarEs" hidden>Cancelar edição</button></div>
+      </div>
+    </div>
+    <div class="card" style="padding:0"><div style="overflow-x:auto"><table id="tabEs">
+      <thead><tr><th>Nome</th><th>Telefone</th><th></th></tr></thead>
+      <tbody></tbody></table></div></div>
+  </section>
+
+  <!-- ===================== RELATÓRIOS ===================== -->
+  <section id="t-rel" hidden>
+    <div class="card">
+      <h2>Quanto cada freteiro levou, faturou de frete e quantos problemas deu</h2>
+      <p class="mut" style="margin-top:-6px">Faturamento é a soma do "Valor do frete" de cada romaneio (aba Romaneios). Problemas são as paradas marcadas com "houve problema". Guarda o histórico todo — o período abaixo é só pra filtrar (padrão: últimos 30 dias).</p>
+      <div class="row">
+        <div><label>De</label><input type="date" id="relDe"></div>
+        <div><label>Até</label><input type="date" id="relAte"></div>
+        <div class="auto"><button class="btn" id="relBuscar">Buscar</button></div>
+      </div>
+      <div id="relResumo" class="mut" style="margin-top:12px"></div>
+      <div id="graficoFrete" style="margin-top:14px"></div>
+      <div style="margin-top:10px"><button class="btn ghost sm" id="relExportar" hidden>Exportar CSV</button></div>
+      <div style="overflow-x:auto;margin-top:12px"><table>
+        <thead><tr><th>Freteiro</th><th class="right">Frete faturado</th><th class="center">Paradas</th><th class="center">Entregues</th><th class="center">Falharam</th><th class="center">Com problema</th><th class="center">% problema do freteiro</th></tr></thead>
+        <tbody id="tabRel"><tr><td colspan="7"><div class="empty">Escolha um período e clique em Buscar.</div></td></tr></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- ===================== VENDAS ===================== -->
+  <section id="t-vendas" hidden>
+    <div class="card">
+      <h2>Quanto cada vendedor vendeu, e por qual canal</h2>
+      <p class="mut" style="margin-top:-6px">Sai da observação do pedido de venda, no formato <code>CANAL||VENDEDOR||OBS: texto</code>. Os pedidos são trazidos da Omie de madrugada e guardados aqui — esta tela não consulta a Omie, então abre rápido mesmo com período grande.</p>
+      <div class="row">
+        <div><label>De</label><input type="date" id="vdDe"></div>
+        <div><label>Até</label><input type="date" id="vdAte"></div>
+        <div class="auto"><button class="btn" id="vdBuscar">Buscar</button></div>
+      </div>
+      <div id="vdResumo" class="mut" style="margin-top:12px"></div>
+      <div id="vdGrafico" style="margin-top:14px"></div>
+      <div style="margin-top:10px"><button class="btn ghost sm" id="vdExportar" hidden>Exportar CSV</button></div>
+      <div style="overflow-x:auto;margin-top:12px"><table>
+        <thead><tr><th>Vendedor</th><th class="right">Valor vendido</th><th class="center">Pedidos</th><th class="center">Ticket médio</th><th class="center">Presencial</th><th class="center">Online</th><th class="center">Outros</th></tr></thead>
+        <tbody id="tabVendas"><tr><td colspan="7"><div class="empty">Escolha um período e clique em Buscar.</div></td></tr></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" id="cardMeses" hidden>
+      <h2>Mês a mês</h2>
+      <p class="mut" style="margin-top:-6px">Quanto cada vendedor fez em cada mês do período escolhido. Serve pra comparar se está subindo ou caindo. Escolha um período de vários meses pra essa tabela ficar útil.</p>
+      <div style="overflow-x:auto"><table>
+        <thead><tr id="cabMeses"></tr></thead>
+        <tbody id="tabMeses"></tbody>
+        <tfoot id="rodMeses"></tfoot>
+      </table></div>
+    </div>
+
+    <div class="card" id="cardRevisar" hidden>
+      <h2>Pedidos que não bateram o padrão</h2>
+      <p class="mut" style="margin-top:-6px">Esses ficaram de fora da conta acima porque não deu pra saber o vendedor pela observação. Arrume aqui e eles entram no relatório. O que você corrigir na mão não é desfeito pela carga da madrugada.</p>
+      <div style="margin-bottom:12px">
+        <button class="btn ghost sm" id="vdIA">Tentar identificar com IA</button>
+        <span class="mut" id="vdIAStatus" style="margin-left:8px"></span>
+      </div>
+      <div id="listaRevisar"></div>
+    </div>
+
+    <div class="card" id="cardIA" hidden>
+      <h2>Identificados pela IA</h2>
+      <p class="mut" style="margin-top:-6px">A IA escolheu esses vendedores de uma lista de quem já existe nos seus pedidos, ela não inventa nome. Ainda assim vale bater o olho. Se algum estiver errado, arrume no quadro acima que ele passa a valer como correção sua.</p>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>Pedido</th><th>Data</th><th class="right">Valor</th><th>Vendedor</th><th>Canal</th><th>Observação original</th></tr></thead>
+        <tbody id="tabIA"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <h2>Carga dos pedidos</h2>
+      <p class="mut" style="margin-top:-6px">A carga diária roda sozinha de madrugada. Use os botões abaixo só para conferir os campos antes da primeira vez, ou para puxar o histórico.</p>
+      <div class="row" style="margin-top:10px">
+        <div class="auto"><button class="btn ghost" id="vdDiag">Conferir campos da Omie</button></div>
+        <div><label>Histórico de</label><input type="date" id="vdBfDe"></div>
+        <div><label>até</label><input type="date" id="vdBfAte"></div>
+        <div class="auto"><button class="btn ghost" id="vdBfIniciar">Puxar histórico</button></div>
+      </div>
+      <div id="vdBfStatus" class="mut" style="margin-top:10px"></div>
+      <pre id="vdDiagOut" hidden style="background:#0f1115;color:#d5dae1;padding:12px;border-radius:8px;overflow:auto;max-height:340px;font-size:12px;margin-top:10px"></pre>
+    </div>
+  </section>
+
+  <!-- ===================== DIAGNÓSTICO ===================== -->
+  <section id="t-diag" hidden>
+    <div class="card">
+      <h2>Diagnóstico da API Omie</h2>
+      <p class="mut">Chama qualquer método da Omie e mostra a resposta crua. Útil se algum campo não aparecer certo na busca de pedido.</p>
+      <div class="row" style="margin-top:10px">
+        <div><label>Endpoint</label><input id="dPath" value="produtos/pedido/"></div>
+        <div><label>Call</label><input id="dCall" value="ConsultarPedido"></div>
+        <div class="auto"><button class="btn ghost" id="dGo">Executar</button></div>
+      </div>
+      <div style="margin-top:10px"><label>Param (JSON)</label>
+        <textarea id="dParam" rows="4">{"codigo_pedido":0,"numero_pedido":"1234"}</textarea></div>
+      <pre id="dOut" style="background:#0f1115;color:#d5dae1;padding:12px;border-radius:8px;overflow:auto;max-height:340px;font-size:12px;margin-top:10px"></pre>
+    </div>
+  </section>
+</main>
+</div>
+
+<datalist id="canaisConhecidos">
+  <option value="PRESENCIAL"><option value="ONLINE">
+</datalist>
+<datalist id="vendedoresConhecidos"></datalist>
+<datalist id="coresPadrao">
+  <option value="Branco"><option value="Off"><option value="Nature">
+  <option value="Nature/Off"><option value="Off/Nature">
+</datalist>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= CONFIGURAÇÃO ================= */
+const SUPABASE_URL = 'https://teaymabvqynopsbnnuwp.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_rE-fSECVdd8sThPSQReZAg_GDjilRcu';
+
+// Endereço fixo do estoque: a rota sempre sai de lá (é de onde o freteiro pega os móveis).
+// As coordenadas são no nível da cidade — servem só pra sugerir a ordem da rota por
+// proximidade. Pra navegação de verdade o app usa o endereço por texto no Google Maps.
+const ESTOQUE = { nome: 'Estoque (móveis)', endereco: 'R. Márcia Travassos, 660 - Jardim Jerico, Cabedelo - PB, 58103-718', lat: -6.9732400, lng: -34.8351609 };
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+let freteiros = [], romaneios = [], rascunho = [], pedidoAtual = null;
+let modoBusca = 'pedido';
+// Quais romaneios estão com "Ver paradas" aberto — pra não fechar tudo (e perder o
+// lugar da tela) toda vez que uma ação (mover parada, marcar problema etc.) recarrega a lista.
+let detalhesAbertos = new Set();
+function onToggleDetalhes(id, aberto){ if(aberto) detalhesAbertos.add(id); else detalhesAbertos.delete(id); }
+
+const money = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// 'AAAA-MM-DD' no fuso da Paraíba. Com toISOString() (que é UTC), depois das 21h o
+// campo de data já vinha preenchido com o dia seguinte — e a rota nascia com data errada.
+const dataBR = d => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Fortaleza'}).format(d||new Date());
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+function erro(m){$('#erro').innerHTML = m ? `<div class="err">${esc(m)}</div>` : '';}
+
+/* ---------------- chamadas às Functions ---------------- */
+async function api(url, opt){
+  const { data } = await sb.auth.getSession();
+  const token = data.session ? data.session.access_token : null;
+  opt = opt || {};
+  opt.headers = Object.assign({}, opt.headers, token ? { Authorization: 'Bearer ' + token } : {});
+  const r = await fetch(url, opt);
+  const j = await r.json().catch(()=>({erro:'resposta inválida do servidor'}));
+  if(!r.ok){
+    const msg = j.erro || ('HTTP '+r.status);
+    if(/schema cache|does not exist|could not find the table/i.test(msg)){
+      throw new Error('As tabelas ainda não existem no Supabase. Abra o SQL Editor do seu projeto, cole o conteúdo de supabase/schema.sql e clique em Run — depois recarregue esta página.');
+    }
+    throw new Error(msg);
+  }
+  return j;
+}
+
+/* ---------------- login ---------------- */
+async function checarSessao(){
+  const { data } = await sb.auth.getSession();
+  if(data.session){ mostrarApp(); } else { mostrarLogin(); }
+}
+function mostrarLogin(){ $('#tela-login').hidden = false; $('#tela-app').hidden = true; }
+function mostrarApp(){
+  $('#tela-login').hidden = true; $('#tela-app').hidden = false;
+  carregarFreteiros().catch(e=>erro(e.message));
+  carregarEstoquistas().catch(e=>erro(e.message));
+  carregarRomaneios().catch(e=>erro(e.message));
+  carregarPainelDia().catch(e=>erro(e.message));
+  statusHoje();
+}
+$('#btnLogin').onclick = async () => {
+  const email = $('#lEmail').value.trim(), senha = $('#lSenha').value;
+  $('#erroLogin').innerHTML = '';
+  const { error } = await sb.auth.signInWithPassword({ email, password: senha });
+  if(error){ $('#erroLogin').innerHTML = `<div class="err">${esc(error.message)}</div>`; return; }
+  mostrarApp();
+};
+$('#sair').onclick = async () => { await sb.auth.signOut(); mostrarLogin(); };
+
+/* ---------------- navegação ---------------- */
+$$('nav button').forEach(b => b.onclick = () => {
+  $$('nav button').forEach(x=>x.classList.toggle('on', x===b));
+  ['painel','pedido','rom','fret','rel','vendas','diag'].forEach(t => $('#t-'+t).hidden = t !== b.dataset.t);
+  erro('');
+  if(b.dataset.t==='painel') carregarPainelDia();
+  if(b.dataset.t==='rom') carregarRomaneios();
+  if(b.dataset.t==='rel') $('#relBuscar').click();
+  if(b.dataset.t==='vendas') abrirVendas();
+});
+$$('#t-pedido .subnav button').forEach(b => b.onclick = () => {
+  $$('#t-pedido .subnav button').forEach(x=>x.classList.toggle('on', x===b));
+  $('#modo-numero').hidden = b.dataset.m !== 'numero';
+  $('#modo-assistencia').hidden = b.dataset.m !== 'assistencia';
+});
+let filtroRom = 'ativos';
+$$('#filtroRom button').forEach(b => b.onclick = () => {
+  $$('#filtroRom button').forEach(x=>x.classList.toggle('on', x===b));
+  filtroRom = b.dataset.filtro;
+  renderListaRom();
+});
+$('#relDe').onchange = () => { $('#relAte').min = $('#relDe').value; };
+
+/* ---------------- buscar pedido (por número / assistência) ---------------- */
+async function buscarPorNumero(numero, btn, modo){
+  if(!numero) return toast('Informe o número do pedido');
+  btn.disabled = true; const t0 = btn.textContent; btn.innerHTML = '<span class="spin"></span> Buscando…';
+  erro('');
+  try{
+    pedidoAtual = await api('/.netlify/functions/pedido?numero=' + encodeURIComponent(numero));
+    modoBusca = modo;
+    renderResultado();
+  }catch(e){ erro(e.message); $('#cardResultado').hidden = true; }
+  finally{ btn.disabled=false; btn.textContent = t0; }
+}
+$('#buscarPedido').onclick = () => buscarPorNumero($('#numPedido').value.trim(), $('#buscarPedido'), 'pedido');
+$('#buscarAssistencia').onclick = () => buscarPorNumero($('#numAssist').value.trim(), $('#buscarAssistencia'), 'assistencia');
+
+// Cor "de verdade" (mostrinha colorida) em vez de só a palavra escrita.
+function corParaSwatch(nome){
+  const n = (nome||'').trim().toLowerCase();
+  if(n==='branco') return '#ffffff';
+  if(n==='off') return '#efe6d3';
+  if(n==='nature') return '#a3744f';
+  if(n==='nature/off') return 'linear-gradient(135deg,#a3744f 60%,#efe6d3 60%)';
+  if(n==='off/nature') return 'linear-gradient(135deg,#a3744f 40%,#efe6d3 40%)';
+  return n ? '#cbd5e1' : 'transparent';
+}
+function atualizarSwatch(i){
+  const cor = document.getElementById('itemCor-'+i);
+  const sw = document.getElementById('swatch-'+i);
+  if(cor && sw) sw.style.background = corParaSwatch(cor.value);
+}
+function atualizarTotalVolumes(){
+  const itens = (pedidoAtual && pedidoAtual.itens) || [];
+  let total = 0;
+  itens.forEach((it,i) => { const v = document.getElementById('itemVol-'+i); total += v ? (Number(v.value)||0) : 0; });
+  $('#rVolumesTotal').value = total;
+}
+function alternarEdicaoDesc(i){
+  const txt = document.getElementById('descTxt-'+i), edit = document.getElementById('descEdit-'+i);
+  const entrando = edit.hidden;
+  edit.hidden = !entrando; txt.hidden = entrando;
+  if(entrando){ edit.focus(); return; }
+  // Saindo da edição: mostra o nome novo na hora (antes continuava exibindo o antigo,
+  // parecendo que a alteração não tinha pegado — mesmo tendo pegado).
+  const it = ((pedidoAtual && pedidoAtual.itens) || [])[i] || {};
+  const novo = edit.value.trim() || it.descricao || '';
+  txt.textContent = `${it.quantidade!=null?it.quantidade:''}x ${it.codigo?it.codigo+' — ':''}${novo}`;
+}
+
+function renderResultado(){
+  const p = pedidoAtual, c = p.cliente || {};
+  const end = [c.endereco, c.complemento, c.bairro].filter(Boolean).join(' - ');
+  const cid = [c.cidade, c.estado].filter(Boolean).join('/');
+  const itens = (p.itens||[]).map((it,i)=>`<div class="row" style="align-items:center;gap:6px;margin-top:6px">
+    <span class="swatch" id="swatch-${i}" style="width:20px;height:20px;border-radius:5px;border:1px solid var(--line);flex:0 0 auto;background:${corParaSwatch(it.cor)}"></span>
+    <span style="flex:2" id="descTxt-${i}">${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}</span>
+    <input id="descEdit-${i}" hidden style="flex:2" value="${esc(it.descricao||'')}">
+    <button type="button" class="btn ghost sm" style="flex:0 0 auto" title="Editar nome do produto" onclick="alternarEdicaoDesc(${i})">✏️</button>
+    <input list="coresPadrao" placeholder="cor" style="max-width:110px" id="itemCor-${i}" value="${esc(it.cor||'')}" oninput="atualizarSwatch(${i})">
+    <input type="number" min="0" placeholder="vol" style="max-width:64px" id="itemVol-${i}" value="${it.volumes!=null?it.volumes:''}" oninput="atualizarTotalVolumes()">
+    <label class="fragilcheck" title="Tem vidro/espelho ou é frágil — avisa o freteiro e o estoquista, e manda ir por cima">
+      <input type="checkbox" id="itemFragil-${i}" ${it.fragil?'checked':''}> 🔴 vidro
+    </label>
+  </div>`).join('');
+  $('#resultado').innerHTML = `
+    <strong>Pedido ${esc(p.numero)}</strong> ${p.etapaLabel?`<span class="tag">${esc(p.etapaLabel)}</span>`:''}
+    ${c.alternativo?`<span class="tag alt">endereço de entrega alternativo</span>`:''}
+    <span class="mut" style="margin-left:8px">${esc(p.data||'')}</span>
+    <div style="margin-top:8px"><strong>${esc(c.nome||'(sem cliente)')}</strong>${c.doc?` <span class="mut">${esc(c.doc)}</span>`:''}</div>
+    <div class="mut">${esc(end||'(endereço não informado)')}${cid?' · '+esc(cid):''}${c.cep?' · CEP '+esc(c.cep):''}</div>
+    ${c.telefone?`<div class="mut">Tel: ${esc(c.telefone)}</div>`:''}
+    ${itens?`<div class="itens">${itens}<div class="mut" style="margin-top:4px">Cor e volumes de cada item — clique no lápis ✏️ pra deixar o nome do produto mais claro pro estoquista.</div></div>`:''}
+    <div class="mut" style="margin-top:6px">Valor: ${money(p.valor)}${p.peso?` · ${p.peso} kg`:''}${p.volumesOmie?` · Omie indica ${p.volumesOmie} volume(s) no total — confira item a item`:''}</div>
+  `;
+  const assist = modoBusca === 'assistencia';
+  $('#tituloResultado').textContent = assist ? 'Pedido encontrado — registrar assistência' : 'Pedido encontrado';
+  $('#wTipoProblema').hidden = !assist;
+  $('#rObs').value = assist ? '' : (p.observacao || '');
+  $('#addRascunho').textContent = assist ? 'Adicionar como assistência' : 'Adicionar ao romaneio';
+  atualizarTotalVolumes();
+  $('#cardResultado').hidden = false;
+  $('#historicoCliente').innerHTML = '';
+  if(c.codigo) carregarHistoricoCliente(c.codigo);
+}
+
+async function carregarHistoricoCliente(codigo){
+  try{
+    const h = await api('/.netlify/functions/historico-cliente?codigo=' + encodeURIComponent(codigo));
+    if(!h.totalProblemas) return;
+    $('#historicoCliente').innerHTML = `<div class="err" style="background:#fef3e2;border-color:#fbe0b0;color:#7a5416">
+      ⚠️ Esse cliente já teve ${h.totalProblemas} problema(s) registrado(s) antes${h.historico[0]&&h.historico[0].motivo?': "'+esc(h.historico[0].motivo)+'"':''}.
+    </div>`;
+  }catch(e){ /* não trava a busca por causa disso */ }
+}
+
+$('#addRascunho').onclick = () => {
+  if(!pedidoAtual) return;
+  const itensComCorEVolume = (pedidoAtual.itens||[]).map((it,i)=>{
+    const campoCor = document.getElementById('itemCor-'+i);
+    const campoVol = document.getElementById('itemVol-'+i);
+    const campoDesc = document.getElementById('descEdit-'+i);
+    const campoFragil = document.getElementById('itemFragil-'+i);
+    return {
+      ...it,
+      descricao: campoDesc ? (campoDesc.value.trim() || it.descricao) : it.descricao,
+      cor: campoCor ? campoCor.value.trim() : (it.cor||''),
+      volumes: campoVol ? (Number(campoVol.value)||0) : (it.volumes||0),
+      fragil: campoFragil ? campoFragil.checked : !!it.fragil
+    };
+  });
+  if(modoBusca === 'assistencia'){
+    const motivos = { cor: 'Cor', defeito: 'Defeito na peça', esquecimento: 'Esquecimento' };
+    const motivo = motivos[$('#rTipoProblema').value] || '';
+    const obsExtra = $('#rObs').value.trim();
+    rascunho.push({ ...pedidoAtual, tipo: 'assistencia', itens: itensComCorEVolume,
+      observacao: 'Assistência — ' + motivo + (obsExtra ? ': ' + obsExtra : '') });
+    $('#numAssist').value = '';
+  } else {
+    rascunho.push({ ...pedidoAtual, itens: itensComCorEVolume, observacao: $('#rObs').value || '' });
+    $('#numPedido').value = '';
+  }
+  pedidoAtual = null;
+  $('#cardResultado').hidden = true;
+  renderRascunho();
+  toast('Adicionado ao romaneio em montagem');
+};
+
+/* ---------------- rascunho ---------------- */
+function renderRascunho(){
+  $('#cardRascunho').hidden = rascunho.length === 0;
+  $('#contagem').textContent = rascunho.length ? rascunho.length + ' documento(s)' : '';
+  $('#tabRascunho').innerHTML = rascunho.map((d,i) => {
+    const c = d.cliente || {};
+    const dest = [c.endereco, c.bairro].filter(Boolean).join(' - ');
+    const cid = [c.cidade, c.estado].filter(Boolean).join('/');
+    const tagTipo = d.tipo==='assistencia' ? '<span class="tag alt">assist.</span> ' : (d.tipo==='nf' ? '<span class="tag">NF</span> ' : '');
+    const totalVol = (d.itens||[]).reduce((s,it)=>s+(Number(it.volumes)||0), 0) || d.volumes || 0;
+    const coresLista = (d.itens||[]).filter(it=>it.cor).map(it=>esc(it.cor)).join(', ') || '—';
+    return `<tr>
+      <td>${tagTipo}<strong>${esc(d.numero||'—')}</strong></td>
+      <td>${esc(c.nome||'(sem cliente)')}</td>
+      <td class="mut">${esc(dest||'—')}${cid?`<div>${esc(cid)}</div>`:''}</td>
+      <td class="center">${totalVol}</td>
+      <td class="mut">${coresLista}</td>
+      <td class="right">${money(d.valor)}</td>
+      <td class="right"><button class="btn ghost sm danger" onclick="removerRascunho(${i})">Remover</button></td>
+    </tr>`;
+  }).join('');
+}
+function removerRascunho(i){ rascunho.splice(i,1); renderRascunho(); }
+
+function atualizarRomDestino(){
+  const atual = $('#romDestino').value;
+  $('#romDestino').innerHTML = '<option value="">— novo romaneio —</option>' +
+    romaneios.filter(r=>r.status!=='concluido').map(r=>`<option value="${r.id}">${esc(r.codigo)} — ${esc(r.freteiroNome||'sem freteiro')} (${esc(r.data_rota||'')})</option>`).join('');
+  $('#romDestino').value = atual && romaneios.some(r=>r.id===atual) ? atual : '';
+}
+$('#romDestino').onchange = () => {
+  const existe = !!$('#romDestino').value;
+  $('#wFrSel').hidden = existe;
+  $('#wDataRota').hidden = existe;
+  $('#wValorFrete').hidden = existe;
+};
+
+$('#gerar').onclick = async () => {
+  if(!rascunho.length) return;
+  const destino = $('#romDestino').value;
+  if(!destino && !$('#frSel').value){ erro('Selecione um freteiro — todo romaneio precisa de um.'); return; }
+  try{
+    const url = destino ? '/.netlify/functions/romaneios?id='+destino : '/.netlify/functions/romaneios';
+    const body = destino
+      ? { paradas: rascunho }
+      : { freteiroId: $('#frSel').value, dataRota: $('#dataRota').value || null, valorFrete: $('#valorFrete').value || 0, paradas: rascunho };
+    const r = await api(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    rascunho = []; renderRascunho();
+    $('#valorFrete').value = '';
+    toast(destino ? 'Adicionado ao romaneio ' + r.codigo : 'Romaneio ' + r.codigo + ' criado');
+    $$('nav button').find(b=>b.dataset.t==='rom').click();
+  }catch(e){ erro(e.message); }
+};
+
+/* ---------------- romaneios ---------------- */
+async function carregarRomaneios(){
+  try{
+    romaneios = await api('/.netlify/functions/romaneios');
+    atualizarRomDestino();
+    renderListaRom();
+  }catch(e){ erro(e.message); }
+}
+
+function renderListaRom(){
+  const el = $('#listaRom');
+  // A lista é reconstruída inteira a cada ação (mover parada, salvar problema...).
+  // Sem isso a página saltava pro topo e dava a impressão de que o clique fez outra coisa.
+  const scroll = window.scrollY;
+  const lista = filtroRom === 'ativos' ? romaneios.filter(r=>r.status!=='concluido')
+    : filtroRom === 'concluidos' ? romaneios.filter(r=>r.status==='concluido')
+    : romaneios;
+  if(!lista.length){ el.innerHTML = '<div class="empty">Nenhum romaneio aqui.</div>'; window.scrollTo(0, scroll); return; }
+  el.innerHTML = lista.map(r => {
+      const ok = r.paradas.filter(p=>p.status==='entregue').length;
+      const falhou = r.paradas.filter(p=>p.status==='falhou').length;
+      // Busca pelo id, não pelo nome: dois freteiros de mesmo nome pegariam o telefone errado.
+      const fr = freteiros.find(f=>f.id===r.freteiro_id);
+      const telFr = (fr && fr.telefone) ? fr.telefone.replace(/\D/g,'') : '';
+      const msgWpp = encodeURIComponent(`Oi! Sua rota (${r.codigo}) já está pronta — abre em ${location.origin}`);
+      return `<div class="rm">
+        <div class="top">
+          <span class="cod">${esc(r.codigo)}</span>
+          <span class="tag">${esc(r.freteiroNome || 'sem freteiro')}</span>
+          <span class="mut">${esc(r.data_rota||'')} · ${r.paradas.length} parada(s)${r.valor_frete?' · frete '+money(r.valor_frete):''}</span>
+          <span class="tag ${ok===r.paradas.length && r.paradas.length?'ok':'pend'}">${ok}/${r.paradas.length} entregues</span>
+          ${falhou?`<span class="tag falhou">⚠️ ${falhou} não realizada${falhou>1?'s':''}</span>`:''}
+          ${r.carregamento_confirmado?`<span class="tag ok">✓ carregamento conferido</span>`:''}
+          <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+            ${telFr?`<button class="btn ghost sm" onclick="window.open('https://wa.me/55${telFr}?text=${msgWpp}','_blank')">Avisar no WhatsApp</button>`:''}
+            <button class="btn ghost sm" onclick="abrirRotaCompleta('${r.id}')">Rota no Maps</button>
+            <button class="btn ghost sm" onclick="toggleCarga('${r.id}')">Ver a carga</button>
+            <button class="btn ghost sm" onclick="toggleEditRom('${r.id}')">Editar</button>
+            <button class="btn ghost sm danger" onclick="excluirRom('${r.id}')">Excluir</button>
+          </span>
+        </div>
+        <div id="editbox-${r.id}"></div>
+        <div id="cargabox-${r.id}"></div>
+        <details ${detalhesAbertos.has(r.id)?'open':''} ontoggle="onToggleDetalhes('${r.id}', this.open)"><summary>Ver paradas</summary>
+          <table style="margin-top:8px"><thead><tr><th>#</th><th>Cliente</th><th>Pedido</th><th class="center">Vol.</th><th>Status</th><th>Confirmação</th><th>Problema</th><th></th></tr></thead><tbody>
+          ${r.paradas.map((p,i)=>{
+            const c=p.cliente||{};
+            const cls = p.status==='entregue'?'ok':p.status==='falhou'?'falhou':p.status==='em_rota'?'alt':'pend';
+            const tipoLabel = p.tipo==='assistencia'?'Assist.':(p.tipo==='nf'?'NF':'Ped.');
+            const finalizado = p.status==='entregue' || p.status==='falhou';
+            return `<tr><td>${i+1}
+              <div style="display:flex;gap:2px;margin-top:4px">
+                <button class="btn ghost sm" style="padding:2px 6px" title="Subir" ${i===0?'disabled':''} onclick="moverParada('${r.id}',${i},-1)">▲</button>
+                <button class="btn ghost sm" style="padding:2px 6px" title="Descer" ${i===r.paradas.length-1?'disabled':''} onclick="moverParada('${r.id}',${i},1)">▼</button>
+              </div>
+            </td>
+              <td>${esc(c.nome||'—')}<div class="mut">${esc([c.endereco,c.cidade].filter(Boolean).join(' - '))}</div></td>
+              <td>${tipoLabel} ${esc(p.numero||'')}${(p.itens||[]).some(it=>it.fragil)?' <span class="tag fragil">🔴 vidro</span>':''}
+                ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut" style="display:flex;align-items:center;gap:5px"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span>${esc(it.descricao||'')}${it.volumes?' ('+it.volumes+' vol.)':''}: <strong>${esc(it.cor)}</strong></div>`).join('')}
+                ${(!((p.itens||[]).some(it=>it.cor)) && p.cor)?`<div class="mut">Cor: ${esc(p.cor)}</div>`:''}
+                ${(p.fotos&&p.fotos.length)?`<div class="galeriafotos">${p.fotos.map(f=>`<a href="${f.url}" target="_blank" class="fotoadm"><img src="${f.url}"><span>${f.tipo==='carro'?'carro':f.tipo==='vidro'?'vidro':f.tipo==='assinatura'?'assinatura':f.tipo==='pagamento'?'pagamento':'entrega'}</span></a>`).join('')}</div>`:''}
+              </td>
+              <td class="center">${p.volumes||0}</td>
+              <td>
+                <span class="tag ${cls}">${esc(p.status)}</span>${p.entregue_em?`<div class="mut">${new Date(p.entregue_em).toLocaleString('pt-BR')}</div>`:''}
+                ${p.status==='pendente'?`<div style="margin-top:4px"><button class="btn ghost sm" style="padding:3px 8px;font-size:11px" onclick="marcarEmRota('${p.id}')">Marcar em rota</button></div>`:''}
+              </td>
+              <td class="mut">${esc(p.recebedor||'—')}${(p.lat&&p.lng)?`<div><a href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank">local da confirmação</a></div>`:''}</td>
+              <td style="min-width:170px">
+                <label style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:400;text-transform:none;color:var(--ink)">
+                  <input type="checkbox" id="prob-${p.id}" style="width:auto" ${p.problema?'checked':''}> houve problema
+                </label>
+                <select id="resp-${p.id}" style="margin-top:4px;font-size:11px;padding:3px" onchange="atualizarMotivos('${p.id}')">
+                  <option value="">— culpa de quem —</option>
+                  <option value="vendedores" ${p.problema_responsavel==='vendedores'?'selected':''}>Vendedores</option>
+                  <option value="estoque" ${p.problema_responsavel==='estoque'?'selected':''}>Estoque</option>
+                  <option value="freteiro" ${p.problema_responsavel==='freteiro'?'selected':''}>Freteiro</option>
+                </select>
+                <select id="motivo-${p.id}" style="margin-top:4px;font-size:11px;padding:3px" data-atual="${esc(p.problema_motivo||'')}"></select>
+                <input id="obs-${p.id}" placeholder="obs extra (opcional)" value="${esc(p.problema_obs||'')}" style="margin-top:4px;font-size:11px;padding:3px">
+                <button class="btn ghost sm" style="margin-top:4px;padding:3px 8px;font-size:11px" onclick="salvarProblema('${p.id}')">Salvar</button>
+              </td>
+              <td><button class="btn ghost sm danger" style="padding:3px 8px;font-size:11px" onclick="removerParada('${p.id}')">Remover</button></td>
+            </tr>`;}).join('')}
+          </tbody></table>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn ghost sm" onclick="recalcularGeo('${r.id}')">Calcular localização das paradas</button>
+            <button class="btn ghost sm" onclick="sugerirOrdem('${r.id}')">Ordenar pela melhor rota</button>
+          </div>
+          <div id="semgeo-${r.id}"></div>
+          <div id="ordemSugerida-${r.id}"></div>
+        </details>
+      </div>`;
+    }).join('');
+  lista.forEach(r => r.paradas.forEach(p => atualizarMotivos(p.id)));
+  window.scrollTo(0, scroll);
+}
+
+/* ---------------- painel do dia ---------------- */
+async function carregarPainelDia(){
+  try{
+    const p = await api('/.netlify/functions/painel-dia');
+    const partes = [];
+    if(p.totalFalhasHoje) partes.push(`<span class="tag falhou">⚠️ ${p.totalFalhasHoje} entrega(s) não realizada(s) hoje</span>`);
+    partes.push(`<span class="tag">${p.problemas30dias} problema(s) nos últimos 30 dias</span>`);
+    $('#painelResumo').innerHTML = partes.join(' ') || '<div class="empty">Tudo tranquilo.</div>';
+
+    $('#painelRotas').innerHTML = p.rotasHoje.length ? p.rotasHoje.map(r => `
+      <div class="rm">
+        <div class="top">
+          <span class="cod">${esc(r.codigo)}</span>
+          <span class="tag">${esc(r.freteiroNome||'sem freteiro')}</span>
+          <span class="mut">${r.entregues}/${r.total} entregues · ${r.pendentes} pendente(s)</span>
+          ${r.falharam?`<span class="tag falhou">⚠️ ${r.falharam} não realizada(s)</span>`:''}
+          ${r.carregado?'<span class="tag ok">✓ carregado</span>':'<span class="tag pend">carregamento pendente</span>'}
+        </div>
+      </div>`).join('') : '<div class="empty">Nenhuma rota criada pra hoje ainda.</div>';
+  }catch(e){ erro(e.message); }
+}
+
+async function excluirRom(id){
+  const r = romaneios.find(x=>x.id===id);
+  const aviso = r ? `Excluir o romaneio ${r.codigo} (${r.paradas.length} parada(s))?\n\nIsso apaga também o histórico das entregas dele.` : 'Excluir este romaneio?';
+  if(!confirm(aviso)) return;
+  try{
+    await api('/.netlify/functions/romaneios?id='+id, {method:'DELETE'});
+    toast('Romaneio excluído');
+    carregarRomaneios();
+  }catch(e){ erro(e.message); }
+}
+
+async function removerParada(paradaId){
+  if(!confirm('Remover esta parada do romaneio?')) return;
+  try{
+    await api('/.netlify/functions/parada-status?id='+paradaId, { method:'DELETE' });
+    toast('Parada removida');
+    carregarRomaneios();
+  }catch(e){ erro(e.message); }
+}
+
+function abrirRotaCompleta(id){
+  const r = romaneios.find(x=>x.id===id);
+  if(!r) return;
+  const enderecos = r.paradas.map(p => {
+    const c = p.cliente || {};
+    return [c.endereco, c.complemento, c.bairro, c.cidade, c.estado, c.cep].filter(Boolean).join(', ');
+  }).filter(Boolean);
+  if(!enderecos.length) return toast('Nenhuma parada com endereço');
+  const destino = enderecos[enderecos.length-1];
+  const waypoints = enderecos.slice(0,-1).map(encodeURIComponent).join('|');
+  const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(ESTOQUE.endereco)}&destination=${encodeURIComponent(destino)}`;
+  window.open(waypoints ? url + `&waypoints=${waypoints}` : url, '_blank');
+}
+
+async function marcarEmRota(paradaId){
+  try{
+    await api('/.netlify/functions/parada-status', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ paradaId, status: 'em_rota' }) });
+    toast('Marcado como em rota');
+    carregarRomaneios();
+  }catch(e){ erro(e.message); }
+}
+
+const MOTIVOS_PROBLEMA = {
+  vendedores: ['Errou a cor', 'Errou o móvel', 'Esqueceu de avisar algo'],
+  estoque: ['Cor errada', 'Móvel errado', 'Volume faltando', 'Móvel quebrado'],
+  freteiro: ['Móvel quebrado', 'Não ligou pra cliente', 'Não cobrou o valor certo', 'Não entregou pra pessoa certa']
+};
+function atualizarMotivos(paradaId){
+  const respSel = document.getElementById('resp-'+paradaId);
+  const motSel = document.getElementById('motivo-'+paradaId);
+  if(!respSel || !motSel) return;
+  const atual = motSel.dataset.atual || '';
+  const opcoes = MOTIVOS_PROBLEMA[respSel.value] || [];
+  motSel.innerHTML = '<option value="">— motivo —</option>' + opcoes.map(m=>`<option value="${esc(m)}" ${m===atual?'selected':''}>${esc(m)}</option>`).join('');
+}
+
+async function salvarProblema(paradaId){
+  const problema = document.getElementById('prob-'+paradaId).checked;
+  const responsavel = document.getElementById('resp-'+paradaId).value;
+  const motivo = document.getElementById('motivo-'+paradaId).value;
+  const obs = document.getElementById('obs-'+paradaId).value;
+  try{
+    await api('/.netlify/functions/parada-problema', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ paradaId, problema, responsavel, motivo, obs }) });
+    toast('Registrado');
+    carregarRomaneios();
+  }catch(e){ erro(e.message); }
+}
+
+/* ---------------- editar romaneio (freteiro / data) ---------------- */
+function toggleEditRom(id){
+  const box = document.getElementById('editbox-'+id);
+  if(!box) return;
+  if(box.dataset.aberto === '1'){ box.innerHTML = ''; box.dataset.aberto = '0'; return; }
+  box.dataset.aberto = '1';
+  const r = romaneios.find(x=>x.id===id);
+  if(!r) return;
+  const opcoesFr = freteiros.map(f=>`<option value="${f.id}" ${r.freteiro_id===f.id?'selected':''}>${esc(f.nome)}</option>`).join('');
+  box.innerHTML = `
+    <div class="editrom">
+      <div class="row">
+        <div><label>Freteiro *</label><select id="editFrSel-${id}"><option value="">— escolher —</option>${opcoesFr}</select></div>
+        <div><label>Data da rota</label><input type="date" id="editData-${id}" value="${esc(r.data_rota||'')}"></div>
+        <div><label>Valor do frete (R$)</label><input type="number" min="0" step="0.01" id="editFrete-${id}" value="${r.valor_frete||''}"></div>
+        <div class="auto"><button class="btn sm" onclick="salvarEdicaoRom('${id}')">Salvar</button></div>
+        <div class="auto"><button class="btn ghost sm" onclick="toggleEditRom('${id}')">Cancelar</button></div>
+      </div>
+    </div>`;
+}
+async function salvarEdicaoRom(id){
+  const freteiroId = document.getElementById('editFrSel-'+id).value;
+  const dataRota = document.getElementById('editData-'+id).value;
+  const valorFrete = document.getElementById('editFrete-'+id).value || 0;
+  if(!freteiroId) return erro('Selecione um freteiro — todo romaneio precisa de um.');
+  try{
+    await api('/.netlify/functions/romaneios?id='+id, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ freteiroId, dataRota, valorFrete }) });
+    toast('Romaneio atualizado');
+    document.getElementById('editbox-'+id).dataset.aberto = '0';
+    carregarRomaneios();
+  }catch(e){ erro(e.message); }
+}
+
+/* ---------------- visão geral da carga ----------------
+   A Omie não manda peso por item (só o peso total do pedido), então o que dá pra usar é o
+   NOME do produto — é ele que diz o que a coisa é de verdade: colchão é caro e leve,
+   guarda-roupa é pesado. Se faltar algum produto seu nessas listas, é só me pedir.
+   O detalhe que importa: carregar é ao contrário de entregar. A última entrega entra
+   primeiro e fica no fundo. Então um colchão da última entrega precisa ir por cima MAS
+   entra primeiro — é aí que dá briga com o freteiro, e é isso que o app aponta. */
+const VAI_POR_CIMA = ['COLCHAO','ESPELHO','VIDRO','TAMPO','LUMINARIA','ABAJUR','QUADRO','PUFF','ALMOFADA','CABECEIRA'];
+const VAI_EMBAIXO  = ['GUARDA','ROUPEIRO','ARMARIO','BASE','CAMA','RACK','BALCAO','BUFFET','COMODA','ESTANTE','MESA','SOFA','BANCADA','PAINEL','GELADEIRA','FOGAO'];
+const semAcento = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+function ondeVai(item){
+  if(item && item.fragil) return 'cima'; // marcado "🔴 vidro" na mão: manda no nome do produto
+  const d = semAcento(item && item.descricao);
+  if(VAI_POR_CIMA.some(x=>d.includes(x))) return 'cima';
+  if(VAI_EMBAIXO.some(x=>d.includes(x))) return 'baixo';
+  return '';
+}
+
+function volumesEfetivos(p){
+  const jaNoFrete = (p.itens||[]).reduce((s,it)=>s+(it.jaNoFrete?(Number(it.volumes)||0):0), 0);
+  return Math.max((Number(p.volumes)||0) - jaNoFrete, 0);
+}
+
+function toggleCarga(id){
+  const box = document.getElementById('cargabox-'+id);
+  if(!box) return;
+  if(box.dataset.aberto === '1'){ box.innerHTML = ''; box.dataset.aberto = '0'; return; }
+  box.dataset.aberto = '1';
+  renderCargaBox(id);
+}
+
+function renderCargaBox(id){
+  const box = document.getElementById('cargabox-'+id);
+  if(!box || box.dataset.aberto !== '1') return;
+  const r = romaneios.find(x=>x.id===id);
+  if(!r) return;
+
+  const total = r.paradas.length;
+  const itens = [];
+  r.paradas.forEach((p, i) => (p.itens||[]).forEach((it, idx) => itens.push({
+    paradaId: p.id, indice: idx,
+    descricao: it.descricao||'(sem descrição)', cor: it.cor||'',
+    volumes: Number(it.volumes)||0, valor: Number(it.valorTotal)||0,
+    pedido: p.numero||'', entrega: i+1, onde: ondeVai(it), fragil: !!it.fragil, jaNoFrete: !!it.jaNoFrete
+  })));
+  itens.sort((a,b)=>b.valor-a.valor);
+
+  // "Vai por cima" numa entrega que não é a primeira = entra cedo no caminhão e fica embaixo.
+  const conflitos = itens.filter(it => it.onde==='cima' && it.entrega > 1 && !it.jaNoFrete);
+  const totalVol = r.paradas.reduce((s,p)=>s+volumesEfetivos(p),0);
+  const totalValor = itens.reduce((s,it)=>s+it.valor,0);
+
+  box.innerHTML = `
+    <div class="editrom">
+      <h3 style="margin-bottom:6px">Visão geral da carga</h3>
+      <div class="mut" style="margin-bottom:8px">${total} pedido(s) · ${totalVol} volume(s)${totalValor?' · '+money(totalValor):''}</div>
+      <p class="mut" style="margin:0 0 8px">Já separou algum desses num outro estoque? Marque "já no frete" — some da conferência do estoquista.</p>
+      ${conflitos.length ? `<div class="semgeo" style="background:#fdeaea;border-color:#eba9a9;color:#7f1d1d">
+        <strong>⚠️ Cuidado ao empilhar</strong>
+        ${conflitos.map(c=>`<div style="margin-top:5px">${esc(c.descricao)} (pedido ${esc(c.pedido)}) vai por cima, mas é a entrega ${c.entrega} de ${total} — entra cedo no caminhão e fica embaixo.</div>`).join('')}
+      </div>` : ''}
+      <table style="margin-top:8px"><thead><tr><th>Produto</th><th>Cor</th><th>Pedido</th><th class="center">Vol.</th><th class="right">Valor</th><th>No caminhão</th><th></th></tr></thead><tbody>
+      ${itens.length ? itens.map(it=>`<tr style="${it.jaNoFrete?'opacity:.5':''}">
+        <td><strong>${esc(it.descricao)}</strong>${it.fragil?' <span class="tag fragil">🔴 vidro</span>':''}<div class="mut">entrega ${it.entrega} de ${total}</div></td>
+        <td class="mut"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span> ${esc(it.cor||'—')}</td>
+        <td class="mut">${esc(it.pedido)}</td>
+        <td class="center">${it.volumes||'—'}</td>
+        <td class="right">${it.valor?money(it.valor):'—'}</td>
+        <td class="mut">${it.onde==='cima'?'⬆ por cima':it.onde==='baixo'?'⬇ embaixo':'—'}</td>
+        <td><button class="btn ghost sm ${it.jaNoFrete?'':''}" onclick="marcarJaNoFreteAdmin('${it.paradaId}',${it.indice},${!it.jaNoFrete})">${it.jaNoFrete?'✓ já no frete':'já no frete?'}</button></td>
+      </tr>`).join('') : '<tr><td colspan="7"><div class="empty">Nenhum item cadastrado.</div></td></tr>'}
+      </tbody></table>
+    </div>`;
+}
+
+async function marcarJaNoFreteAdmin(paradaId, indice, jaNoFrete){
+  try{
+    const atualizada = await api('/.netlify/functions/parada-item-carregado', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, indice, jaNoFrete }) });
+    for(const r of romaneios){
+      const p = r.paradas.find(x=>x.id===paradaId);
+      if(p){ Object.assign(p, atualizada); renderCargaBox(r.id); break; }
+    }
+    toast(jaNoFrete ? 'Marcado como já no frete' : 'Desmarcado');
+  }catch(e){ erro(e.message); }
+}
+
+/* ---------------- ordem sugerida da rota (por localização) ---------------- */
+async function recalcularGeo(id){
+  const r = romaneios.find(x=>x.id===id);
+  if(!r) return;
+  const pendentes = r.paradas.filter(p=>!(p.geo_lat && p.geo_lng));
+  if(!pendentes.length) return toast('Todas as paradas já têm coordenada');
+  toast('Calculando coordenadas… (1 por segundo, pode levar um tempo)');
+  for(const p of pendentes){
+    try{
+      const resp = await api('/.netlify/functions/geocode', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId: p.id }) });
+      if(resp.geocodificado){ p.geo_lat = resp.lat; p.geo_lng = resp.lng; p.geo_prec = resp.precisao; }
+    }catch(e){ /* segue pras próximas mesmo se uma falhar */ }
+    await new Promise(res => setTimeout(res, 1100));
+  }
+  const semGeo = r.paradas.filter(p=>!(p.geo_lat && p.geo_lng));
+  const box = document.getElementById('semgeo-'+id);
+  if(box) box.innerHTML = semGeo.length
+    ? `<div class="semgeo">${semGeo.length} parada(s) sem coordenada ainda: ${semGeo.map(p=>esc(p.numero)).join(', ')}.</div>`
+    : '';
+  toast('Coordenadas atualizadas');
+}
+
+function distanciaKm(a, b){
+  const R = 6371, toRad = d => d*Math.PI/180;
+  const dLat = toRad(b[0]-a[0]), dLng = toRad(b[1]-a[1]);
+  const s = Math.sin(dLat/2)**2 + Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+
+function sugerirOrdem(id){
+  const r = romaneios.find(x=>x.id===id);
+  if(!r) return;
+  const comGeo = r.paradas.filter(p=>p.geo_lat && p.geo_lng);
+  const semGeo = r.paradas.filter(p=>!(p.geo_lat && p.geo_lng));
+  if(comGeo.length < 2) return toast('Precisa de pelo menos 2 paradas com coordenada');
+
+  const restantes = [...comGeo];
+  const ordenado = [];
+  let atual = [ESTOQUE.lat, ESTOQUE.lng];
+  while(restantes.length){
+    restantes.sort((a,b) => distanciaKm(atual,[a.geo_lat,a.geo_lng]) - distanciaKm(atual,[b.geo_lat,b.geo_lng]));
+    const prox = restantes.shift();
+    ordenado.push(prox);
+    atual = [prox.geo_lat, prox.geo_lng];
+  }
+  const novaOrdem = [...ordenado, ...semGeo];
+
+  const box = document.getElementById('ordemSugerida-'+id);
+  box.innerHTML = `
+    <div class="semgeo" style="background:#eafaf1;border-color:#c8ecd9;color:#215e3f">
+      <strong>Ordem sugerida:</strong> ${novaOrdem.map(p=>esc(p.numero)).join(' → ')}
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button class="btn sm" onclick='confirmarOrdem("${id}", ${JSON.stringify(novaOrdem.map(p=>p.id))})'>Confirmar nova ordem</button>
+        <button class="btn ghost sm" onclick="document.getElementById('ordemSugerida-${id}').innerHTML=''">Cancelar</button>
+      </div>
+    </div>`;
+}
+
+async function moverParada(romaneioId, i, delta){
+  const r = romaneios.find(x=>x.id===romaneioId);
+  if(!r) return;
+  const j = i + delta;
+  if(j < 0 || j >= r.paradas.length) return;
+  const nova = [...r.paradas];
+  [nova[i], nova[j]] = [nova[j], nova[i]];
+  try{
+    await api('/.netlify/functions/reordenar-paradas', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ romaneioId, ordem: nova.map(p=>p.id) }) });
+    carregarRomaneios();
+  }catch(e){ erro(e.message); }
+}
+
+async function confirmarOrdem(id, ordemIds){
+  try{
+    await api('/.netlify/functions/reordenar-paradas', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ romaneioId: id, ordem: ordemIds }) });
+    toast('Ordem atualizada');
+    detalhesAbertos.add(id); // mantém "Ver paradas" aberto pra já mostrar a ordem nova
+    await carregarRomaneios();
+  }catch(e){ erro(e.message); }
+}
+
+/* ---------------- freteiros ---------------- */
+async function carregarFreteiros(){
+  freteiros = await api('/.netlify/functions/freteiros');
+  $('#tabFr tbody').innerHTML = freteiros.length ? freteiros.map(f=>`<tr>
+    <td><strong>${esc(f.nome)}</strong></td><td>${esc(f.telefone||'—')}</td>
+    <td>${esc(f.veiculo||'—')}</td><td>${esc(f.placa||'—')}</td>
+    <td class="right"><button class="btn ghost sm" onclick="editarFr('${f.id}')">Editar</button> <button class="btn ghost sm danger" onclick="delFr('${f.id}')">Remover</button></td>
+  </tr>`).join('') : '<tr><td colspan="5"><div class="empty">Nenhum freteiro cadastrado.</div></td></tr>';
+  $('#frSel').innerHTML = '<option value="">— escolher freteiro —</option>' +
+    freteiros.map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join('');
+}
+function editarFr(id){
+  const f = freteiros.find(x=>x.id===id);
+  if(!f) return;
+  $('#fId').value = f.id; $('#fNome').value = f.nome||''; $('#fTel').value = f.telefone||'';
+  $('#fVeic').value = f.veiculo||''; $('#fPlaca').value = f.placa||'';
+  $('#tituloFr').textContent = 'Editar freteiro'; $('#addFr').textContent = 'Salvar'; $('#cancelarFr').hidden = false;
+  $('#fNome').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function limparFormFr(){
+  $('#fId').value=''; ['#fNome','#fTel','#fVeic','#fPlaca'].forEach(s=>$(s).value='');
+  $('#tituloFr').textContent = 'Cadastrar freteiro'; $('#addFr').textContent = 'Adicionar'; $('#cancelarFr').hidden = true;
+}
+$('#cancelarFr').onclick = limparFormFr;
+$('#addFr').onclick = async () => {
+  if(!$('#fNome').value.trim()) return toast('Informe o nome');
+  if(!$('#fTel').value.trim()) return toast('Informe o telefone — é o login dele');
+  erro('');
+  try{
+    await api('/.netlify/functions/freteiros',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id:$('#fId').value||undefined,nome:$('#fNome').value,telefone:$('#fTel').value,veiculo:$('#fVeic').value,placa:$('#fPlaca').value})});
+    const editando = !!$('#fId').value;
+    limparFormFr();
+    await carregarFreteiros();
+    toast(editando ? 'Freteiro atualizado' : 'Freteiro cadastrado');
+  }catch(e){ erro(e.message); }
+};
+async function delFr(id){
+  const f = freteiros.find(x=>x.id===id);
+  if(!confirm(`Remover ${f?f.nome:'este freteiro'}?\n\nEle perde o acesso ao app na hora.`)) return;
+  erro('');
+  try{
+    await api('/.netlify/functions/freteiros?id='+id,{method:'DELETE'});
+    toast('Freteiro removido');
+    carregarFreteiros();
+  }catch(e){ erro(e.message); }
+}
+
+/* ---------------- estoquistas ---------------- */
+let estoquistas = [];
+async function carregarEstoquistas(){
+  estoquistas = await api('/.netlify/functions/estoquistas');
+  $('#tabEs tbody').innerHTML = estoquistas.length ? estoquistas.map(e=>`<tr>
+    <td><strong>${esc(e.nome)}</strong></td><td>${esc(e.telefone||'—')}</td>
+    <td class="right"><button class="btn ghost sm" onclick="editarEs('${e.id}')">Editar</button> <button class="btn ghost sm danger" onclick="delEs('${e.id}')">Remover</button></td>
+  </tr>`).join('') : '<tr><td colspan="3"><div class="empty">Nenhum estoquista cadastrado.</div></td></tr>';
+}
+function editarEs(id){
+  const e = estoquistas.find(x=>x.id===id);
+  if(!e) return;
+  $('#eId').value = e.id; $('#eNome').value = e.nome||''; $('#eTel').value = e.telefone||'';
+  $('#tituloEs').textContent = 'Editar estoquista'; $('#addEs').textContent = 'Salvar'; $('#cancelarEs').hidden = false;
+  $('#eNome').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function limparFormEs(){
+  $('#eId').value=''; ['#eNome','#eTel'].forEach(s=>$(s).value='');
+  $('#tituloEs').textContent = 'Cadastrar estoquista'; $('#addEs').textContent = 'Adicionar'; $('#cancelarEs').hidden = true;
+}
+$('#cancelarEs').onclick = limparFormEs;
+$('#addEs').onclick = async () => {
+  if(!$('#eNome').value.trim()) return toast('Informe o nome');
+  if(!$('#eTel').value.trim()) return toast('Informe o telefone — é o login dele');
+  erro('');
+  try{
+    await api('/.netlify/functions/estoquistas',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id:$('#eId').value||undefined,nome:$('#eNome').value,telefone:$('#eTel').value})});
+    const editando = !!$('#eId').value;
+    limparFormEs();
+    await carregarEstoquistas();
+    toast(editando ? 'Estoquista atualizado' : 'Estoquista cadastrado');
+  }catch(e){ erro(e.message); }
+};
+async function delEs(id){
+  const es = estoquistas.find(x=>x.id===id);
+  if(!confirm(`Remover ${es?es.nome:'este estoquista'}?\n\nEle perde o acesso ao app na hora.`)) return;
+  erro('');
+  try{
+    await api('/.netlify/functions/estoquistas?id='+id,{method:'DELETE'});
+    toast('Estoquista removido');
+    carregarEstoquistas();
+  }catch(e){ erro(e.message); }
+}
+
+/* ---------------- relatórios ---------------- */
+$('#relBuscar').onclick = async () => {
+  const de = $('#relDe').value, ate = $('#relAte').value;
+  if(!de || !ate) return toast('Informe o período');
+  if(ate < de) return toast('A data "até" não pode ser antes da data "de"');
+  try{
+    const r = await api('/.netlify/functions/relatorio?de='+de+'&ate='+ate);
+    renderRelatorio(r);
+  }catch(e){ erro(e.message); }
+};
+let relatorioAtual = null;
+function renderRelatorio(r){
+  relatorioAtual = r;
+  const s = r.resumoResponsaveis;
+  $('#relResumo').innerHTML = `Problemas registrados no período — <strong>vendedores:</strong> ${s.vendedores} · <strong>estoque:</strong> ${s.estoque} · <strong>freteiro:</strong> ${s.freteiro}`;
+  $('#relExportar').hidden = !r.porFreteiro.length;
+
+  // Gráfico simples de barras (sem biblioteca nenhuma) — cada barra proporcional ao maior frete do período.
+  const maiorFrete = Math.max(1, ...r.porFreteiro.map(f=>f.totalFrete||0));
+  $('#graficoFrete').innerHTML = r.porFreteiro.some(f=>f.totalFrete>0) ? r.porFreteiro.map(f => `
+    <div class="barrafrete">
+      <span class="barrafrete-nome">${esc(f.nome)}</span>
+      <div class="barrafrete-trilho"><div class="barrafrete-cheio" style="width:${Math.max(2, f.totalFrete/maiorFrete*100)}%"></div></div>
+      <span class="barrafrete-valor">${money(f.totalFrete)}</span>
+    </div>`).join('') : '';
+
+  $('#tabRel').innerHTML = r.porFreteiro.length ? r.porFreteiro.map(f => `<tr>
+    <td>${esc(f.nome)}</td>
+    <td class="right">${money(f.totalFrete)}</td>
+    <td class="center">${f.totalParadas}</td>
+    <td class="center">${f.entregues}</td>
+    <td class="center">${f.falharam}</td>
+    <td class="center">${f.comProblema}</td>
+    <td class="center">${f.percProblemaFreteiro}%</td>
+  </tr>`).join('') : '<tr><td colspan="7"><div class="empty">Nenhum romaneio nesse período.</div></td></tr>';
+}
+$('#relExportar').onclick = () => {
+  if(!relatorioAtual) return;
+  const linhas = [['Freteiro','Frete faturado','Paradas','Entregues','Falharam','Com problema','% problema do freteiro']];
+  relatorioAtual.porFreteiro.forEach(f => linhas.push([f.nome, f.totalFrete, f.totalParadas, f.entregues, f.falharam, f.comProblema, f.percProblemaFreteiro+'%']));
+  const csv = linhas.map(l => l.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  const blob = new Blob(['﻿'+csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `relatorio_${relatorioAtual.periodo.de}_a_${relatorioAtual.periodo.ate}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+/* ---------------- vendas ---------------- */
+let vendasAtual = null;
+
+function abrirVendas(){
+  if(!$('#vdDe').value || !$('#vdAte').value){
+    const ate = new Date(), de = new Date(); de.setDate(de.getDate() - 30);
+    $('#vdDe').value = dataBR(de); $('#vdAte').value = dataBR(ate);
+  }
+  $('#vdBuscar').click();
+}
+
+$('#vdBuscar').onclick = async () => {
+  const de = $('#vdDe').value, ate = $('#vdAte').value;
+  if(!de || !ate) return toast('Informe o período');
+  if(ate < de) return toast('A data "até" não pode ser antes da data "de"');
+  try{
+    vendasAtual = await api('/.netlify/functions/relatorio-vendas?de='+de+'&ate='+ate);
+    renderVendas(vendasAtual);
+  }catch(e){ erro(e.message); }
+};
+
+function renderVendas(r){
+  const t = r.totais;
+  const pendentes = t.naoReconhecidos + t.vazios;
+  $('#vdResumo').innerHTML =
+    `<strong>${t.pedidos}</strong> pedido(s) no período · <strong>${money(t.valor)}</strong> vendidos · `
+    + `presencial: <strong>${t.presencial}</strong> · online: <strong>${t.online}</strong>`
+    + (t.outros ? ` · outros canais: <strong>${t.outros}</strong>` : '')
+    + (t.corrigidosNaMao ? ` · <span class="mut">${t.corrigidosNaMao} corrigido(s) na mão</span>` : '')
+    + (t.porIA ? ` · <span class="mut">${t.porIA} identificado(s) pela IA</span>` : '')
+    + (pendentes ? `<div class="err" style="margin-top:8px">${pendentes} pedido(s) sem vendedor identificado — estão fora da conta acima. Veja o quadro abaixo.</div>` : '');
+
+  $('#vdExportar').hidden = !r.porVendedor.length;
+
+  const maior = Math.max(1, ...r.porVendedor.map(v=>v.valor||0));
+  $('#vdGrafico').innerHTML = r.porVendedor.some(v=>v.valor>0) ? r.porVendedor.map(v => `
+    <div class="barrafrete">
+      <span class="barrafrete-nome">${esc(v.vendedor)}</span>
+      <div class="barrafrete-trilho"><div class="barrafrete-cheio" style="width:${Math.max(2, v.valor/maior*100)}%"></div></div>
+      <span class="barrafrete-valor">${money(v.valor)}</span>
+    </div>`).join('') : '';
+
+  $('#tabVendas').innerHTML = r.porVendedor.length ? r.porVendedor.map(v => `<tr>
+    <td>${esc(v.vendedor)}${v.semComissao ? '<span class="mut"> · sem comissão</span>' : ''}</td>
+    <td class="right">${money(v.valor)}</td>
+    <td class="center">${v.pedidos}</td>
+    <td class="center">${money(v.ticketMedio)}</td>
+    <td class="center">${v.presencial}</td>
+    <td class="center">${v.online}</td>
+    <td class="center">${v.outros}</td>
+  </tr>`).join('') : '<tr><td colspan="7"><div class="empty">Nenhum pedido nesse período. Se você ainda não puxou o histórico, use o quadro "Carga dos pedidos" logo abaixo.</div></td></tr>';
+
+  // sugestões pro campo vendedor: quem já apareceu no período
+  $('#vendedoresConhecidos').innerHTML = r.porVendedor.map(v=>`<option value="${esc(v.vendedor)}">`).join('');
+
+  $('#cardRevisar').hidden = !r.revisar.length;
+  $('#listaRevisar').innerHTML = r.revisar.map(p => `
+    <div class="linharevisar" data-pedido="${esc(p.pedidoId)}">
+      <div>
+        <strong>Pedido ${esc(p.numeroPedido || p.pedidoId)}</strong>
+        <span class="mut"> · ${p.dataPedido ? esc(p.dataPedido.split('-').reverse().join('/')) : 'sem data'} · ${money(p.valor)}</span>
+        <div class="mut" style="margin-top:2px">${p.obsBruta ? 'Observação: ' + esc(p.obsBruta) : 'Pedido sem observação nenhuma.'}</div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label>Canal</label><input class="vdCanal" list="canaisConhecidos" placeholder="PRESENCIAL"></div>
+        <div><label>Vendedor</label><input class="vdVendedor" list="vendedoresConhecidos" placeholder="Nome de quem vendeu"></div>
+        <div class="auto"><button class="btn sm vdSalvar">Salvar</button></div>
+        <div class="auto"><button class="btn ghost sm vdSemVendedor">Foi venda sua, sem comissão</button></div>
+      </div>
+    </div>`).join('')
+    + (r.revisarTruncado ? '<p class="mut">Mostrando os primeiros. Corrija esses e busque de novo pra ver o resto.</p>' : '');
+
+  async function corrigirPedido(botao, canal, vendedor){
+    const linha = botao.closest('.linharevisar');
+    botao.disabled = true;
+    try{
+      await api('/.netlify/functions/relatorio-vendas',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({pedidoId: linha.dataset.pedido, canal, vendedor})});
+      toast('Pedido corrigido');
+      $('#vdBuscar').click();
+    }catch(e){ botao.disabled = false; erro(e.message); }
+  }
+
+  $$('#listaRevisar .vdSalvar').forEach(b => b.onclick = () => {
+    const linha = b.closest('.linharevisar');
+    const canal = linha.querySelector('.vdCanal').value.trim();
+    const vendedor = linha.querySelector('.vdVendedor').value.trim();
+    if(!canal || !vendedor) return toast('Preencha canal e vendedor');
+    corrigirPedido(b, canal, vendedor);
+  });
+
+  // Pedido que o próprio dono lançou: não teve vendedor e não gera comissão.
+  // Não é erro, é categoria — por isso sai da lista de pendências num clique só.
+  $$('#listaRevisar .vdSemVendedor').forEach(b => b.onclick = () => {
+    const linha = b.closest('.linharevisar');
+    corrigirPedido(b, linha.querySelector('.vdCanal').value.trim(), 'SEM VENDEDOR');
+  });
+
+  // Comparação mês a mês: vendedores nas linhas, meses nas colunas.
+  const meses = r.meses || [];
+  $('#cardMeses').hidden = meses.length < 2;
+  if(meses.length >= 2){
+    const rotulo = m => { const [a,mm] = m.split('-'); return ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][Number(mm)-1] + '/' + a.slice(2); };
+    $('#cabMeses').innerHTML = '<th>Vendedor</th>' + meses.map(m=>`<th class="right">${rotulo(m)}</th>`).join('') + '<th class="right">Total</th>';
+    $('#tabMeses').innerHTML = r.porVendedor.map(v => `<tr>
+      <td>${esc(v.vendedor)}${v.semComissao ? '<span class="mut"> · sem comissão</span>' : ''}</td>
+      ${meses.map(m => `<td class="right">${(v.porMes||{})[m] ? money(v.porMes[m].valor) : '<span class="mut">-</span>'}</td>`).join('')}
+      <td class="right"><strong>${money(v.valor)}</strong></td>
+    </tr>`).join('');
+    const tm = r.totaisPorMes || {};
+    $('#rodMeses').innerHTML = `<tr>
+      <td><strong>Total do mês</strong></td>
+      ${meses.map(m => `<td class="right"><strong>${tm[m] ? money(tm[m].valor) : '-'}</strong></td>`).join('')}
+      <td></td>
+    </tr>`;
+  }
+
+  const ia = r.conferirIA || [];
+  $('#cardIA').hidden = !ia.length;
+  $('#tabIA').innerHTML = ia.map(p => `<tr>
+    <td>${esc(p.numeroPedido || p.pedidoId)}</td>
+    <td>${p.dataPedido ? esc(p.dataPedido.split('-').reverse().join('/')) : '-'}</td>
+    <td class="right">${money(p.valor)}</td>
+    <td>${esc(p.vendedor)}</td>
+    <td>${esc(p.canal || '-')}</td>
+    <td class="mut">${esc(p.obsBruta)}</td>
+  </tr>`).join('');
+
+  mostrarBackfill(r.backfill);
+}
+
+// Manda as observações que o parser não entendeu pro Gemini. Roda em lotes: cada
+// chamada resolve o que dá em ~7s e diz quantas sobraram.
+let iaRodando = false;
+$('#vdIA').onclick = async () => {
+  if(iaRodando) return;
+  iaRodando = true; $('#vdIA').disabled = true;
+  try{
+    let total = 0, desconhecidos = 0;
+    for(;;){
+      $('#vdIAStatus').textContent = 'Consultando a IA…';
+      const r = await api('/.netlify/functions/resolver-observacoes',{method:'POST'});
+      total += r.resolvidos; desconhecidos += r.desconhecidos;
+      $('#vdIAStatus').textContent = `${total} resolvido(s), ${r.restantes} restante(s)…`;
+      if(!r.temMais) break;
+    }
+    $('#vdIAStatus').textContent = `Pronto. ${total} identificado(s)`
+      + (desconhecidos ? `, ${desconhecidos} a IA não soube dizer (continuam pra você arrumar).` : '.');
+    $('#vdBuscar').click();
+  }catch(e){
+    $('#vdIAStatus').innerHTML = `<span class="err">${esc(e.message)}</span>`;
+  }finally{
+    iaRodando = false; $('#vdIA').disabled = false;
+  }
+};
+
+function mostrarBackfill(b){
+  if(!b){ $('#vdBfStatus').textContent = 'Nenhum histórico puxado ainda.'; return; }
+  if(b.erro){ $('#vdBfStatus').innerHTML = `<span class="err">Parou com erro: ${esc(b.erro)}</span>`; return; }
+  const dia = d => d ? String(d).split('-').reverse().join('/') : '?';
+  const per = `${esc(dia(b.de))} a ${esc(dia(b.ate))}`;
+  $('#vdBfStatus').textContent = b.concluido
+    ? `Histórico de ${per} concluído. ${b.pedidos_gravados} pedido(s) trazidos.`
+    : `Histórico de ${per} em andamento: página ${b.pagina} de ${b.total_paginas||'?'}, ${b.pedidos_gravados} pedido(s) até agora.`;
+}
+
+$('#vdExportar').onclick = () => {
+  if(!vendasAtual) return;
+  const linhas = [['Vendedor','Valor vendido','Pedidos','Ticket médio','Presencial','Online','Outros']];
+  vendasAtual.porVendedor.forEach(v => linhas.push([v.vendedor, v.valor, v.pedidos, v.ticketMedio, v.presencial, v.online, v.outros]));
+  const csv = linhas.map(l => l.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  const blob = new Blob(['﻿'+csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `vendas_${vendasAtual.periodo.de}_a_${vendasAtual.periodo.ate}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+// Confere de qual campo da Omie sai a observação, sem gravar nada no banco.
+$('#vdDiag').onclick = async () => {
+  $('#vdDiagOut').hidden = false;
+  $('#vdDiagOut').textContent = 'consultando a Omie…';
+  try{
+    const r = await api('/.netlify/functions/ingerir-pedidos-omie?diagnostico=1');
+    $('#vdDiagOut').textContent = JSON.stringify(r, null, 2);
+  }catch(e){ $('#vdDiagOut').textContent = 'Erro: ' + e.message; }
+};
+
+// Puxa o histórico em pedaços: cada chamada processa o que dá em ~7s e diz se tem mais.
+let backfillRodando = false;
+$('#vdBfIniciar').onclick = async () => {
+  if(backfillRodando) return;
+  const de = $('#vdBfDe').value, ate = $('#vdBfAte').value;
+  if(!de || !ate) return toast('Informe o período do histórico');
+  if(ate < de) return toast('A data "até" não pode ser antes da data "de"');
+
+  backfillRodando = true;
+  $('#vdBfIniciar').disabled = true;
+  let url = '/.netlify/functions/ingerir-pedidos-omie?backfill=1&de='+de+'&ate='+ate;
+  try{
+    for(;;){
+      $('#vdBfStatus').textContent = 'Puxando da Omie… pode levar alguns minutos, deixe esta aba aberta.';
+      const r = await api(url);
+      $('#vdBfStatus').textContent = `Página ${r.pagina} de ${r.totalPaginas||'?'} · ${r.gravadosNoTotal} pedido(s) trazidos.`;
+      if(!r.temMais){ $('#vdBfStatus').textContent = `Pronto. ${r.gravadosNoTotal} pedido(s) trazidos de ${de} a ${ate}.`; break; }
+      url = '/.netlify/functions/ingerir-pedidos-omie?backfill=1'; // continua de onde parou
+    }
+    $('#vdBuscar').click();
+  }catch(e){
+    $('#vdBfStatus').innerHTML = `<span class="err">Parou: ${esc(e.message)}. Clique de novo em "Puxar histórico" pra continuar de onde parou.</span>`;
+  }finally{
+    backfillRodando = false;
+    $('#vdBfIniciar').disabled = false;
+  }
+};
+
+/* ---------------- diagnóstico ---------------- */
+$('#dGo').onclick = async () => {
+  $('#dOut').textContent = 'executando…';
+  try{
+    const r = await api('/.netlify/functions/omie-raw',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path:$('#dPath').value,call:$('#dCall').value,param:JSON.parse($('#dParam').value||'{}')})});
+    $('#dOut').textContent = JSON.stringify(r,null,2);
+  }catch(e){ $('#dOut').textContent = 'ERRO: ' + e.message; }
+};
+
+/* ---------------- init ---------------- */
+function statusHoje(){
+  const hoje = new Date();
+  $('#dataRota').value = dataBR(hoje);
+  const trintaDiasAtras = new Date(hoje); trintaDiasAtras.setDate(hoje.getDate()-30);
+  $('#relDe').value = dataBR(trintaDiasAtras); $('#relAte').value = dataBR(hoje);
+}
+window.removerRascunho = removerRascunho;
+window.atualizarSwatch = atualizarSwatch;
+window.atualizarTotalVolumes = atualizarTotalVolumes;
+window.alternarEdicaoDesc = alternarEdicaoDesc;
+window.excluirRom = excluirRom;
+window.delFr = delFr;
+window.delEs = delEs;
+window.editarFr = editarFr;
+window.editarEs = editarEs;
+window.toggleEditRom = toggleEditRom;
+window.salvarEdicaoRom = salvarEdicaoRom;
+window.toggleCarga = toggleCarga;
+window.marcarJaNoFreteAdmin = marcarJaNoFreteAdmin;
+window.abrirRotaCompleta = abrirRotaCompleta;
+window.recalcularGeo = recalcularGeo;
+window.sugerirOrdem = sugerirOrdem;
+window.confirmarOrdem = confirmarOrdem;
+window.moverParada = moverParada;
+window.onToggleDetalhes = onToggleDetalhes;
+window.salvarProblema = salvarProblema;
+window.atualizarMotivos = atualizarMotivos;
+window.marcarEmRota = marcarEmRota;
+window.removerParada = removerParada;
+
+checarSessao();
+</script>
+</body>
+</html>

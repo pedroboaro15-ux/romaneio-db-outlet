@@ -11,10 +11,19 @@ compatibility_date = "2026-09-01"
 compatibility_flags = ["nodejs_compat"]
 
 # As páginas (HTML, logo, service worker) são servidas direto como arquivo.
-# Só o que não for arquivo existente cai no código do src/index.js.
+# Só o que não for arquivo existente cai no código do src/index.mjs.
+#
+# html_handling = "none" e not_found_handling = "none" NÃO são detalhe: sem eles
+# o Cloudflare mexe nos endereços antes do nosso código ver. O padrão
+# ("auto-trailing-slash") responde /entrega.html com um 307 para /entrega — e o
+# link que o freteiro recebe no WhatsApp, /entrega/<id-do-romaneio>, chega em
+# /entrega sem o id, abrindo a lista em vez da rota. Com "none", quem decide o
+# que cada endereço serve é src/index.mjs, e só ele.
 [assets]
 directory = "./public"
 binding = "ASSETS"
+html_handling = "none"
+not_found_handling = "none"
 
 # Guarda os logs do Worker. É o que permite ver a mensagem de erro de verdade
 # quando alguma coisa falha, em Workers & Pages -> seu Worker -> Logs.

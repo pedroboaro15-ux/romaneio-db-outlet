@@ -2,7 +2,9 @@
 const crypto = require('crypto');
 const { admin } = require('./supabase');
 
-const DIAS_SESSAO = 90;
+// 30 dias, nao 90. Sem senha nem PIN no login, uma sessao longa num celular
+// perdido e a maior brecha que sobra — e reentrar custa um toque e um telefone.
+const DIAS_SESSAO = 30;
 
 const soDigitos = s => String(s || '').replace(/\D/g, '');
 

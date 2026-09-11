@@ -1,18 +1,24 @@
 {
   "name": "romaneio-omie",
-  "version": "2.0.0",
-  "description": "Romaneio de entregas a partir de pedidos de venda do Omie — Netlify Functions + Supabase",
+  "version": "3.0.0",
+  "description": "Romaneio de entregas + controle de estoque do outlet — um Worker, um banco, uma porta de entrada",
   "private": true,
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "dev:estoque": "npm --prefix app-estoque run dev",
+    "build": "npm --prefix app-estoque install --no-audit --no-fund && npm --prefix app-estoque run build",
+    "deploy": "npm run build && wrangler deploy",
+    "teste": "node testes/convivencia.test.mjs && node testes/seguranca.test.mjs && node testes/cliente-supabase.test.mjs && node testes/planilha.test.mjs && node testes/autorizacao.test.mjs && node testes/rotas.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "wrangler": "^4.0.0"
   }
 }

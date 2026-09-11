@@ -1,9 +1,112 @@
 # Romaneio Omie
 
 > **Atualização mais recente:** ver "O QUE MUDOU AGORA" logo abaixo.
-> **O app mudou de hospedagem: agora roda no Cloudflare Workers, não mais no Netlify.** Comece cadastrando as variáveis de ambiente no painel do Cloudflare e conferindo o nome do Worker — lista completa e passo a passo na primeira seção abaixo. Depois: 1) rodar o `schema.sql` de novo, 2) subir o código no GitHub, 3) clicar em "Conferir campos da Omie" na aba Vendas **antes** de puxar o histórico.
+>
+> **Os dois apps viraram um site só.** O romaneio e o controle de estoque agora
+> moram no mesmo endereço, com uma porta de entrada que pergunta quem você é, e
+> um login só. O que você precisa fazer, na ordem:
+>
+> 1. rodar **os dois** arquivos SQL no MESMO projeto do Supabase: `supabase/schema.sql` e `supabase/schema-estoque.sql`;
+> 2. cadastrar as variáveis novas no Cloudflare (`ADMIN_EMAILS`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`);
+> 3. publicar com `npm run deploy` (agora ele builda o estoque antes de subir);
+> 4. avisar a equipe que o link é a **raiz do site** agora, não mais `/equipe` (o endereço antigo continua funcionando).
 
 ## O QUE MUDOU AGORA
+
+### Um site só: romaneio + estoque, uma porta de entrada, um login
+
+Antes eram dois apps separados, em dois endereços, com dois logins. Agora é um
+site. Quem abre a raiz vê **"Você é..."** e escolhe:
+
+| Toca em | Vai pra | Como entra |
+|---|---|---|
+| 🗝️ **Gerente** | `/painel` (romaneio) e `/estoque` | e-mail e senha do Supabase Auth |
+| 🚚 **Freteiro** | `/entrega` | só o telefone cadastrado |
+| 📦 **Estoquista** | `/separacao` | só o telefone cadastrado |
+
+O painel do gerente ganhou o item **Estoque ↗** na barra de cima, que leva pro
+app de estoque inteiro — produtos, painel, gráficos, calculadora de custos,
+histórico, importação de planilha e fábricas.
+
+**Por que o login é único agora:** os dois apps dividem o mesmo projeto do
+Supabase, e a sessão do Supabase Auth é guardada por projeto e por endereço. Um
+projeto + um endereço = uma sessão. É por isso que os dois `.sql` precisam rodar
+no mesmo projeto; em projetos separados você logaria duas vezes.
+
+**Quem já entrou antes** encontra um botão "Continuar como fulano" na porta de
+entrada, e ao lado dele "Sou outra pessoa". A versão antiga pulava a pergunta
+direto — e um celular que logou com o telefone errado ficava preso pra sempre.
+
+### Dois gerentes, não um
+
+O painel descobre quem é gerente na tabela `perfis` (a mesma do estoque): quem
+tem `papel = 'dono'` entra. Antes era a variável `ADMIN_EMAIL`, que cabia **uma
+pessoa só** e exigia republicar o site pra trocar.
+
+`ADMIN_EMAILS` (lista separada por vírgula) continua valendo como rede de
+segurança, pra você não ficar trancado fora enquanto a tabela não existir. Quem
+tem perfil de `operador` ou `leitura` mexe no estoque mas **não** entra no
+romaneio.
+
+### A tela de Conferência saiu
+
+A aba **Conferência** (entregas entregues aguardando você confirmar o pagamento e
+dar baixa no estoque na mão) foi removida: a tela, o endpoint, o contador do
+painel do dia e o aviso em cada parada. A coluna `conferido` **fica no banco** —
+apagar coluna apaga histórico, e não se ganha nada com isso.
+
+> Vale saber: essa tela existia porque a baixa de estoque era manual. Agora que o
+> estoque mora no mesmo site e no mesmo banco, o caminho natural é a entrega dar
+> baixa sozinha. Isso **não** foi feito ainda — é o próximo passo óbvio.
+
+### Login por telefone continua sem senha, mas agora tem freio
+
+O login da equipe segue sendo só o telefone. O que mudou:
+
+- **Freio de tentativas** (`netlify/functions/lib/limite.js`): 6 erros no mesmo
+  telefone, ou 20 no mesmo IP, travam por 15 minutos. Só tentativa **errada**
+  conta, e um acerto zera tudo — quem digita torto duas vezes nunca sente.
+- **Sessão de 30 dias**, não 90. Sem senha, sessão longa em celular perdido é a
+  maior brecha que sobra, e reentrar custa um toque.
+- O papel é decidido **no servidor**, em todo endpoint. Esconder botão no HTML
+  não protege nada: quem abre o console chama o endpoint na mão.
+  `testes/autorizacao.test.mjs` prova isso — inclusive que um token de freteiro
+  nunca abre rota de gerente.
+
+### Bug corrigido: o link do freteiro perdia o id da rota
+
+O `wrangler.toml` não dizia nada sobre `html_handling`, e o padrão do Cloudflare
+("auto-trailing-slash") responde `/entrega.html` com um **307 para `/entrega`**.
+Resultado: o link que você manda no WhatsApp, `/entrega/<id do romaneio>`,
+chegava em `/entrega` **sem o id** — abrindo a lista de rotas em vez da rota.
+
+Estava no ar desde a migração pro Cloudflare. Agora `html_handling` e
+`not_found_handling` estão em `"none"`: quem decide o que cada endereço serve é
+`src/index.mjs`, e `testes/rotas.test.mjs` falha se alguém religar o atalho.
+
+### Testes
+
+`npm run teste` roda 152 verificações: os dois schemas convivendo num Postgres de
+verdade (PGlite), o RLS do estoque exercitado como usuário logado, o cliente do
+Supabase, SSRF no `/api/planilha`, autorização e roteamento.
+
+### Onde o código mora agora
+
+O app de estoque virou a pasta **`app-estoque/`** deste repositório. Ele é
+compilado pelo Vite pra dentro de `public/estoque/`, que é publicada junto com as
+páginas do romaneio — um Worker só pode declarar **uma** pasta de arquivos
+estáticos, então precisava ser a mesma. O repositório `estoque-outlet` separado
+fica como histórico; o desenvolvimento continua aqui.
+
+```
+romaneio-omie/
+├── public/            → o site publicado (porta de entrada, painel, entrega, separação)
+│   └── estoque/       → gerado pelo build, não editar (está no .gitignore)
+├── app-estoque/       → fonte do app de estoque (Vite + Preact + TypeScript)
+├── netlify/functions/ → as funções do servidor (o nome ficou, a hospedagem mudou)
+├── src/index.mjs      → o roteador do Worker
+└── supabase/          → schema.sql (romaneio) + schema-estoque.sql (estoque)
+```
 
 ### Mudança de hospedagem: saiu do Netlify, entrou no Cloudflare Workers
 
@@ -288,45 +391,67 @@ Essa chave "anon" é feita pra ficar exposta no navegador — não é a `service
 
 ---
 
-## 4. Publicar (esta seção é do tempo do Netlify)
+## 4. Publicar no Cloudflare Workers
 
-> **Desatualizada.** O app agora roda no Cloudflare Workers — veja a primeira seção do arquivo. Isto fica aqui só como histórico.
+Precisa do [Node.js 18+](https://nodejs.org). Na primeira vez o `wrangler` abre o
+navegador pra você autorizar a sua conta do Cloudflare.
 
-O jeito mais simples de manter isso atualizado é conectar essa pasta a um repositório no GitHub e importar no Netlify:
+```bash
+npm install
+npm run deploy
+```
 
-1. Crie um repositório no GitHub e suba esta pasta (`romaneio-omie/`) pra ele.
-2. No [Netlify](https://app.netlify.com), **Add new site → Import an existing project**, escolha o repositório. Ele já detecta o `netlify.toml` (pasta `public` pro site, `netlify/functions` pro backend) — não precisa mudar nada.
-3. Depois do primeiro deploy, vá em **Site configuration → Environment variables** e adicione:
+`npm run deploy` faz duas coisas em ordem: compila o app de estoque pra dentro de
+`public/estoque/` e sobe tudo (páginas + funções) num Worker só.
+
+Depois, no painel do Cloudflare, em **Workers & Pages → seu Worker → Settings →
+Variables and Secrets**, cadastre:
 
 | Variável | Valor |
 |---|---|
 | `OMIE_APP_KEY` | sua App Key da Omie |
 | `OMIE_APP_SECRET` | sua App Secret da Omie |
-| `SUPABASE_URL` | a mesma Project URL do passo 1 |
+| `SUPABASE_URL` | a Project URL do passo 1 |
 | `SUPABASE_SERVICE_ROLE_KEY` | a service_role key do passo 1 (a secreta) |
-| `ADMIN_EMAIL` | o e-mail do usuário que você criou no Supabase |
+| `ADMIN_EMAILS` | seu e-mail e o do seu pai, separados por vírgula |
+| `VITE_SUPABASE_URL` | a MESMA Project URL (o app de estoque precisa dela no build) |
+| `VITE_SUPABASE_ANON_KEY` | a chave `anon` (pública de propósito — o que protege é o RLS) |
+| `GEMINI_API_KEY` | opcional, só pro botão de IA na aba Vendas |
 
-4. Vá em **Deploys → Trigger deploy** pra aplicar as variáveis. Pronto, o site está no ar.
+> As duas `VITE_*` entram no código do site no momento do build, então **o build
+> tem que rodar depois de elas existirem**. Se você publicar antes, o app de
+> estoque abre em branco — o `vite build` recusa justamente pra isso não passar
+> despercebido quando o build roda na sua máquina.
+
+O nome do Worker está no `wrangler.toml` (`name = "romaneio-omie"`) e precisa ser
+igual ao do painel, senão o deploy cria um Worker novo em vez de atualizar o seu.
 
 ---
 
-## 5. Testar localmente antes de publicar (opcional, recomendado)
-
-Precisa do [Node.js 18+](https://nodejs.org) e da [Netlify CLI](https://docs.netlify.com/cli/get-started/):
+## 5. Testar na sua máquina antes de publicar (opcional, recomendado)
 
 ```bash
-npm install -g netlify-cli
 npm install
-cp .env.example .env
+cp .env.example .dev.vars
+npm run build
+npm run dev
 ```
 
-Preencha o `.env` com as mesmas variáveis da tabela acima e rode:
+Preencha o `.dev.vars` com as mesmas variáveis da tabela acima (é o `.env` do
+Cloudflare). Abre em `http://localhost:8787` com tudo junto: porta de entrada,
+painel, entrega, separação e o estoque em `/estoque`.
+
+Pra mexer só na tela do estoque, com recarga automática a cada arquivo salvo:
 
 ```bash
-netlify dev
+npm run dev:estoque
 ```
 
-Abre em `http://localhost:8888`.
+E pra rodar a bateria de testes (não precisa de banco nem de internet):
+
+```bash
+npm run teste
+```
 
 ---
 
@@ -336,7 +461,7 @@ Abre em `http://localhost:8888`.
 2. Aba **Buscar pedido** — digite o número do pedido de venda e clique em Buscar. O app já traz os produtos e o endereço do cliente.
 3. Digite a **quantidade de volumes** e clique em **Adicionar ao romaneio**. Repita pra cada pedido que vai na mesma rota.
 4. Escolha o **freteiro** e a **data**, clique em **Gerar romaneio**.
-5. Avise a pessoa pra abrir `seusite.netlify.app/equipe` (uma vez só — depois fica salvo no celular dela) — ela escolhe o papel (Freteiro/Estoquista) e digita o telefone (precisa estar cadastrado antes nas abas Freteiros/Estoquistas) e já vê a rota de hoje.
+5. Avise a pessoa pra abrir o **endereço do site** (uma vez só — depois fica salvo no celular dela) — ela escolhe o papel (Freteiro/Estoquista) e digita o telefone (precisa estar cadastrado antes nas abas Freteiros/Estoquistas) e já vê a rota de hoje.
 
 ---
 
@@ -351,19 +476,19 @@ A Omie devolve nomes de campo um pouco diferentes conforme a conta/versão. Use 
 - **Mapa da rota**: em Romaneios, clique em "Ver mapa". Mostra os pinos numerados (João Pessoa e região), uma linha ligando na ordem atual, e dois botões:
   - **Recalcular coordenadas** — descobre a latitude/longitude de cada endereço (usa o Nominatim/OpenStreetMap, gratuito, sem chave). Pode demorar ~1 segundo por parada.
   - **Ordenar pela melhor rota** — sugere uma ordem mais eficiente; só grava se você clicar em "Confirmar".
-  - O ponto de partida usado pra calcular a rota é uma constante `LOJA_LAT`/`LOJA_LNG` no topo do `<script>` de `public/index.html` (hoje aponta pro centro de João Pessoa) — troque pelas coordenadas reais do seu depósito quando souber.
+  - O ponto de partida usado pra calcular a rota é uma constante `LOJA_LAT`/`LOJA_LNG` no topo do `<script>` de `public/painel.html` (hoje aponta pro centro de João Pessoa) — troque pelas coordenadas reais do seu depósito quando souber.
 
 ## Freteiros e estoquistas entram só com o telefone (sem senha)
 
 Simplifiquei de novo: nem PIN precisa mais. Fluxo atual:
 
 1. No painel, aba **Freteiros**, cadastre cada freteiro com **nome + telefone** (agora dá pra **Editar** depois, inclusive veículo/placa). O mesmo vale pra "Cadastrar estoquista".
-2. Mande pra pessoa o link **`seusite.netlify.app/equipe`** — ela toca em "🚚 Freteiro" ou "📦 Estoquista", digita o telefone, e pronto: cai direto em `/entrega` ou `/separacao` já logada. Freteiro só vê as rotas dele; estoquista vê todas automaticamente, sem precisar de link nenhum por romaneio.
-3. **Sobre segurança**: sem PIN, o telefone sozinho já entra — qualquer um que souber (ou adivinhar) um telefone cadastrado consegue acessar como aquela pessoa. Pra um app interno de 7-8 pessoas de confiança é uma troca aceitável por simplicidade, mas não é pra usar isso com dados mais sensíveis que entrega de móveis.
+2. Mande pra pessoa o **endereço do site** — ela toca em "🚚 Freteiro" ou "📦 Estoquista", digita o telefone, e pronto: cai direto em `/entrega` ou `/separacao` já logada. Freteiro só vê as rotas dele; estoquista vê todas automaticamente, sem precisar de link nenhum por romaneio.
+3. **Sobre segurança**: sem PIN, o telefone sozinho já entra — quem souber um telefone cadastrado acessa como aquela pessoa. Pra um app interno de 7-8 pessoas de confiança é uma troca aceitável. O que segura o resto: adivinhar em massa agora é travado (6 erros por telefone, 20 por IP, 15 minutos de espera), a sessão dura 30 dias, e o papel é conferido no servidor em todo endpoint — freteiro e estoquista não alcançam nada do painel nem do estoque, nem chamando o endereço na mão.
 
 ## Endereço fixo da loja e do estoque
 
-O freteiro sempre passa por dois lugares fixos antes de entregar: a **loja** (pegar a nota) e o **estoque** (pegar os móveis, que é onde fica a maior parte). Isso já está fixo no código (`LOJA` e `ESTOQUE`, no topo do `<script>` de `public/index.html` e `public/entrega.html`) — se esses endereços mudarem um dia, é só editar os dois arquivos.
+O freteiro sempre passa por dois lugares fixos antes de entregar: a **loja** (pegar a nota) e o **estoque** (pegar os móveis, que é onde fica a maior parte). Isso já está fixo no código (`LOJA` e `ESTOQUE`, no topo do `<script>` de `public/painel.html` e `public/entrega.html`) — se esses endereços mudarem um dia, é só editar os dois arquivos.
 
 > **Confira**: assumi que a loja (Rua Presidente Venceslau Braz, 1013) fica em **João Pessoa/PB**, já que o estoque é ali perto em Cabedelo — você não tinha dito a cidade. Se estiver errado, me avisa que eu corrijo o endereço no código.
 
@@ -412,7 +537,6 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas 
 | `netlify/functions/lib/push.js` | Manda a notificação push (usa a biblioteca `web-push`) |
 | `public/sw.js` | Service worker — só recebe e mostra a notificação push |
 | `netlify/functions/foto-upload.js` | Recebe foto (produto/carro) e guarda no Storage |
-| `netlify/functions/conferencia.js` | Entregas aguardando sua conferência (pagamento/estoque) |
 | `netlify/functions/historico-cliente.js` | Problemas anteriores de um cliente |
 | `netlify/functions/painel-dia.js` | Resumo do dia (painel inicial) |
 | `netlify/functions/romaneio-carregado.js` | Estoquista confirma a revisão final do carregamento |
@@ -428,11 +552,16 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas 
 | `netlify/functions/relatorio-vendas.js` | Vendas por vendedor/canal + correção manual |
 | `netlify/functions/lib/gemini.js` | Chamada ao Gemini (opcional, só pro fallback) |
 | `netlify/functions/resolver-observacoes.js` | Pergunta pro Gemini quem vendeu, nas sobras |
-| `public/index.html` | Painel (você) |
+| `public/index.html` | Porta de entrada: "Você é... gerente / freteiro / estoquista" |
+| `public/painel.html` | Painel do romaneio (você e seu pai) |
 | `public/logo.svg` | Logo da loja (usada em todas as telas) |
-| `public/equipe.html` | Entrada única da equipe — escolher papel + telefone |
 | `public/entrega.html` | Página do freteiro (celular) |
 | `public/separacao.html` | Página do estoquista (celular) |
-| `src/index.mjs` | Tradutor: faz as 24 funções rodarem no Cloudflare Workers |
+| `src/index.mjs` | Roteador do Worker: qual endereço serve o quê, e faz as funções rodarem no Cloudflare |
+| `src/planilha.mjs` | `/api/planilha`: busca a planilha publicada no Google Sheets (veio do app de estoque) |
+| `netlify/functions/lib/limite.js` | Freio de tentativas do login por telefone |
+| `app-estoque/` | Fonte do app de estoque (Vite + Preact); compila pra `public/estoque/` |
 | `wrangler.toml` | Configuração do Cloudflare (nome, arquivos, cron) |
-| `supabase/schema.sql` | Script pra criar as tabelas no Supabase |
+| `supabase/schema.sql` | Tabelas do romaneio (rode no Supabase) |
+| `supabase/schema-estoque.sql` | Tabelas do estoque — MESMO projeto do Supabase |
+| `testes/` | `npm run teste`: convivência dos schemas, RLS, autorização, rotas, SSRF |

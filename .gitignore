@@ -1,3 +1,9 @@
 node_modules/
 .netlify/
 .env
+# Saída do build do app de estoque (app-estoque/ é a fonte). Gerado no deploy.
+public/estoque/
+# Segredos do wrangler dev (o equivalente local do .env no Cloudflare).
+.dev.vars
+# Estado local do wrangler dev.
+.wrangler/

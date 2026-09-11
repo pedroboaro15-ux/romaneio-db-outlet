@@ -1,8 +1,11 @@
 // POST /.netlify/functions/parada-status
-//   { paradaId, status?, recebedor?, motivo?, lat?, lng?, conferido? }
+//   { paradaId, status?, recebedor?, motivo?, lat?, lng? }
 //   { paradaId, desfazer: true, nomeConfirmacao }  -- freteiro desfaz uma entrega/falha,
 //     confirmando digitando o próprio nome (evita desfazer sem querer). Gerente não precisa.
-// Exige login. Freteiro só mexe nas paradas do romaneio dele; "conferido" é só do gerente.
+// Exige login. Freteiro só mexe nas paradas do romaneio dele.
+//
+// A coluna "conferido" continua no banco (histórico do que já foi conferido na mão),
+// mas ninguém mais a escreve: a tela de Conferência saiu do painel.
 const { identificar } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
@@ -89,10 +92,6 @@ exports.handler = async event => {
     }
     if (b.lat != null) patch.lat = b.lat;
     if (b.lng != null) patch.lng = b.lng;
-    if (b.conferido != null) {
-      if (quem.role !== 'admin') return json(403, { erro: 'só o gerente pode marcar como conferido' });
-      patch.conferido = !!b.conferido;
-    }
   }
 
   const { data: atualizada, error } = await sb.from('paradas').update(patch).eq('id', b.paradaId).select().single();

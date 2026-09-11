@@ -189,8 +189,8 @@ async function api(url, opt){
   // Sessão morreu (login removido do cadastro, por ex.): volta pro início em vez de
   // deixar a pessoa presa numa tela de erro que ela não sabe resolver.
   if(r.status === 401){
-    localStorage.removeItem('equipeToken'); localStorage.removeItem('equipeTipo');
-    location.href = '/equipe';
+    localStorage.removeItem('equipeToken'); localStorage.removeItem('equipeTipo'); localStorage.removeItem('equipeNome');
+    location.href = '/';
     throw new Error('sessão expirada');
   }
   const j = await r.json().catch(()=>({erro:'resposta inválida'}));
@@ -221,17 +221,17 @@ async function processarFila(){
 }
 window.addEventListener('online', processarFila);
 
-// Sem token? Manda pra /equipe, que é a única porta de entrada da equipe.
+// Sem token? Manda pra raiz, que é a única porta de entrada de todo mundo.
 function checarSessao(){
-  if(!localStorage.getItem('equipeToken')){ location.href = '/equipe'; return; }
+  if(!localStorage.getItem('equipeToken')){ location.href = '/'; return; }
   document.getElementById('tela-app').hidden = false;
   atualizarAvisoOffline(); processarFila(); iniciar();
   atualizarBotaoNotif();
 }
 document.getElementById('btnSair').onclick = () => {
   if(!confirm('Sair do app?')) return;
-  localStorage.removeItem('equipeToken'); localStorage.removeItem('equipeTipo');
-  location.href = '/equipe';
+  localStorage.removeItem('equipeToken'); localStorage.removeItem('equipeTipo'); localStorage.removeItem('equipeNome');
+  location.href = '/';
 };
 
 document.getElementById('btnContato').onclick = () => {

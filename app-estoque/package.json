@@ -1,0 +1,23 @@
+{
+  "name": "app-estoque",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Painel de estoque do outlet. Buildado para ../public/estoque e servido pelo Worker do romaneio.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build"
+  },
+  "dependencies": {
+    "@supabase/auth-js": "~2.70.0",
+    "@supabase/postgrest-js": "^1.15.8",
+    "preact": "^10.24.3"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2"
+  }
+}

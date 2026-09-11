@@ -1,0 +1,17 @@
+# Só cache aqui.
+#
+# Os cabeçalhos de segurança (CSP, X-Frame-Options, Permissions-Policy) NÃO
+# moram mais neste arquivo: o Cloudflare SOMA as regras que casam em vez de a
+# mais específica substituir a mais geral, então "/*" e "/estoque/*" juntos
+# mandavam DUAS linhas de Content-Security-Policy na mesma resposta — e o
+# navegador aplica a interseção das duas. Na prática, a regra do romaneio
+# bloqueava a fonte do app de estoque.
+#
+# Agora quem assina é src/index.mjs, onde cada endereço recebe uma política só.
+#
+# Cache pode ficar: é uma regra só, num caminho só, sem sobreposição. Os nomes
+# dos arquivos aqui têm o hash do conteúdo (index-D10CsSqE.js), então mudou o
+# arquivo, mudou o nome — guardar pra sempre é seguro.
+
+/estoque/assets/*
+  Cache-Control: public, max-age=31536000, immutable

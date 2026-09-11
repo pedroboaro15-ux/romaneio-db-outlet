@@ -13,6 +13,17 @@
 --
 -- As colunas "pin" e "email" sobraram de versões antigas do login e não são mais
 -- usadas. Ficam aqui só pra não arriscar apagar dado à toa — pode ignorar.
+--
+-- ESTE BANCO É DIVIDIDO COM O APP DE ESTOQUE. Rode também supabase/schema-estoque.sql
+-- no MESMO projeto do Supabase: é isso que faz o login ser único (a sessão do
+-- Supabase Auth é guardada por projeto, então dois projetos = dois logins) e é de
+-- onde o painel descobre quem é gerente (perfis.papel = 'dono').
+--
+-- Os nomes das tabelas não colidem, e é de propósito: testes/convivencia.test.mjs
+-- roda os dois arquivos no mesmo Postgres e falha se algum dia colidirem. As tabelas
+-- daqui continuam SEM policy nenhuma — a chave "anon" que vai no código do site é do
+-- mesmo projeto agora, e é justamente a ausência de policy que a impede de ler
+-- romaneio, cliente ou telefone. Nunca crie policy nessas tabelas.
 
 create extension if not exists "pgcrypto";
 
@@ -50,6 +61,16 @@ create table if not exists public.sessoes_equipe (
   expira_em timestamptz not null
 );
 alter table public.sessoes_equipe enable row level security;
+
+-- Freio de tentativas do login por telefone (ver netlify/functions/lib/limite.js).
+-- Uma linha por chave: "tel:<telefone>" ou "ip:<endereço>". Só tentativa errada
+-- conta; quem acerta tem a linha apagada.
+create table if not exists public.tentativas_login (
+  chave      text primary key,
+  tentativas int not null default 0,
+  janela_em  timestamptz not null default now()
+);
+alter table public.tentativas_login enable row level security;
 
 create sequence if not exists public.romaneio_seq;
 
