@@ -16,6 +16,11 @@ compatibility_flags = ["nodejs_compat"]
 directory = "./public"
 binding = "ASSETS"
 
+# Guarda os logs do Worker. É o que permite ver a mensagem de erro de verdade
+# quando alguma coisa falha, em Workers & Pages -> seu Worker -> Logs.
+[observability]
+enabled = true
+
 # Carga diária dos pedidos de venda da Omie, que alimenta a aba Vendas.
 # O horário do cron é sempre em UTC: 08:10 UTC = 05:10 na Paraíba.
 [triggers]
