@@ -1,4 +1,4 @@
-// POST /.netlify/functions/push-subscrever  { subscription: {endpoint, keys:{p256dh,auth}} }
+// POST /api/push-subscrever  { subscription: {endpoint, keys:{p256dh,auth}} }
 // Freteiro/estoquista ativou notificação no celular — guarda o "endereço" desse
 // navegador pra poder mandar push depois. { subscription, remover: true } desativa.
 const { identificar } = require('./lib/auth');

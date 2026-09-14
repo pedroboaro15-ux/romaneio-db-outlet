@@ -107,7 +107,7 @@ apagar coluna apaga histórico, e não se ganha nada com isso.
 
 O login da equipe segue sendo só o telefone. O que mudou:
 
-- **Freio de tentativas** (`netlify/functions/lib/limite.js`): 6 erros no mesmo
+- **Freio de tentativas** (`api/lib/limite.js`): 6 erros no mesmo
   telefone, ou 20 no mesmo IP, travam por 15 minutos. Só tentativa **errada**
   conta, e um acerto zera tudo — quem digita torto duas vezes nunca sente.
 - **Sessão de 30 dias**, não 90. Sem senha, sessão longa em celular perdido é a
@@ -147,7 +147,7 @@ romaneio-omie/
 ├── public/            → o site publicado (porta de entrada, painel, entrega, separação)
 │   └── estoque/       → gerado pelo build, não editar (está no .gitignore)
 ├── app-estoque/       → fonte do app de estoque (Vite + Preact + TypeScript)
-├── netlify/functions/ → as funções do servidor (o nome ficou, a hospedagem mudou)
+├── api/ → as funções do servidor (o nome ficou, a hospedagem mudou)
 ├── src/index.mjs      → o roteador do Worker
 └── supabase/          → schema.sql (romaneio) + schema-estoque.sql (estoque)
 ```
@@ -158,7 +158,7 @@ O app foi migrado do Netlify pro Cloudflare Workers. As 24 funções do servidor
 
 O que mudou por baixo: o módulo `https` do Node não existe no Cloudflare, então as chamadas pra Omie, pro Gemini e pro mapa (Nominatim) passaram a usar `fetch`, que funciona nos dois lugares. Os endereços `/entrega`, `/separacao` e `/equipe` e o horário da carga diária, que moravam no `netlify.toml`, agora estão no `wrangler.toml` e no tradutor.
 
-**Nenhum endereço mudou.** As páginas continuam chamando `/.netlify/functions/...`, e o tradutor entende. Foi de propósito: mudar isso obrigaria a mexer em centenas de lugares no HTML sem ganho nenhum.
+**Nenhum endereço mudou.** As páginas continuam chamando `/api/...`, e o tradutor entende. Foi de propósito: mudar isso obrigaria a mexer em centenas de lugares no HTML sem ganho nenhum.
 
 #### Passo 1 — as variáveis de ambiente
 
@@ -511,12 +511,12 @@ npm run teste
 
 ## Se algum campo vier vazio
 
-A Omie devolve nomes de campo um pouco diferentes conforme a conta/versão. Use a aba **Diagnóstico** do painel pra chamar `ConsultarPedido` (ou qualquer outro método) e ver a resposta crua em JSON. Com isso em mãos, ajuste a função `normalizarPedido` em [`netlify/functions/pedido.js`](netlify/functions/pedido.js) — ela concentra todo o mapeamento de campos.
+A Omie devolve nomes de campo um pouco diferentes conforme a conta/versão. Use a aba **Diagnóstico** do painel pra chamar `ConsultarPedido` (ou qualquer outro método) e ver a resposta crua em JSON. Com isso em mãos, ajuste a função `normalizarPedido` em [`api/pedido.js`](api/pedido.js) — ela concentra todo o mapeamento de campos.
 
 ## O que mudou nesta atualização
 
 - **Bug das tabelas ("Could not find the table"):** o `supabase/schema.sql` provavelmente nunca rodou no seu projeto. Ele agora é seguro de rodar de novo quantas vezes precisar (só cria o que falta) — cole no SQL Editor e clique em Run de novo.
-- **Bug do "Pedido undefined":** o `ConsultarPedido` da Omie devolve os dados dentro de `pedido_venda_produto`; a leitura dos campos foi corrigida em `netlify/functions/pedido.js`. Também passou a detectar endereço de entrega alternativo (quando o pedido tem um endereço diferente do cadastro do cliente).
+- **Bug do "Pedido undefined":** o `ConsultarPedido` da Omie devolve os dados dentro de `pedido_venda_produto`; a leitura dos campos foi corrigida em `api/pedido.js`. Também passou a detectar endereço de entrega alternativo (quando o pedido tem um endereço diferente do cadastro do cliente).
 - **Mapa da rota**: em Romaneios, clique em "Ver mapa". Mostra os pinos numerados (João Pessoa e região), uma linha ligando na ordem atual, e dois botões:
   - **Recalcular coordenadas** — descobre a latitude/longitude de cada endereço (usa o Nominatim/OpenStreetMap, gratuito, sem chave). Pode demorar ~1 segundo por parada.
   - **Ordenar pela melhor rota** — sugere uma ordem mais eficiente; só grava se você clicar em "Confirmar".
@@ -568,37 +568,37 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas 
 
 | Arquivo | O que faz |
 |---|---|
-| `netlify/functions/pedido.js` | Busca 1 pedido + cliente na Omie, pelo número |
-| `netlify/functions/geocode.js` | Descobre lat/lng de 1 endereço (Nominatim), com cache |
-| `netlify/functions/reordenar-paradas.js` | Grava a nova ordem das paradas de um romaneio |
-| `netlify/functions/parada-problema.js` | Registra problema numa parada e de quem é a culpa |
-| `netlify/functions/relatorio.js` | Estatísticas por freteiro num período |
-| `netlify/functions/minhas-rotas.js` | Rotas de hoje em diante de quem logou |
-| `netlify/functions/equipe-login.js` | Login só por telefone (freteiro/estoquista) |
-| `netlify/functions/parada-separar.js` | Estoquista confirma (ou desfaz) volume a volume |
-| `netlify/functions/parada-item-carregado.js` | Marca/desmarca um item como "já no frete" |
-| `netlify/functions/parada-item-adiar.js` | "Vai por cima": manda um móvel pro fim da separação |
-| `netlify/functions/conferencia-final.js` | A contagem cega do caminhão carregado |
-| `netlify/functions/lib/carga.js` | Consolida a carga por produto e monta a fila de volumes |
-| `netlify/functions/push-subscrever.js` | Salva/remove a notificação push do celular de quem ativou |
-| `netlify/functions/lib/push.js` | Manda a notificação push (usa a biblioteca `web-push`) |
+| `api/pedido.js` | Busca 1 pedido + cliente na Omie, pelo número |
+| `api/geocode.js` | Descobre lat/lng de 1 endereço (Nominatim), com cache |
+| `api/reordenar-paradas.js` | Grava a nova ordem das paradas de um romaneio |
+| `api/parada-problema.js` | Registra problema numa parada e de quem é a culpa |
+| `api/relatorio.js` | Estatísticas por freteiro num período |
+| `api/minhas-rotas.js` | Rotas de hoje em diante de quem logou |
+| `api/equipe-login.js` | Login só por telefone (freteiro/estoquista) |
+| `api/parada-separar.js` | Estoquista confirma (ou desfaz) volume a volume |
+| `api/parada-item-carregado.js` | Marca/desmarca um item como "já no frete" |
+| `api/parada-item-adiar.js` | "Vai por cima": manda um móvel pro fim da separação |
+| `api/conferencia-final.js` | A contagem cega do caminhão carregado |
+| `api/lib/carga.js` | Consolida a carga por produto e monta a fila de volumes |
+| `api/push-subscrever.js` | Salva/remove a notificação push do celular de quem ativou |
+| `api/lib/push.js` | Manda a notificação push (usa a biblioteca `web-push`) |
 | `public/sw.js` | Service worker — só recebe e mostra a notificação push |
-| `netlify/functions/foto-upload.js` | Recebe foto (produto/carro) e guarda no Storage |
-| `netlify/functions/historico-cliente.js` | Problemas anteriores de um cliente |
-| `netlify/functions/painel-dia.js` | Resumo do dia (painel inicial) |
-| `netlify/functions/romaneio-carregado.js` | Estoquista confirma a revisão final do carregamento |
-| `netlify/functions/estoquistas.js` | Cadastro de estoquistas |
-| `netlify/functions/freteiros.js` | Cadastro de freteiros |
-| `netlify/functions/romaneios.js` | Criar/listar/editar/excluir romaneios |
-| `netlify/functions/romaneio-publico.js` | Dados do romaneio pra `entrega.html` e `separacao.html` |
-| `netlify/functions/parada-status.js` | Entrega/falha/desfazer, gerente remove parada |
-| `netlify/functions/omie-raw.js` | Diagnóstico — chama qualquer método da Omie |
-| `netlify/functions/lib/datas.js` | Data/hora sempre no fuso da loja, não do servidor |
-| `netlify/functions/lib/observacao.js` | Lê `CANAL\|\|VENDEDOR\|\|OBS:` da observação do pedido |
-| `netlify/functions/ingerir-pedidos-omie.js` | Traz os pedidos da Omie (madrugada + histórico) |
-| `netlify/functions/relatorio-vendas.js` | Vendas por vendedor/canal + correção manual |
-| `netlify/functions/lib/gemini.js` | Chamada ao Gemini (opcional, só pro fallback) |
-| `netlify/functions/resolver-observacoes.js` | Pergunta pro Gemini quem vendeu, nas sobras |
+| `api/foto-upload.js` | Recebe foto (produto/carro) e guarda no Storage |
+| `api/historico-cliente.js` | Problemas anteriores de um cliente |
+| `api/painel-dia.js` | Resumo do dia (painel inicial) |
+| `api/romaneio-carregado.js` | Estoquista confirma a revisão final do carregamento |
+| `api/estoquistas.js` | Cadastro de estoquistas |
+| `api/freteiros.js` | Cadastro de freteiros |
+| `api/romaneios.js` | Criar/listar/editar/excluir romaneios |
+| `api/romaneio-publico.js` | Dados do romaneio pra `entrega.html` e `separacao.html` |
+| `api/parada-status.js` | Entrega/falha/desfazer, gerente remove parada |
+| `api/omie-raw.js` | Diagnóstico — chama qualquer método da Omie |
+| `api/lib/datas.js` | Data/hora sempre no fuso da loja, não do servidor |
+| `api/lib/observacao.js` | Lê `CANAL\|\|VENDEDOR\|\|OBS:` da observação do pedido |
+| `api/ingerir-pedidos-omie.js` | Traz os pedidos da Omie (madrugada + histórico) |
+| `api/relatorio-vendas.js` | Vendas por vendedor/canal + correção manual |
+| `api/lib/gemini.js` | Chamada ao Gemini (opcional, só pro fallback) |
+| `api/resolver-observacoes.js` | Pergunta pro Gemini quem vendeu, nas sobras |
 | `public/index.html` | Porta de entrada: "Você é... gerente / freteiro / estoquista" |
 | `public/painel.html` | Painel do romaneio (você e seu pai) |
 | `public/logo.svg` | Logo da loja (usada em todas as telas) |
@@ -606,7 +606,7 @@ Rode o `supabase/schema.sql` de novo no SQL Editor pra criar as tabelas/colunas 
 | `public/separacao.html` | Página do estoquista (celular) |
 | `src/index.mjs` | Roteador do Worker: qual endereço serve o quê, e faz as funções rodarem no Cloudflare |
 | `src/planilha.mjs` | `/api/planilha`: busca a planilha publicada no Google Sheets (veio do app de estoque) |
-| `netlify/functions/lib/limite.js` | Freio de tentativas do login por telefone |
+| `api/lib/limite.js` | Freio de tentativas do login por telefone |
 | `app-estoque/` | Fonte do app de estoque (Vite + Preact); compila pra `public/estoque/` |
 | `wrangler.toml` | Configuração do Cloudflare (nome, arquivos, cron) |
 | `supabase/schema.sql` | Tabelas do romaneio (rode no Supabase) |

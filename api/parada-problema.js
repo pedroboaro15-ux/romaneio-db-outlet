@@ -1,4 +1,4 @@
-// POST /.netlify/functions/parada-problema  { paradaId, problema, responsavel, motivo, obs }
+// POST /api/parada-problema  { paradaId, problema, responsavel, motivo, obs }
 // Gerente registra se houve problema numa entrega/assistência, de quem é a culpa e por quê.
 // Estoquista também pode usar isso, mas só pra um caso específico: avisar que um vidro
 // chegou quebrado no estoque (responsavel='estoque', motivo='Móvel quebrado') — o resto

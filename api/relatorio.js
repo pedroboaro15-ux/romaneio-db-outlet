@@ -1,4 +1,4 @@
-// GET /.netlify/functions/relatorio?de=2026-08-01&ate=2026-08-31
+// GET /api/relatorio?de=2026-08-01&ate=2026-08-31
 // Quantas paradas cada freteiro levou no período, a % delas com problema atribuído a ele,
 // e quanto ele faturou de frete (soma do valor_frete de cada romaneio dele no período).
 const { requireAdmin } = require('./lib/auth');

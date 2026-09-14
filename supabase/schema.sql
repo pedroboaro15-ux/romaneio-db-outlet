@@ -62,7 +62,7 @@ create table if not exists public.sessoes_equipe (
 );
 alter table public.sessoes_equipe enable row level security;
 
--- Freio de tentativas do login por telefone (ver netlify/functions/lib/limite.js).
+-- Freio de tentativas do login por telefone (ver api/lib/limite.js).
 -- Uma linha por chave: "tel:<telefone>" ou "ip:<endereço>". Só tentativa errada
 -- conta; quem acerta tem a linha apagada.
 create table if not exists public.tentativas_login (
@@ -169,7 +169,7 @@ alter table public.paradas add column if not exists separado_em timestamptz;
 alter table public.paradas add column if not exists cor text default '';
 
 -- Motivo estruturado do problema (a lista de opções depende de quem é o responsável —
--- ver ARRAYS no código de netlify/functions/parada-problema.js). problema_obs continua
+-- ver ARRAYS no código de api/parada-problema.js). problema_obs continua
 -- livre, pra observação extra.
 alter table public.paradas add column if not exists problema_motivo text default '';
 

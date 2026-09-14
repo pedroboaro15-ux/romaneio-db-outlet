@@ -1,4 +1,4 @@
-// POST /.netlify/functions/geocode  { paradaId }
+// POST /api/geocode  { paradaId }
 // Geocodifica UM endereço (Nominatim/OpenStreetMap), com cache em geo_cache, e grava
 // o resultado direto na parada. O navegador não pode chamar o Nominatim direto porque
 // precisa de um User-Agent identificando a aplicação — por isso passa por aqui.

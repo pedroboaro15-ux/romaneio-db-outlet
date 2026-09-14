@@ -1,8 +1,8 @@
-// GET  /.netlify/functions/relatorio-vendas?de=2026-06-01&ate=2026-08-31
+// GET  /api/relatorio-vendas?de=2026-06-01&ate=2026-08-31
 //      Vendas por vendedor e por canal no período. Lê só a tabela já processada
 //      (vendas_observacoes) — não encosta na Omie.
 //
-// POST /.netlify/functions/relatorio-vendas
+// POST /api/relatorio-vendas
 //      { pedidoId, canal, vendedor }  -> arruma na mão um pedido que não bateu o padrão.
 //      Marca corrigido_manual, então a ingestão da madrugada não desfaz a correção.
 const { requireAdmin } = require('./lib/auth');

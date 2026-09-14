@@ -130,13 +130,22 @@ titulo('O QUE NÃO EXISTE DÁ 404, E NÃO A PÁGINA ERRADA');
 titulo('AS FUNÇÕES E O /api/planilha');
 
 {
-  const r = await pedir('/.netlify/functions/naoexiste');
+  const r = await pedir('/api/naoexiste');
   checa('função inventada dá 404 em JSON', r.status === 404);
   checa('função inventada não vira página', r.arquivo === null, 'não passou pelo ASSETS');
 }
 {
   const r = await pedir('/api/planilha', 'GET');
   checa('/api/planilha só aceita POST', r.status === 405);
+}
+{
+  // O endereço antigo (/.netlify/functions/<nome>) continua atendendo. Não é
+  // saudosismo: o celular do freteiro guarda ações numa fila quando fica sem
+  // sinal, com o endereço de quando a ação foi criada. O que ficou na fila antes
+  // da atualização precisa continuar chegando, senão a entrega some calada.
+  const r = await pedir('/.netlify/functions/naoexiste');
+  checa('o endereço antigo ainda é roteado', r.status === 404 && r.arquivo === null,
+    'chegou no roteador de funções, não no de páginas');
 }
 {
   const res = await worker.fetch(
@@ -151,7 +160,7 @@ titulo('AS FUNÇÕES E O /api/planilha');
     'o teste completo de SSRF está em testes/planilha.test.mjs');
 }
 {
-  const r = await pedir('/.netlify/functions/conferencia');
+  const r = await pedir('/api/conferencia');
   checa('a função de conferência não existe mais', r.status === 404, 'a tela saiu do painel');
 }
 

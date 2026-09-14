@@ -1,4 +1,4 @@
-// POST /.netlify/functions/foto-upload  { paradaId, imagemBase64, tipo? }
+// POST /api/foto-upload  { paradaId, imagemBase64, tipo? }
 // Freteiro ou estoquista manda uma foto (já reduzida no navegador) de uma parada.
 // tipo: 'produto' (confirmação da entrega, padrão), 'carro', 'vidro' (comprovação do
 // termo de vidro — a foto do vidro), 'assinatura' (assinatura do termo de vidro, um

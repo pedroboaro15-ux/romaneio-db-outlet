@@ -1,4 +1,4 @@
-// GET/POST/DELETE /.netlify/functions/freteiros
+// GET/POST/DELETE /api/freteiros
 // GET também é liberado pra freteiro/estoquista — precisam da lista pra "começar uma
 // rota" (estoquista escolhe o freteiro; a lista deles vem enxuta, só id+nome).
 // Cadastrar/editar/remover continua exclusivo do gerente.

@@ -1,4 +1,4 @@
-// POST /.netlify/functions/parada-status
+// POST /api/parada-status
 //   { paradaId, status?, recebedor?, motivo?, lat?, lng? }
 //   { paradaId, desfazer: true, nomeConfirmacao }  -- freteiro desfaz uma entrega/falha,
 //     confirmando digitando o próprio nome (evita desfazer sem querer). Gerente não precisa.

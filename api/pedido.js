@@ -1,4 +1,4 @@
-// GET /.netlify/functions/pedido?numero=1234
+// GET /api/pedido?numero=1234
 // Busca UM pedido de venda na Omie pelo número + endereço de entrega.
 // Freteiro/estoquista também usam isso pra "começar uma rota" direto do celular.
 const { identificar } = require('./lib/auth');

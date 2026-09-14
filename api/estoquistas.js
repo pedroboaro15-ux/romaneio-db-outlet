@@ -1,4 +1,4 @@
-// GET/POST/DELETE /.netlify/functions/estoquistas
+// GET/POST/DELETE /api/estoquistas
 const { requireAdmin } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');

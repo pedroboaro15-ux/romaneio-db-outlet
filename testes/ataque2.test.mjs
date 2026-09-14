@@ -20,13 +20,13 @@ const { cliente, banco, zerar } = criarSupabaseFalso();
 instalar(Module, cliente);
 
 const exigir = Module.createRequire(import.meta.url);
-const omieRaw = exigir('../netlify/functions/omie-raw.js');
-const romaneios = exigir('../netlify/functions/romaneios.js');
-const paradaSeparar = exigir('../netlify/functions/parada-separar.js');
-const romaneioCarregado = exigir('../netlify/functions/romaneio-carregado.js');
-const paradaStatus = exigir('../netlify/functions/parada-status.js');
-const fotoUpload = exigir('../netlify/functions/foto-upload.js');
-const equipeLogin = exigir('../netlify/functions/equipe-login.js');
+const omieRaw = exigir('../api/omie-raw.js');
+const romaneios = exigir('../api/romaneios.js');
+const paradaSeparar = exigir('../api/parada-separar.js');
+const romaneioCarregado = exigir('../api/romaneio-carregado.js');
+const paradaStatus = exigir('../api/parada-status.js');
+const fotoUpload = exigir('../api/foto-upload.js');
+const equipeLogin = exigir('../api/equipe-login.js');
 
 let ok = 0, falhas = 0;
 const achados = [];

@@ -1,4 +1,4 @@
-// POST /.netlify/functions/equipe-login  { telefone, tipo: 'freteiro'|'estoquista' }
+// POST /api/equipe-login  { telefone, tipo: 'freteiro'|'estoquista' }
 //
 // Sem senha/PIN de propósito: só o telefone cadastrado por você já identifica a
 // pessoa. Como o telefone é um número curto e adivinhável, o freio de tentativas

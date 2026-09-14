@@ -1,4 +1,4 @@
-// POST /.netlify/functions/parada-item-carregado  { paradaId, indice, jaNoFrete }
+// POST /api/parada-item-carregado  { paradaId, indice, jaNoFrete }
 // Marca um item específico da parada como já colocado no frete (por exemplo: veio de
 // outro estoque e já foi carregado antes) — some da cobrança de volume desse item sem
 // precisar confirmar de novo. Dá pra desmarcar também, se foi engano.

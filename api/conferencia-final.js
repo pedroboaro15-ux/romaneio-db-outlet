@@ -1,6 +1,6 @@
-// GET  /.netlify/functions/conferencia-final?romaneioId=...
+// GET  /api/conferencia-final?romaneioId=...
 //        Devolve a lista de produtos pra contar — SEM a quantidade esperada.
-// POST /.netlify/functions/conferencia-final  { romaneioId, versao, contagem: { L1: 3, L2: 1 } }
+// POST /api/conferencia-final  { romaneioId, versao, contagem: { L1: 3, L2: 1 } }
 //        Recebe a contagem, compara com o que deveria estar lá e grava o resultado.
 //
 // Por que a lista vai SEM o número esperado (contagem cega):

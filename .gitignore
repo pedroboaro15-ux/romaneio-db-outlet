@@ -7,3 +7,6 @@ public/estoque/
 .dev.vars
 # Estado local do wrangler dev.
 .wrangler/
+
+# Lixo de build do TypeScript.
+*.tsbuildinfo

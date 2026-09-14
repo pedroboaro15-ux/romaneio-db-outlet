@@ -1,4 +1,4 @@
-// GET/POST/DELETE /.netlify/functions/romaneios
+// GET/POST/DELETE /api/romaneios
 // GET e DELETE continuam só do gerente (a lista completa expõe dados de todo mundo).
 // POST agora também aceita freteiro/estoquista — pra dar pra "começar uma rota" direto
 // do celular, sem precisar esperar o gerente montar. Freteiro só cria/edita rota dele

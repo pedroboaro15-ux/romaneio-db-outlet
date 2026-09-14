@@ -1,4 +1,4 @@
-// GET /.netlify/functions/historico-cliente?codigo=123
+// GET /api/historico-cliente?codigo=123
 // Antes de montar a rota: esse cliente já teve problema em entregas/assistências passadas?
 const { requireAdmin } = require('./lib/auth');
 const { json } = require('./lib/http');

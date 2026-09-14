@@ -6,7 +6,7 @@
 --  admins" valer de verdade, sem depender da variável ADMIN_EMAILS.
 --
 --  Quem tem papel = 'dono' aqui entra no painel do romaneio E manda no
---  estoque. É a tabela que o netlify/functions/lib/auth.js consulta.
+--  estoque. É a tabela que o api/lib/auth.js consulta.
 --
 --  COMO USAR
 --    1. Crie a conta dele no Supabase, em Authentication > Users > Add user

@@ -1,4 +1,4 @@
-// POST /.netlify/functions/parada-separar  { paradaId, desfazer? }
+// POST /api/parada-separar  { paradaId, desfazer? }
 // Estoquista confirma 1 volume de cada vez. Quando bate com o total, marca "separado".
 // { paradaId, desfazer: true } tira 1 volume confirmado — pra quando algum volume foi
 // marcado sem querer. Só funciona se o carregamento do romaneio ainda não foi confirmado

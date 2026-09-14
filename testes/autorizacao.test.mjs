@@ -91,9 +91,9 @@ Module.prototype.require = function (caminho) {
 };
 
 const exigir = Module.createRequire(import.meta.url);
-const auth = exigir('../netlify/functions/lib/auth.js');
-const login = exigir('../netlify/functions/equipe-login.js');
-const limite = exigir('../netlify/functions/lib/limite.js');
+const auth = exigir('../api/lib/auth.js');
+const login = exigir('../api/equipe-login.js');
+const limite = exigir('../api/lib/limite.js');
 
 const evento = (extra = {}) => ({
   httpMethod: 'POST', headers: {}, queryStringParameters: {}, body: null, ...extra

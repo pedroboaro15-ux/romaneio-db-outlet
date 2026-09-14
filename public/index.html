@@ -87,7 +87,7 @@ async function entrar(){
   if(!telefone){ $('#erro').innerHTML = '<div class="err">Digite o telefone</div>'; return; }
   btn.disabled = true; btn.textContent = 'Entrando…';
   try{
-    const r = await fetch('/.netlify/functions/equipe-login', {
+    const r = await fetch('/api/equipe-login', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ telefone, tipo: papel })
     });

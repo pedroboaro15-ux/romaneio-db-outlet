@@ -1,6 +1,6 @@
 // Porta de entrada do app no Cloudflare Workers.
 //
-// Por que este arquivo existe: as 24 funções em netlify/functions/ foram escritas no
+// Por que este arquivo existe: as 24 funções em api/ foram escritas no
 // formato do Netlify (exports.handler = async event => ({statusCode, headers, body})).
 // O Cloudflare fala outro formato (fetch(request, env) => Response). Em vez de
 // reescrever as 24, este arquivo traduz de um formato pro outro. Assim o código que
@@ -8,36 +8,36 @@
 // na mudança de hospedagem fica bem menor.
 //
 // Ele faz três coisas:
-//   1. Traduz /.netlify/functions/<nome> pra função correspondente.
+//   1. Traduz /api/<nome> pra função correspondente.
 //   2. Refaz os endereços amigáveis (/painel, /entrega, /separacao) que moravam no
 //      netlify.toml.
 //   3. Roda a carga diária dos pedidos no horário do cron (ver wrangler.toml).
 
-import conferenciaFinal from '../netlify/functions/conferencia-final.js';
-import equipeLogin from '../netlify/functions/equipe-login.js';
-import estoquistas from '../netlify/functions/estoquistas.js';
-import fotoUpload from '../netlify/functions/foto-upload.js';
-import freteiros from '../netlify/functions/freteiros.js';
-import geocode from '../netlify/functions/geocode.js';
-import historicoCliente from '../netlify/functions/historico-cliente.js';
-import ingerirPedidosOmie from '../netlify/functions/ingerir-pedidos-omie.js';
-import minhasRotas from '../netlify/functions/minhas-rotas.js';
-import omieRaw from '../netlify/functions/omie-raw.js';
-import painelDia from '../netlify/functions/painel-dia.js';
-import paradaItemAdiar from '../netlify/functions/parada-item-adiar.js';
-import paradaItemCarregado from '../netlify/functions/parada-item-carregado.js';
-import paradaProblema from '../netlify/functions/parada-problema.js';
-import paradaSeparar from '../netlify/functions/parada-separar.js';
-import paradaStatus from '../netlify/functions/parada-status.js';
-import pedido from '../netlify/functions/pedido.js';
-import pushSubscrever from '../netlify/functions/push-subscrever.js';
-import relatorio from '../netlify/functions/relatorio.js';
-import relatorioVendas from '../netlify/functions/relatorio-vendas.js';
-import reordenarParadas from '../netlify/functions/reordenar-paradas.js';
-import resolverObservacoes from '../netlify/functions/resolver-observacoes.js';
-import romaneioCarregado from '../netlify/functions/romaneio-carregado.js';
-import romaneioPublico from '../netlify/functions/romaneio-publico.js';
-import romaneios from '../netlify/functions/romaneios.js';
+import conferenciaFinal from '../api/conferencia-final.js';
+import equipeLogin from '../api/equipe-login.js';
+import estoquistas from '../api/estoquistas.js';
+import fotoUpload from '../api/foto-upload.js';
+import freteiros from '../api/freteiros.js';
+import geocode from '../api/geocode.js';
+import historicoCliente from '../api/historico-cliente.js';
+import ingerirPedidosOmie from '../api/ingerir-pedidos-omie.js';
+import minhasRotas from '../api/minhas-rotas.js';
+import omieRaw from '../api/omie-raw.js';
+import painelDia from '../api/painel-dia.js';
+import paradaItemAdiar from '../api/parada-item-adiar.js';
+import paradaItemCarregado from '../api/parada-item-carregado.js';
+import paradaProblema from '../api/parada-problema.js';
+import paradaSeparar from '../api/parada-separar.js';
+import paradaStatus from '../api/parada-status.js';
+import pedido from '../api/pedido.js';
+import pushSubscrever from '../api/push-subscrever.js';
+import relatorio from '../api/relatorio.js';
+import relatorioVendas from '../api/relatorio-vendas.js';
+import reordenarParadas from '../api/reordenar-paradas.js';
+import resolverObservacoes from '../api/resolver-observacoes.js';
+import romaneioCarregado from '../api/romaneio-carregado.js';
+import romaneioPublico from '../api/romaneio-publico.js';
+import romaneios from '../api/romaneios.js';
 
 // O app de estoque trouxe um endpoint proprio junto (ver src/planilha.mjs).
 import { buscarPlanilha } from './planilha.mjs';
@@ -204,14 +204,24 @@ export default {
     const url = new URL(request.url);
     const caminho = url.pathname;
 
-    if (caminho.startsWith('/.netlify/functions/')) {
-      const nome = caminho.slice('/.netlify/functions/'.length).replace(/\/+$/, '');
+    // Importação de planilha do app de estoque. Vem ANTES do roteador genérico:
+    // ela não está na lista FUNCOES (nasceu no outro app, com outro formato), e
+    // se caísse lá responderia "função não encontrada".
+    if (caminho === '/api/planilha') return buscarPlanilha(request);
+
+    // /api/<nome> -> a função com esse nome.
+    //
+    // O endereço antigo era /.netlify/functions/<nome>, herdado de quando o app
+    // rodava na Netlify. Continua aceito por um motivo só: o celular do freteiro
+    // guarda ações numa fila quando fica sem sinal (localStorage), com o endereço
+    // de quando a ação foi criada. Sem este apelido, o que ficou na fila antes da
+    // atualização daria 404 e a entrega sumiria sem ninguém perceber.
+    const PREFIXO_ANTIGO = '/.netlify/functions/';
+    if (caminho.startsWith('/api/') || caminho.startsWith(PREFIXO_ANTIGO)) {
+      const prefixo = caminho.startsWith('/api/') ? '/api/' : PREFIXO_ANTIGO;
+      const nome = caminho.slice(prefixo.length).replace(/\/+$/, '');
       return rodarFuncao(nome, request, env);
     }
-
-    // Importacao de planilha do app de estoque. Nao passa pelas funcoes do
-    // Netlify porque nasceu no outro app, com outro formato.
-    if (caminho === '/api/planilha') return buscarPlanilha(request);
 
     // /entrega, /entrega/<id>, /separacao/<id>, /painel, /equipe...
     // O que vem depois da barra (/entrega/<id>) e lido pelo JavaScript da propria

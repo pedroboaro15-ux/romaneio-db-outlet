@@ -1,4 +1,4 @@
-// POST /.netlify/functions/omie-raw  { path, call, param }
+// POST /api/omie-raw  { path, call, param }
 // Diagnóstico: chama qualquer método da Omie e devolve a resposta crua.
 // Útil quando um campo vier vazio/errado — ver o JSON real que a Omie devolve.
 const { requireAdmin } = require('./lib/auth');

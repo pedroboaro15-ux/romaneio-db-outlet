@@ -19,14 +19,14 @@ const { cliente, banco, zerar } = criarSupabaseFalso();
 instalar(Module, cliente);
 
 const exigir = Module.createRequire(import.meta.url);
-const paradaStatus = exigir('../netlify/functions/parada-status.js');
-const paradaItem = exigir('../netlify/functions/parada-item-carregado.js');
-const paradaSeparar = exigir('../netlify/functions/parada-separar.js');
-const romaneioCarregado = exigir('../netlify/functions/romaneio-carregado.js');
-const fotoUpload = exigir('../netlify/functions/foto-upload.js');
-const pushSubscrever = exigir('../netlify/functions/push-subscrever.js');
-const ingerir = exigir('../netlify/functions/ingerir-pedidos-omie.js');
-const romaneios = exigir('../netlify/functions/romaneios.js');
+const paradaStatus = exigir('../api/parada-status.js');
+const paradaItem = exigir('../api/parada-item-carregado.js');
+const paradaSeparar = exigir('../api/parada-separar.js');
+const romaneioCarregado = exigir('../api/romaneio-carregado.js');
+const fotoUpload = exigir('../api/foto-upload.js');
+const pushSubscrever = exigir('../api/push-subscrever.js');
+const ingerir = exigir('../api/ingerir-pedidos-omie.js');
+const romaneios = exigir('../api/romaneios.js');
 
 let ok = 0, falhas = 0;
 const achados = [];

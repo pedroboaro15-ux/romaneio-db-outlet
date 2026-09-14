@@ -22,9 +22,9 @@ const { cliente, banco, zerar } = criarSupabaseFalso();
 instalar(Module, cliente);
 
 const exigir = Module.createRequire(import.meta.url);
-const conferencia = exigir('../netlify/functions/conferencia-final.js');
-const romaneioCarregado = exigir('../netlify/functions/romaneio-carregado.js');
-const { consolidar, conferir } = exigir('../netlify/functions/lib/carga.js');
+const conferencia = exigir('../api/conferencia-final.js');
+const romaneioCarregado = exigir('../api/romaneio-carregado.js');
+const { consolidar, conferir } = exigir('../api/lib/carga.js');
 
 let ok = 0, falhas = 0;
 const achados = [];

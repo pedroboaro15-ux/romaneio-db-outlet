@@ -1,4 +1,4 @@
-// GET /.netlify/functions/painel-dia
+// GET /api/painel-dia
 // Resumo do dia: rotas de hoje, entregas que falharam, problemas recentes.
 const { requireAdmin } = require('./lib/auth');
 const { json } = require('./lib/http');

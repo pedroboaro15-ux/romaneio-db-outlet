@@ -1,4 +1,4 @@
-// POST /.netlify/functions/reordenar-paradas  { romaneioId, ordem: [paradaId, paradaId, ...] }
+// POST /api/reordenar-paradas  { romaneioId, ordem: [paradaId, paradaId, ...] }
 // Grava a nova ordem das paradas depois que o gerente confirma (nunca reordena sozinho).
 const { requireAdmin } = require('./lib/auth');
 const { json, lerCorpo } = require('./lib/http');

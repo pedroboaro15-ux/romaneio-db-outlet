@@ -1,4 +1,4 @@
-// GET /.netlify/functions/minhas-rotas
+// GET /api/minhas-rotas
 // Exige login. Freteiro e estoquista veem a(s) rota(s) de HOJE em diante (fuso da loja) —
 // assim dá pra achar uma rota que já foi criada pra amanhã ou depois, não só a de hoje.
 // Gerente (não usa essa tela, mas por segurança) vê tudo.

@@ -241,13 +241,13 @@ document.getElementById('btnNotif').onclick = async () => {
     const jaTem = await reg.pushManager.getSubscription();
     if(jaTem){
       await jaTem.unsubscribe();
-      await api('/.netlify/functions/push-subscrever', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subscription: jaTem, remover: true }) }).catch(()=>{});
+      await api('/api/push-subscrever', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subscription: jaTem, remover: true }) }).catch(()=>{});
       toast('Notificações desativadas');
     } else {
       const permissao = await Notification.requestPermission();
       if(permissao !== 'granted'){ toast('Sem permissão pra notificar — ative nas configurações do navegador'); return; }
       const sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: base64UrlParaBytes(VAPID_PUBLIC_KEY) });
-      await api('/.netlify/functions/push-subscrever', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subscription: sub }) });
+      await api('/api/push-subscrever', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subscription: sub }) });
       toast('Notificações ativadas!');
     }
   }catch(e){ toast('Não deu pra mexer nas notificações: ' + e.message); }
@@ -269,7 +269,7 @@ function atualizarBadgeNotif(totalAgora){
 // Mostra as rotas de HOJE EM DIANTE — não some se você já criou a rota de amanhã.
 async function iniciar(){
   try{
-    const rotas = await api('/.netlify/functions/minhas-rotas');
+    const rotas = await api('/api/minhas-rotas');
     atualizarBadgeNotif(rotas.reduce((s,r)=>s+(r.totalParadas||0), 0));
     document.getElementById('rotaCompleta').innerHTML = '';
     document.getElementById('bar').style.width = '0%';
@@ -340,7 +340,7 @@ async function buscarPedidoRota(){
   const caixa = document.getElementById('resultadoPedidoRota');
   caixa.innerHTML = '<p class="mut" style="margin-top:10px">Buscando…</p>';
   try{
-    const p = await api('/.netlify/functions/pedido?numero='+encodeURIComponent(numero));
+    const p = await api('/api/pedido?numero='+encodeURIComponent(numero));
     pedidoBuscadoRota = p;
     const c = p.cliente || {};
     const itensHtml = (p.itens||[]).map((it,i)=>`<div class="itemrota">
@@ -379,7 +379,7 @@ async function criarNovaRota(){
   if(!rascunhoNovaRota.length) return;
   const dataRota = document.getElementById('dataNovaRota').value;
   try{
-    await api('/.netlify/functions/romaneios', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dataRota, paradas: rascunhoNovaRota }) });
+    await api('/api/romaneios', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ dataRota, paradas: rascunhoNovaRota }) });
     toast('Rota criada!');
     // Já marca essas paradas como "vistas" antes de recarregar — foi ele mesmo que
     // criou, não faz sentido o sino acender um alerta de "chegou pedido novo" pra ele.
@@ -392,7 +392,7 @@ async function criarNovaRota(){
 
 async function carregar(){
   try{
-    rom = await api('/.netlify/functions/romaneio-publico?id='+idAtual);
+    rom = await api('/api/romaneio-publico?id='+idAtual);
     localStorage.setItem('romCache_'+idAtual, JSON.stringify(rom));
     render();
   }catch(e){
@@ -516,7 +516,7 @@ function geo(){
 }
 
 // "Não entreguei" abre estas opções em botão — nada de digitar motivo no celular.
-// Tem que bater com MOTIVOS_FALHA em netlify/functions/parada-status.js.
+// Tem que bater com MOTIVOS_FALHA em api/parada-status.js.
 const MOTIVOS_FALHA = ['Cliente não estava em casa', 'Erro da loja', 'Remarcado pra outro dia'];
 
 function abrirMotivos(i){
@@ -543,14 +543,14 @@ async function marcar(i, status, indiceMotivo){
   const g = await geo();
   if(g){ body.lat = g.lat; body.lng = g.lng; }
   try{
-    await api('/.netlify/functions/parada-status', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    await api('/api/parada-status', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
     await carregar();
   }catch(e){
     if(e instanceof ErroOffline){
       parada.status = status;
       if(status==='entregue') parada.entregue_em = new Date().toISOString();
       if(status==='falhou') parada.motivo = body.motivo;
-      enfileirar({ url: '/.netlify/functions/parada-status', body, token: localStorage.getItem('equipeToken') });
+      enfileirar({ url: '/api/parada-status', body, token: localStorage.getItem('equipeToken') });
       localStorage.setItem('romCache_'+idAtual, JSON.stringify(rom));
       toast('Sem internet — salvo no celular, será enviado quando voltar o sinal');
       render();
@@ -566,7 +566,7 @@ async function desfazer(i){
   const nome = prompt('Pra desfazer, digite seu nome (igual está cadastrado):');
   if(nome === null) return;
   try{
-    await api('/.netlify/functions/parada-status', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId: parada.id, desfazer: true, nomeConfirmacao: nome }) });
+    await api('/api/parada-status', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId: parada.id, desfazer: true, nomeConfirmacao: nome }) });
     await carregar();
     toast('Desfeito');
   }catch(e){ alert('Não foi possível desfazer: ' + e.message); }
@@ -595,7 +595,7 @@ async function enviarFoto(paradaId, file){
   if(!file) return;
   try{
     const imagemBase64 = await redimensionarImagem(file, 1280);
-    await api('/.netlify/functions/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64 }) });
+    await api('/api/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64 }) });
     await carregar();
   }catch(e){
     if(e instanceof ErroOffline) toast('Sem internet — a foto não pôde ser enviada agora. Tente de novo com sinal.');
@@ -611,7 +611,7 @@ async function enviarFotoPagamento(paradaId, file){
   if(!file) return;
   try{
     const imagemBase64 = await redimensionarImagem(file, 1280);
-    await api('/.netlify/functions/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64, tipo:'pagamento' }) });
+    await api('/api/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64, tipo:'pagamento' }) });
     toast('Foto do pagamento guardada!');
     await carregar();
   }catch(e){
@@ -625,7 +625,7 @@ async function enviarFotoVidro(paradaId, file){
   if(!file) return;
   try{
     const imagemBase64 = await redimensionarImagem(file, 1280);
-    await api('/.netlify/functions/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64, tipo:'vidro' }) });
+    await api('/api/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64, tipo:'vidro' }) });
     toast('Foto do vidro guardada!');
     await carregar();
   }catch(e){
@@ -700,7 +700,7 @@ async function confirmarAssinatura(i){
   const paradaId = rom.paradas[i].id;
   const imagemBase64 = canvas.toDataURL('image/png');
   try{
-    await api('/.netlify/functions/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64, tipo:'assinatura' }) });
+    await api('/api/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64, tipo:'assinatura' }) });
     toast('Assinatura salva!');
     await carregar();
   }catch(e){

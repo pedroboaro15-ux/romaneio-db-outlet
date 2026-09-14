@@ -1,4 +1,4 @@
-// POST /.netlify/functions/romaneio-carregado  { romaneioId, desfazer? }
+// POST /api/romaneio-carregado  { romaneioId, desfazer? }
 //   { romaneioId, mesmoComDivergencia: true, motivo: '...' } fecha mesmo com a
 //   conferência final não batendo — e registra por quê.
 //

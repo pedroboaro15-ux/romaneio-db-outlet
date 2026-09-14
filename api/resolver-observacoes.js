@@ -1,4 +1,4 @@
-// POST /.netlify/functions/resolver-observacoes
+// POST /api/resolver-observacoes
 // Pega os pedidos cuja observação o parser não entendeu e pergunta pro Gemini quem
 // vendeu. Roda SEPARADO da carga de propósito: se a IA rodasse dentro da ingestão,
 // cada página esperaria a resposta do Gemini e o backfill estouraria os 10 segundos

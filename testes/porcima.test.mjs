@@ -24,10 +24,10 @@ const { cliente, banco, zerar } = criarSupabaseFalso();
 instalar(Module, cliente);
 
 const exigir = Module.createRequire(import.meta.url);
-const adiar = exigir('../netlify/functions/parada-item-adiar.js');
-const separar = exigir('../netlify/functions/parada-separar.js');
-const itemCarregado = exigir('../netlify/functions/parada-item-carregado.js');
-const { filaDeVolumes, situacaoParada } = exigir('../netlify/functions/lib/carga.js');
+const adiar = exigir('../api/parada-item-adiar.js');
+const separar = exigir('../api/parada-separar.js');
+const itemCarregado = exigir('../api/parada-item-carregado.js');
+const { filaDeVolumes, situacaoParada } = exigir('../api/lib/carga.js');
 
 let ok = 0, falhas = 0;
 const achados = [];

@@ -1,4 +1,4 @@
-// POST /.netlify/functions/parada-item-adiar  { paradaId, indice, adiar }
+// POST /api/parada-item-adiar  { paradaId, indice, adiar }
 //
 // "Esse vai por cima" — o estoquista tira um móvel da vez dele e manda pro fim
 // da separação. Colchão, cama, espelho: coisa que não pode ter peso em cima.
