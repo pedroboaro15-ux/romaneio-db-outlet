@@ -147,16 +147,31 @@ function conferir(paradas, contagem) {
  *
  * Cada elemento: { indiceItem, descricao, cor, fragil, unidade, totalDoItem, porCima }
  */
+/**
+ * Pra onde um item adiado foi mandado.
+ *
+ *   'pedido' - volta no fim DESTE pedido, antes de passar pro próximo.
+ *   'rota'   - volta só no fim de TODOS os pedidos, na etapa final da rota.
+ *
+ * Item antigo, gravado quando só existia um destino, vem com adiado:true e sem
+ * escopo nenhum — e naquela época o destino era o fim da rota. Por isso o padrão
+ * é 'rota': manter o que já está no banco se comportando como sempre se comportou.
+ */
+function escopoDoAdiado(it) {
+  if (!it || !it.adiado) return null;
+  return it.adiadoEscopo === 'pedido' ? 'pedido' : 'rota';
+}
+
 function filaDeVolumes(parada) {
   const itens = Array.isArray(parada && parada.itens) ? parada.itens : [];
   const fila = [];
 
-  const empilhar = porCima => {
+  const empilhar = escopo => {
     itens.forEach((it, indiceItem) => {
       // "Já no frete" não entra na fila: veio carregado de outro estoque, não há
       // o que confirmar — só o que conferir no fim, na contagem do caminhão.
       if (it && it.jaNoFrete) return;
-      if (!!(it && it.adiado) !== porCima) return;
+      if (escopoDoAdiado(it) !== escopo) return;
 
       const total = Number(it && it.volumes) || 0;
       for (let unidade = 1; unidade <= total; unidade++) {
@@ -167,14 +182,18 @@ function filaDeVolumes(parada) {
           fragil: !!(it && it.fragil),
           unidade,
           totalDoItem: total,
-          porCima
+          // porCima marca só o que sai DESTA passada. O adiado pro fim do pedido
+          // continua sendo cobrado agora, logo depois dos outros — por isso false.
+          porCima: escopo === 'rota',
+          escopoAdiado: escopo
         });
       }
     });
   };
 
-  empilhar(false);  // o que vai agora
-  empilhar(true);   // e, depois de tudo, o que vai por cima
+  empilhar(null);       // o que vai agora
+  empilhar('pedido');   // depois, o que ficou pro fim deste pedido
+  empilhar('rota');     // e, no fim de tudo, o que vai por cima da carga inteira
 
   return fila;
 }
@@ -209,4 +228,4 @@ function situacaoParada(parada) {
   };
 }
 
-module.exports = { consolidar, conferir, versaoDaCarga, normalizar, filaDeVolumes, situacaoParada };
+module.exports = { consolidar, conferir, versaoDaCarga, normalizar, filaDeVolumes, situacaoParada, escopoDoAdiado };

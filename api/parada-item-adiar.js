@@ -51,8 +51,11 @@ exports.handler = async event => {
     return json(400, { erro: 'esse item já veio no frete — não há o que adiar' });
   }
 
+  // Pra onde vai: fim deste pedido, ou fim da rota inteira. Quem não disser fica
+  // com 'rota', que era o único destino que existia antes.
   const adiar = !!b.adiar;
-  if (!!alvo.adiado === adiar) {
+  const escopo = b.escopo === 'pedido' ? 'pedido' : 'rota';
+  if (!!alvo.adiado === adiar && (!adiar || (alvo.adiadoEscopo || 'rota') === escopo)) {
     // Já está como pediram. Devolve a parada como está, sem escrever à toa.
     return json(200, parada);
   }
@@ -76,6 +79,8 @@ exports.handler = async event => {
   }
 
   alvo.adiado = adiar;
+  if (adiar) alvo.adiadoEscopo = escopo;
+  else delete alvo.adiadoEscopo;
 
   // O "separado" é recalculado aqui, num lugar só (lib/carga.js), pra não
   // divergir entre os endpoints como já divergia antes.

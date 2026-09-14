@@ -514,21 +514,32 @@ function prepararOrdem(){
    A ordem é: primeiro o que vai agora, depois o que o estoquista mandou pro
    final ("vai por cima" — colchão, cama, espelho). Com os adiados no fim, o
    contador continua sendo um índice direto nesta lista. */
+// Pra onde o item adiado foi mandado: 'pedido' (volta no fim deste pedido) ou
+// 'rota' (volta só no fim de todos). Item antigo, sem escopo gravado, é 'rota' —
+// que era o único destino quando ele foi salvo. Igual a escopoDoAdiado() no servidor.
+function escopoAdiado(it){
+  if(!it || !it.adiado) return null;
+  return it.adiadoEscopo === 'pedido' ? 'pedido' : 'rota';
+}
+
 function filaDaParada(p){
   const itens = (p && p.itens) || [];
   const fila = [];
-  const empilhar = porCima => {
+  const empilhar = escopo => {
     itens.forEach((it, indiceItem) => {
       if(it && it.jaNoFrete) return;              // já está no caminhão
-      if(!!(it && it.adiado) !== porCima) return;
+      if(escopoAdiado(it) !== escopo) return;
       const total = Number(it && it.volumes) || 0;
       for(let unidade = 1; unidade <= total; unidade++){
-        fila.push({ item: it, indiceItem, unidade, totalItem: total, porCima });
+        // porCima só pro que sai desta passada. O adiado pro fim do pedido continua
+        // sendo cobrado agora, logo depois dos outros.
+        fila.push({ item: it, indiceItem, unidade, totalItem: total, porCima: escopo === 'rota', escopoAdiado: escopo });
       }
     });
   };
-  empilhar(false);
-  empilhar(true);
+  empilhar(null);       // o que vai agora
+  empilhar('pedido');   // depois, o que ficou pro fim deste pedido
+  empilhar('rota');     // e no fim de tudo, o que vai por cima da carga inteira
   return fila;
 }
 
@@ -589,17 +600,19 @@ function itemDoVolume(p, indice){
 }
 
 /* ---- "vai por cima": tirar um móvel da vez dele e mandar pro fim ---- */
-async function marcarPorCima(paradaId, indice, adiar){
+async function marcarPorCima(paradaId, indice, adiar, escopo){
   try{
     const atualizada = await api('/api/parada-item-adiar', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ paradaId, indice, adiar })
+      body: JSON.stringify({ paradaId, indice, adiar, escopo: escopo || 'rota' })
     });
     const na = ordemCarregamento.find(x=>x.id===paradaId);
     if(na) Object.assign(na, atualizada);
     const no = rom.paradas.find(x=>x.id===paradaId);
     if(no) Object.assign(no, atualizada);
-    toast(adiar ? 'Guardado pro final — vai por cima' : 'Trazido de volta pra fila');
+    toast(!adiar ? 'Trazido de volta pra fila'
+      : escopo === 'pedido' ? 'Volta no fim deste pedido'
+      : 'Guardado pro final da carga — vai por cima');
     await avancarSeSemVolume();
     render();
   }catch(e){ alert(e.message); }
@@ -690,11 +703,15 @@ function render(){
 
       ${proximoItem?`<div class="volitem">Pegue agora: ${esc(proximoItem.item.descricao||'')}${proximoItem.totalItem>1?' — parte '+proximoItem.unidade+' de '+proximoItem.totalItem:''}</div>`:''}
 
-      ${proximoItem && !proximoItem.porCima ? `
+      ${proximoItem && !proximoItem.escopoAdiado ? `
         ${COSTUMA_IR_POR_CIMA.test(proximoItem.item.descricao||'') ? '<div class="dicaporcima">⬆️ Esse costuma ir por cima. Se for o caso, mande pro final — assim ele não fica embaixo de guarda-roupa.</div>' : ''}
-        <button type="button" class="btnporcima" onclick="marcarPorCima('${p.id}', ${proximoItem.indiceItem}, true)">
-          ⬆️ Vai por cima — deixar pro final
+        <button type="button" class="btnporcima" onclick="marcarPorCima('${p.id}', ${proximoItem.indiceItem}, true, 'pedido')">
+          ⏭️ Pular — volta no fim deste pedido
+        </button>
+        <button type="button" class="btnporcima" onclick="marcarPorCima('${p.id}', ${proximoItem.indiceItem}, true, 'rota')">
+          ⬆️ Vai por cima — volta no fim de tudo
         </button>` : ''}
+      ${proximoItem && proximoItem.escopoAdiado === 'pedido' ? '<div class="dicaporcima">⏭️ Este você tinha pulado. Ele voltou porque é o fim deste pedido.</div>' : ''}
 
       ${(p.itens||[]).length ? `<div class="blocoitens">
         <div class="tituloitens">Tudo desse pedido</div>
