@@ -56,6 +56,11 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 .tituloMotivo{font-size:13px;font-weight:800;color:#57574e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px}
 .opcaomotivo{width:100%;background:#fff;color:#14140F;border:2px solid #14140F;margin-bottom:8px;padding:15px;font-size:15px}
 .cancelamotivo{width:100%;background:none;color:#6f6f66;border:0;padding:8px;font-size:14px;font-weight:600}
+/* Entrega que deu problema mas continua devendo. Âmbar de propósito: não é o
+   vermelho de "não entregue", porque ela ainda vai acontecer. */
+.reagendada{margin-top:10px;background:#fff8e1;border:2px solid #f0d78a;color:#6b5a1a;border-radius:11px;padding:12px 13px;font-size:15px;font-weight:700}
+.reagendada small{display:block;margin-top:3px;font-weight:600;opacity:.75}
+.btndepois{width:100%;margin-top:8px;background:#fff;color:#6b5a1a;border:2px solid #f0d78a;border-radius:10px;padding:14px;font-size:15px;font-weight:700}
 .err{background:#fdeaea;color:#7f1d1d;padding:8px 10px;border-radius:8px;font-size:13px;margin-bottom:10px}
 /* Criar rota nova direto do celular */
 .amarelo{background:#F2F250;color:#14140F;margin-top:12px}
@@ -478,6 +483,7 @@ function render(){
         </button>
         <div id="assinaturabox-${i}"></div>
       </div>` : ''}
+      ${p.status==='reagendada' ? `<div class="reagendada">🕐 Fica pra ${esc(rotuloJanela(p.janela)).toLowerCase()}${p.motivo?' — '+esc(p.motivo):''}<br><small>Continua devendo. A rota não fecha enquanto não resolver.</small></div>` : ''}
       ${feito
         ? `<div class="status ${p.status==='entregue'?'ok':'no'}">${p.status==='entregue'?'✓ Entregue':'✕ Não entregue'}${p.recebedor?' — '+esc(p.recebedor):''}${p.motivo?' — '+esc(p.motivo):''}<br><small>${p.entregue_em?new Date(p.entregue_em).toLocaleString('pt-BR'):''}</small></div>
            <button class="btndesfazer" onclick="desfazer(${i})">↩️ Desfazer</button>`
@@ -485,6 +491,7 @@ function render(){
              <button class="ok" id="btnok-${i}" onclick="marcar(${i},'entregue')" ${faltaVidro?'disabled title="Tire a foto do vidro e colha a assinatura antes"':''}>✓ Entreguei</button>
              <button class="no" id="btnno-${i}" onclick="abrirMotivos(${i})">✕ Não entreguei</button>
            </div>
+           <button class="btndepois" id="btndepois-${i}" onclick="abrirReagendar(${i})">🕐 ${p.status==='reagendada'?'Mudar quando eu volto':'Deu problema, fica pra depois'}</button>
            <div id="motivos-${i}"></div>`}
     </div>`;
   }).join('') || '<div class="empty">Sem paradas.</div>';
@@ -517,7 +524,22 @@ function geo(){
 
 // "Não entreguei" abre estas opções em botão — nada de digitar motivo no celular.
 // Tem que bater com MOTIVOS_FALHA em api/parada-status.js.
-const MOTIVOS_FALHA = ['Cliente não estava em casa', 'Erro da loja', 'Remarcado pra outro dia'];
+const MOTIVOS_FALHA = ['Cliente não estava em casa', 'Erro da loja', 'Endereço errado'];
+
+// Problemas que NÃO encerram a entrega: ela fica devendo e volta na mesma rota.
+// Tem que bater com MOTIVOS_REAGENDAR em api/parada-status.js.
+const MOTIVOS_REAGENDAR = [
+  'Ninguém em casa agora',
+  'Não coube na passagem',
+  'Cliente pediu pra deixar pra depois',
+  'Faltou quem ajudasse a subir',
+  'Cheguei fora do horário combinado'
+];
+const JANELAS = [
+  { valor:'tarde',          rotulo:'Hoje à tarde' },
+  { valor:'manha_seguinte', rotulo:'Amanhã de manhã' }
+];
+const rotuloJanela = v => (JANELAS.find(j=>j.valor===v)||{}).rotulo || '';
 
 function abrirMotivos(i){
   const caixa = document.getElementById('motivos-'+i);
@@ -531,14 +553,45 @@ function abrirMotivos(i){
     </div>`;
 }
 
-async function marcar(i, status, indiceMotivo){
+// Fica pra depois: dois toques. Primeiro o problema, depois quando volta.
+// Sem caixa de diálogo, igual ao resto do app.
+function abrirReagendar(i){
+  const caixa = document.getElementById('motivos-'+i);
+  if(!caixa) return;
+  if(caixa.innerHTML){ caixa.innerHTML = ''; return; }
+  caixa.innerHTML = `
+    <div class="caixamotivo">
+      <div class="tituloMotivo">O que aconteceu?</div>
+      ${MOTIVOS_REAGENDAR.map((m,k)=>`<button type="button" class="opcaomotivo" onclick="escolherJanela(${i},${k})">${esc(m)}</button>`).join('')}
+      <button type="button" class="cancelamotivo" onclick="abrirMotivos(${i})">Cancelar</button>
+    </div>`;
+}
+
+function escolherJanela(i, indiceMotivo){
+  const caixa = document.getElementById('motivos-'+i);
+  if(!caixa) return;
+  caixa.innerHTML = `
+    <div class="caixamotivo">
+      <div class="tituloMotivo">${esc(MOTIVOS_REAGENDAR[indiceMotivo])}.<br>Quando você volta?</div>
+      ${JANELAS.map(j=>`<button type="button" class="opcaomotivo" onclick="marcar(${i},'reagendada',${indiceMotivo},'${j.valor}')">${esc(j.rotulo)}</button>`).join('')}
+      <button type="button" class="cancelamotivo" onclick="abrirReagendar(${i})">Voltar</button>
+    </div>`;
+}
+
+async function marcar(i, status, indiceMotivo, janela){
   const botao = document.getElementById(status==='entregue'?'btnok-'+i:'btnno-'+i);
   if(botao && botao.disabled) return; // trava clique duplo (e também trava se faltar vidro/assinatura)
   const parada = rom.paradas[i];
   let body = { paradaId: parada.id, status };
   if(status === 'falhou') body.motivo = MOTIVOS_FALHA[indiceMotivo] || MOTIVOS_FALHA[0];
+  if(status === 'reagendada'){
+    body.motivo = MOTIVOS_REAGENDAR[indiceMotivo] || MOTIVOS_REAGENDAR[0];
+    body.janela = janela;
+  }
   const caixa = document.getElementById('motivos-'+i);
   if(caixa) caixa.innerHTML = '';
+  const btnDepois = document.getElementById('btndepois-'+i);
+  if(btnDepois) btnDepois.disabled = true;
   if(botao){ document.getElementById('btnok-'+i).disabled = true; document.getElementById('btnno-'+i).disabled = true; }
   const g = await geo();
   if(g){ body.lat = g.lat; body.lng = g.lng; }
@@ -550,6 +603,7 @@ async function marcar(i, status, indiceMotivo){
       parada.status = status;
       if(status==='entregue') parada.entregue_em = new Date().toISOString();
       if(status==='falhou') parada.motivo = body.motivo;
+      if(status==='reagendada'){ parada.motivo = body.motivo; parada.janela = body.janela; }
       enfileirar({ url: '/api/parada-status', body, token: localStorage.getItem('equipeToken') });
       localStorage.setItem('romCache_'+idAtual, JSON.stringify(rom));
       toast('Sem internet — salvo no celular, será enviado quando voltar o sinal');
@@ -710,6 +764,8 @@ async function confirmarAssinatura(i){
 }
 window.marcar = marcar;
 window.abrirMotivos = abrirMotivos;
+window.abrirReagendar = abrirReagendar;
+window.escolherJanela = escolherJanela;
 window.desfazer = desfazer;
 window.enviarFoto = enviarFoto;
 window.enviarFotoVidro = enviarFotoVidro;

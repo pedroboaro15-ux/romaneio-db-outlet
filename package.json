@@ -11,7 +11,7 @@
     "dev:estoque": "npm --prefix app-estoque run dev",
     "build": "npm --prefix app-estoque install --no-audit --no-fund && npm --prefix app-estoque run build",
     "deploy": "npm run build && wrangler deploy",
-    "teste": "node testes/convivencia.test.mjs && node testes/seguranca.test.mjs && node testes/cliente-supabase.test.mjs && node testes/planilha.test.mjs && node testes/autorizacao.test.mjs && node testes/rotas.test.mjs && node testes/conferencia.test.mjs && node testes/porcima.test.mjs && node testes/ataque.test.mjs && node testes/ataque2.test.mjs"
+    "teste": "node testes/convivencia.test.mjs && node testes/seguranca.test.mjs && node testes/cliente-supabase.test.mjs && node testes/planilha.test.mjs && node testes/autorizacao.test.mjs && node testes/rotas.test.mjs && node testes/conferencia.test.mjs && node testes/porcima.test.mjs && node testes/reagendar.test.mjs && node testes/handlers.test.mjs && node testes/ataque.test.mjs && node testes/ataque2.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

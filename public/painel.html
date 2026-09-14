@@ -57,6 +57,7 @@ tr:hover td{background:#fbfbf7}
 .tag.ok{background:#e3f6ec;color:var(--ok)}
 .tag.pend{background:#fef3e2;color:var(--warn)}
 .tag.falhou{background:#fdeaea;color:var(--bad)}
+.tag.remarcada{background:#fff8e1;color:#6b5a1a}
 .tag.alt{background:#fef3e2;color:var(--warn)}
 .tag.marca{background:var(--amarelo);color:var(--ink)}
 .empty{padding:34px;text-align:center;color:var(--mut)}
@@ -237,6 +238,7 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
         <button data-filtro="ativos" class="on">Em rota</button>
         <button data-filtro="concluidos">Entregues</button>
         <button data-filtro="todos">Todos</button>
+        <button id="btnAtualizarRom" style="margin-left:auto;background:none;color:var(--mut)">Atualizar</button>
       </div>
       <div id="listaRom"></div>
     </div>
@@ -474,8 +476,10 @@ $$('#t-pedido .subnav button').forEach(b => b.onclick = () => {
   $('#modo-assistencia').hidden = b.dataset.m !== 'assistencia';
 });
 let filtroRom = 'ativos';
-$$('#filtroRom button').forEach(b => b.onclick = () => {
-  $$('#filtroRom button').forEach(x=>x.classList.toggle('on', x===b));
+// [data-filtro] de propósito: o botão "Atualizar" mora nessa mesma barra e não é
+// um filtro. Sem isso ele zeraria o filtro e a lista ficaria vazia.
+$$('#filtroRom button[data-filtro]').forEach(b => b.onclick = () => {
+  $$('#filtroRom button[data-filtro]').forEach(x=>x.classList.toggle('on', x===b));
   filtroRom = b.dataset.filtro;
   renderListaRom();
 });
@@ -670,6 +674,21 @@ async function carregarRomaneios(){
   }catch(e){ erro(e.message); }
 }
 
+// A lista só era buscada ao entrar na aba. Quem deixava o painel aberto nela não via
+// a rota que o freteiro acabou de criar pelo celular — e, sem nada na tela, parecia
+// que a rota não tinha sido criada. Agora ela se atualiza ao voltar pro navegador.
+function podeAtualizarSozinho(){
+  if($('#t-rom').hidden) return false;
+  // Nunca recarrega por cima de um formulário aberto: apagaria o que está sendo digitado.
+  if(document.querySelector('#listaRom [data-aberto="1"]')) return false;
+  const foco = document.activeElement;
+  return !(foco && ['INPUT','SELECT','TEXTAREA'].includes(foco.tagName));
+}
+const atualizarSeDerr = () => { if(podeAtualizarSozinho()) carregarRomaneios(); };
+window.addEventListener('focus', atualizarSeDerr);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) atualizarSeDerr(); });
+$('#btnAtualizarRom').onclick = () => { carregarRomaneios(); toast('Lista atualizada'); };
+
 function renderListaRom(){
   const el = $('#listaRom');
   // A lista é reconstruída inteira a cada ação (mover parada, salvar problema...).
@@ -682,6 +701,9 @@ function renderListaRom(){
   el.innerHTML = lista.map(r => {
       const ok = r.paradas.filter(p=>p.status==='entregue').length;
       const falhou = r.paradas.filter(p=>p.status==='falhou').length;
+      // Remarcada não é entregue nem fracasso: continua devendo, e é por causa
+      // dela que a rota não fecha. Por isso aparece como etiqueta própria.
+      const remarcadas = r.paradas.filter(p=>p.status==='reagendada').length;
       // Busca pelo id, não pelo nome: dois freteiros de mesmo nome pegariam o telefone errado.
       const fr = freteiros.find(f=>f.id===r.freteiro_id);
       const telFr = (fr && fr.telefone) ? fr.telefone.replace(/\D/g,'') : '';
@@ -693,6 +715,7 @@ function renderListaRom(){
           <span class="mut">${esc(r.data_rota||'')} · ${r.paradas.length} parada(s)${r.valor_frete?' · frete '+money(r.valor_frete):''}</span>
           <span class="tag ${ok===r.paradas.length && r.paradas.length?'ok':'pend'}">${ok}/${r.paradas.length} entregues</span>
           ${falhou?`<span class="tag falhou">⚠️ ${falhou} não realizada${falhou>1?'s':''}</span>`:''}
+          ${remarcadas?`<span class="tag remarcada">🕐 ${remarcadas} remarcada${remarcadas>1?'s':''}</span>`:''}
           ${r.carregamento_confirmado?`<span class="tag ok">✓ carregamento conferido</span>`:''}
           ${etiquetaConferencia(r)}
           <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">

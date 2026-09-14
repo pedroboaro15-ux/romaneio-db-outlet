@@ -12,19 +12,39 @@ const { admin } = require('./lib/supabase');
 
 // Motivos fixos de não-entrega. O freteiro escolhe tocando num botão (nada de digitar),
 // então a lista aqui tem que ser a mesma de public/entrega.html.
-const MOTIVOS_FALHA = ['Cliente não estava em casa', 'Erro da loja', 'Remarcado pra outro dia'];
+//
+// "Remarcado pra outro dia" saiu daqui: remarcar não é fracasso, a entrega continua
+// devendo. Virou o fluxo de reagendar, abaixo. Linhas antigas no banco com esse motivo
+// continuam válidas — a lista só é conferida em escrita nova.
+const MOTIVOS_FALHA = ['Cliente não estava em casa', 'Erro da loja', 'Endereço errado'];
+
+// Problemas que NÃO matam a entrega: ela fica em aberto e volta na mesma rota.
+const MOTIVOS_REAGENDAR = [
+  'Ninguém em casa agora',
+  'Não coube na passagem',
+  'Cliente pediu pra deixar pra depois',
+  'Faltou quem ajudasse a subir',
+  'Cheguei fora do horário combinado'
+];
+
+// Quando a entrega remarcada vai ser tentada de novo.
+const JANELAS = ['tarde', 'manha_seguinte'];
 
 // Os únicos status que uma parada pode ter. Sem esta lista, qualquer texto ia pro
 // banco: "faturado", "concluido", ou um parágrafo inteiro. A coluna é texto livre,
-// então quem recusa é aqui — e o resto do app conta com esses quatro valores pra
-// decidir se o romaneio acabou, o que pintar de verde e o que cobrar do freteiro.
-const STATUS_VALIDOS = ['pendente', 'em_rota', 'entregue', 'falhou'];
+// então quem recusa é aqui — e o resto do app conta com esses valores pra decidir se
+// o romaneio acabou, o que pintar de verde e o que cobrar do freteiro.
+//
+// "reagendada" é a entrega que deu problema mas continua de pé. De propósito ela não
+// entra na conta de romaneio concluído lá embaixo: enquanto tiver uma remarcada, a
+// rota não fecha. É essa a diferença pra "falhou", que encerra o assunto.
+const STATUS_VALIDOS = ['pendente', 'em_rota', 'entregue', 'falhou', 'reagendada'];
 
 // "pendente" NÃO entra por aqui. Voltar uma entrega pra pendente é desfazer, e
 // desfazer tem porta própria (b.desfazer), que exige o freteiro digitar o nome
 // dele. Sem esta linha, mandar status:'pendente' direto pulava a confirmação
 // inteira — e ainda deixava entregue_em preenchido, com a parada "pendente".
-const STATUS_QUE_O_FRETEIRO_ESCREVE = ['em_rota', 'entregue', 'falhou'];
+const STATUS_QUE_O_FRETEIRO_ESCREVE = ['em_rota', 'entregue', 'falhou', 'reagendada'];
 
 /** Coordenada só é aceita se for número e couber no planeta. */
 function coordenada(v, limite) {
@@ -76,7 +96,7 @@ exports.handler = async event => {
   let patch = {};
 
   if (b.desfazer) {
-    if (parada.status !== 'entregue' && parada.status !== 'falhou') {
+    if (!['entregue', 'falhou', 'reagendada'].includes(parada.status)) {
       return json(400, { erro: 'essa parada ainda não foi confirmada' });
     }
     if (quem.role === 'freteiro') {
@@ -86,7 +106,7 @@ exports.handler = async event => {
         return json(403, { erro: 'nome não confere — digite seu nome exatamente como está cadastrado' });
       }
     }
-    patch = { status: 'pendente', entregue_em: null, recebedor: '', motivo: '', conferido: false };
+    patch = { status: 'pendente', entregue_em: null, recebedor: '', motivo: '', janela: '', conferido: false };
   } else {
     // Item com vidro: só aceita a entrega depois de ter a foto do vidro E a assinatura
     // do cliente guardadas — confere aqui de novo (o app já bloqueia o botão, isso é
@@ -124,6 +144,25 @@ exports.handler = async event => {
         return json(400, { erro: 'escolha um dos motivos da lista' });
       }
       patch.motivo = escolhido;
+      patch.janela = '';   // falhou não tem quando: acabou
+    }
+
+    // Remarcar: a entrega continua devendo. Guarda o problema e pra quando ficou.
+    if (b.status === 'reagendada') {
+      const escolhido = texto(b.motivo, 300);
+      if (quem.role === 'freteiro' && !MOTIVOS_REAGENDAR.includes(escolhido)) {
+        return json(400, { erro: 'escolha um dos problemas da lista' });
+      }
+      const janela = texto(b.janela, 30);
+      if (!JANELAS.includes(janela)) {
+        return json(400, { erro: 'diga quando vai tentar de novo: ' + JANELAS.join(' ou ') });
+      }
+      patch.motivo = escolhido;
+      patch.janela = janela;
+      // Não preenche entregue_em: a entrega não aconteceu. Deixar preenchido faria a
+      // parada parecer concluída em toda tela que olha essa data.
+      patch.entregue_em = null;
+      patch.recebedor = '';
     }
     // Coordenada vem do GPS do celular e às vezes vem torta. Número que não é
     // número quebra o insert inteiro (a coluna é numérica) e derruba a confirmação

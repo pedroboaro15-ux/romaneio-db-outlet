@@ -300,3 +300,10 @@ alter table public.ingestao_estado enable row level security;
 -- status_parse ganhou mais um valor: 'ia' = quem preencheu canal/vendedor foi a IA.
 alter table public.vendas_observacoes
   add column if not exists ia_tentou boolean default false;
+
+-- Entrega que deu problema mas continua de pé ("reagendada").
+-- janela = quando vai ser tentada de novo: 'tarde' ou 'manha_seguinte'.
+-- Fica vazia em qualquer outro status. A parada continua no mesmo romaneio, e o
+-- romaneio não fecha enquanto ela não resolver.
+alter table public.paradas
+  add column if not exists janela text default '';
