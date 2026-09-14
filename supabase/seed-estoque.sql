@@ -16,6 +16,23 @@ declare
   v_user uuid;
   v_email text := 'troque-pelo-seu@email.com';   -- <<<<<< TROQUE AQUI
 begin
+  -- Esta trava vem ANTES de tudo, inclusive da conferência do usuário.
+  --
+  -- Este arquivo é o único da pasta que não pode ser repetido: ele insere 222
+  -- produtos sem conferir se já existem, então rodar duas vezes duplicaria a loja
+  -- inteira — e o estoque ficaria com o dobro das peças sem ninguém entender por
+  -- quê. Como o schema.sql, ao lado, é feito pra ser repetido e vive sendo, é fácil
+  -- confundir os dois.
+  --
+  -- Vem primeiro porque, pra quem já rodou, a resposta certa é "isso já foi feito",
+  -- e não "crie o usuário" — que é o que apareceria se a outra conferência viesse
+  -- antes, mandando resolver um problema que não existe.
+  select id into v_org from organizacoes limit 1;
+  if v_org is not null then
+    raise exception
+      'O estoque já foi populado uma vez. Rodar de novo duplicaria os 222 produtos. Se você quer mesmo recomeçar do zero, apague os dados do estoque antes.';
+  end if;
+
   select id into v_user from auth.users where email = v_email;
   if v_user is null then
     raise exception 'Crie o usuario % em Authentication > Users antes de rodar o seed.', v_email;
