@@ -22,9 +22,11 @@ export default defineConfig(({ mode, command }) => {
     if (faltando.length) {
       throw new Error(
         `\n\n  Faltam ${faltando.join(' e ')}.\n\n` +
-        '  Na sua máquina: copie .env.example para .env e preencha.\n' +
-        '  No Cloudflare:  Workers & Pages > seu Worker > Settings >\n' +
-        '                  Build > Variables and Secrets, e refaça o build.\n' +
+        '  Quem faz o build precisa do .env — e quem faz o build depende de\n' +
+        '  como você publica:\n\n' +
+        '  - "npm run deploy" daqui: copie .env.example para .env e preencha.\n' +
+        '  - build pelo painel (deploy ligado ao GitHub): Workers & Pages >\n' +
+        '    seu Worker > Settings > Build > Variables and Secrets.\n\n' +
         '  Os valores estão em Supabase > Project Settings > API.\n'
       );
     }
