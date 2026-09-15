@@ -1,8 +1,9 @@
 # Configuração do Cloudflare Workers.
 #
-# O "name" precisa ser igual ao nome do Worker no painel do Cloudflare. Se lá estiver
-# outro nome, troque aqui — senão o deploy cria um Worker novo em vez de atualizar o seu.
-name = "romaneio-omie"
+# Tem que ser igual ao nome do Worker no painel do Cloudflare, que é o mesmo do
+# repositório no GitHub. Estava "romaneio-omie" e o Worker se chama "romaneio-db-outlet":
+# com os dois diferentes, o deploy cria um Worker novo em vez de atualizar o seu.
+name = "romaneio-db-outlet"
 main = "src/index.mjs"
 compatibility_date = "2026-09-01"
 
