@@ -53,6 +53,28 @@ bate('JOAO - INSTA', 'INSTA', 'JOAO', 'ok');
 bate('VENDA ONLINE |||| AMANDA', 'VENDA ONLINE', 'AMANDA', 'ok');
 
 /* ================================================================== */
+titulo('1b. OS TRÊS CANAIS VIRAM SEMPRE O MESMO NOME');
+
+// A loja tem três canais. O whatsapp é onde mora a criatividade do time, e sem
+// juntar tudo num nome só o relatório dividia o mesmo canal em várias colunas.
+for (const jeito of ['WHATSAPP', 'Whats', 'wpp', 'W', 'whatszap', 'WHATS APP', 'watsapp', 'zap', 'ws']) {
+  bate(jeito + '||AMANDA', 'WHATSAPP', 'AMANDA', 'ok');
+}
+
+// A armadilha do "começa com W": nome de gente não pode virar canal, senão a venda
+// do vendedor some do relatório e ninguém descobre por quê.
+for (const nome of ['WAGNER', 'WESLEY', 'WANDA', 'WILLIAM']) {
+  bate('PRESENCIAL||' + nome, 'PRESENCIAL', nome, 'ok');
+  bate(nome + ' - INSTA', 'INSTA', nome, 'ok');
+}
+for (const jeito of ['INSTA', 'instagram', 'Direct']) {
+  bate(jeito + '||AMANDA', 'INSTA', 'AMANDA', 'ok');
+}
+for (const jeito of ['PRESENCIAL', 'loja', 'BALCÃO', 'balcao']) {
+  bate(jeito + '||AMANDA', 'PRESENCIAL', 'AMANDA', 'ok');
+}
+
+/* ================================================================== */
 titulo('2. O FORMATO COMBINADO CONTINUA VALENDO');
 
 bate('PRESENCIAL||ADELAIDE||OBS: entregar depois do dia 10', 'PRESENCIAL', 'ADELAIDE', 'ok');
@@ -67,13 +89,14 @@ checa('o texto livre do OBS é preservado',
 titulo('3. A INVERSÃO SÓ ACONTECE QUANDO NÃO HÁ DÚVIDA');
 
 // Canal dos dois lados: mantém a ordem combinada, não inventa.
-bate('PRESENCIAL||ONLINE', 'PRESENCIAL', 'ONLINE', 'ok');
+bate('PRESENCIAL||INSTA', 'PRESENCIAL', 'INSTA', 'ok');
 // Nenhum dos dois é canal conhecido: mantém a ordem combinada.
 bate('FULANO||BELTRANO', 'FULANO', 'BELTRANO', 'ok');
 // Canal só no segundo: inverte.
 bate('AMANDA||WHATSAPP', 'WHATSAPP', 'AMANDA', 'ok');
-// Canal com acento entra na lista mesmo escrito sem.
-bate('BALCÃO||CARLOS', 'BALCÃO', 'CARLOS', 'ok');
+// Nome começado em W não pode ser confundido com o canal whatsapp quando o outro
+// lado JÁ é um canal conhecido — senão "WAGNER" viraria canal e "PRESENCIAL" virava gente.
+bate('PRESENCIAL||WAGNER', 'PRESENCIAL', 'WAGNER', 'ok');
 
 /* ================================================================== */
 titulo('4. O QUE NÃO PODE VIRAR SEPARADOR');

@@ -12,13 +12,30 @@
 // "JOAO - INSTA" sem quebrar nome composto ("ANA-PAULA") nem data ("10/12").
 const SEPARADOR = /\s*(?:[|]+|\/{2,}|-{2,})\s*|\s+[-\/]\s+/;
 
-// Palavras que são CANAL, não gente. Serve pra uma coisa só, mas importante: o time
-// escreve nas duas ordens ("VENDA ONLINE||AMANDA" e "JOAO - INSTA"). Em vez de eu
-// adivinhar pela posição, o lado que bate com esta lista é o canal, e o outro é o
-// vendedor. Se nenhum bater, vale a ordem combinada (canal primeiro).
+// A loja tem TRÊS canais: presencial, insta e whatsapp. Cada linha abaixo diz como
+// reconhecer um deles no meio do que o time escreveu, e pra qual nome único ele vira.
 //
-// Acrescente aqui se o time inventar um canal novo; é a única coisa que precisa mexer.
-const PALAVRAS_DE_CANAL = /^(presencial|loja|balcao|online|venda online|insta|instagram|whats|whatsapp|wpp|zap|site|face|facebook|telefone|marketplace|mercado livre|ml|shopee|olx)$/;
+// Guardar sempre o mesmo nome importa: sem isso "WPP", "Whats" e "WHATSAPP" viravam
+// três colunas separadas no relatório, e o total de cada canal ficava dividido sem
+// ninguém entender por quê.
+//
+// O whatsapp é onde mora a criatividade do time (whats, wpp, w, zap, watsapp...), mas
+// "qualquer palavra com W" seria perigoso demais: Wagner, Wesley e Wanda são nomes
+// comuns, e um vendedor viraria canal — apagando a venda dele do relatório. Então vale
+// o W sozinho, o W com duas ou três letras, e qualquer palavra que tenha "ats" ou "zap".
+const CANAIS = [
+  { nome: 'WHATSAPP',   reconhece: /^w$|^w[sp]{1,3}$|ats|zap/ },
+  { nome: 'INSTA',      reconhece: /^(insta|instagram|direct)$/ },
+  { nome: 'PRESENCIAL', reconhece: /^(presencial|loja|balcao|pessoalmente)$/ }
+];
+
+/** Devolve o nome único do canal, ou null se não for canal nenhum. */
+function canalDe(s) {
+  const limpo = semAcento(s).replace(/\s+/g, ' ').trim();
+  if (!limpo) return null;
+  const achado = CANAIS.find(c => c.reconhece.test(limpo));
+  return achado ? achado.nome : null;
+}
 
 /** Tira acento pra "BALCÃO" bater com "balcao" na lista acima. */
 function semAcento(s) {
@@ -32,9 +49,7 @@ function semAcento(s) {
   return out;
 }
 
-function pareceCanal(s) {
-  return PALAVRAS_DE_CANAL.test(semAcento(s).replace(/\s+/g, ' ').trim());
-}
+const pareceCanal = s => canalDe(s) !== null;
 
 // Pega "OBS:", "OBS -", "OBSERVAÇÃO:" no começo do texto.
 const ROTULO_OBS = /^obs(erva[çc][ãa]o)?\s*[:\-]?\s*/i;
@@ -77,7 +92,10 @@ function parsear(bruta) {
     const troca = bruto0; bruto0 = bruto1; bruto1 = troca;
   }
 
-  const canal = normalizar(bruto0);
+  // O canal vira o nome único ("WPP" e "Whats" viram os dois WHATSAPP). O que não for
+  // canal conhecido fica como foi escrito, pra aparecer no relatório do jeito que está
+  // e você decidir o que fazer, em vez de eu enfiar num balde errado calado.
+  const canal = canalDe(bruto0) || normalizar(bruto0);
   const vendedor = normalizar(bruto1);
   const obsLivre = tirarRotuloObs(partes.slice(2).join(' | '));
 

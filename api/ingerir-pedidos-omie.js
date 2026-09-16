@@ -86,10 +86,37 @@ function listarPagina(de, ate, pagina) {
   }, creds());
 }
 
+// Nome que é de freteiro, mas mesmo assim vale como vendedor.
+//
+// Existem dois Lucas na loja: um faz frete e outro vende. O Lucas do frete nunca
+// aparece escrito como vendedor na observação, então "LUCAS" ali é sempre o vendedor.
+// Sem esta exceção, toda venda dele seria jogada fora pela regra abaixo.
+const NOMES_QUE_VALEM_COMO_VENDEDOR = new Set(['LUCAS']);
+
+/**
+ * Vendedor e freteiro são pessoas diferentes, mas a observação às vezes traz quem fez
+ * o FRETE no lugar de quem vendeu. Contar isso como venda daria comissão pra quem só
+ * entregou, e ainda sumiria com a venda de quem vendeu de verdade.
+ *
+ * Quando isso acontece o pedido vai pra revisão manual, não pra "sem vendedor": alguém
+ * vendeu, só não dá pra saber quem, e fingir que não houve vendedor esconderia o erro.
+ */
+function ehNomeDeFreteiro(vendedor, nomesDeFreteiro) {
+  if (!vendedor) return false;
+  if (NOMES_QUE_VALEM_COMO_VENDEDOR.has(vendedor)) return false;
+  return nomesDeFreteiro.has(vendedor);
+}
+
 // Transforma um pedido cru da Omie na linha da nossa tabela.
-function montarLinha(pedido) {
+function montarLinha(pedido, nomesDeFreteiro = new Set()) {
   const bruta = pegar(pedido, CAMPOS.obs) || '';
   const p = parsear(bruta);
+
+  if (p.statusParse === 'ok' && ehNomeDeFreteiro(p.vendedor, nomesDeFreteiro)) {
+    p.vendedor = '';
+    p.statusParse = 'nao_reconhecido';
+  }
+
   return {
     pedido_id: String(pegar(pedido, CAMPOS.id) || ''),
     numero_pedido: String(pegar(pedido, CAMPOS.numero) || ''),
@@ -144,6 +171,18 @@ async function salvarEstado(sb, patch) {
   if (error) throw new Error(error.message);
 }
 
+/** Nomes dos freteiros cadastrados, em maiúsculas, pra comparar com o que veio escrito. */
+async function nomesDosFreteiros(sb) {
+  try {
+    const { data } = await sb.from('freteiros').select('nome');
+    return new Set((data || []).map(f => String(f.nome || '').trim().toUpperCase()).filter(Boolean));
+  } catch (e) {
+    // Sem a lista, o pior que acontece é um nome de freteiro passar como vendedor —
+    // o gerente corrige na tela. Derrubar a carga inteira por isso seria pior.
+    return new Set();
+  }
+}
+
 // Roda páginas até acabar o período ou estourar o orçamento de tempo.
 async function processarPeriodo(sb, de, ate, paginaInicial) {
   const inicio = Date.now();
@@ -151,13 +190,18 @@ async function processarPeriodo(sb, de, ate, paginaInicial) {
   let totalPaginas = 0;
   let gravados = 0;
 
+  // Uma consulta só pro período inteiro, não uma por página.
+  const freteiros = await nomesDosFreteiros(sb);
+
   do {
     const r = await listarPagina(de, ate, pagina);
     totalPaginas = Number(r.total_de_paginas) || 0;
     const pedidos = r.pedido_venda_produto || [];
     if (!pedidos.length) { totalPaginas = totalPaginas || pagina; break; }
 
-    gravados += await gravar(sb, pedidos.map(montarLinha));
+    // Arrow function de propósito: .map(montarLinha) passaria o ÍNDICE como segundo
+    // argumento, e a lista de freteiros chegaria como um número.
+    gravados += await gravar(sb, pedidos.map(p => montarLinha(p, freteiros)));
     pagina++;
   } while (pagina <= totalPaginas && Date.now() - inicio < ORCAMENTO_MS);
 
@@ -254,3 +298,7 @@ exports.handler = async event => {
     return json(500, { erro: e.message });
   }
 };
+
+// Exposto só pros testes: montarLinha é o ponto onde a observação vira linha de banco,
+// e é onde mora a regra de que nome de freteiro não vale como vendedor.
+exports.__montarLinha = montarLinha;
