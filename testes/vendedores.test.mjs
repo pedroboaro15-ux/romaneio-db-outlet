@@ -116,6 +116,34 @@ checa('e os quatro barras da Omie continuam funcionando',
   parsear('VENDA ONLINE ||||AMANDA').vendedor === 'AMANDA');
 
 /* ================================================================== */
+titulo('7b. O VENDEDOR É PROCURADO EM QUALQUER CAMPO');
+
+// O formato mais comum nos pedidos de verdade tem TRÊS partes, com o freteiro no
+// meio e o vendedor no fim. Lendo pela posição, o freteiro levava o crédito e o
+// vendedor de verdade era ignorado — boa parte dos R$ 222 mil no nome errado.
+const tresCampos = parsear('venda presencial||LUCAS FRETE||fernando');
+checa('canal, freteiro, vendedor: pega o vendedor do fim',
+  tresCampos.vendedor === 'FERNANDO' && tresCampos.canal === 'PRESENCIAL',
+  JSON.stringify(tresCampos));
+
+checa('VICTOR no terceiro campo é o João',
+  vendedorDe('VENDA PRESENCIAL||ZE||VICTOR') === 'JOÃO', vendedorDe('VENDA PRESENCIAL||ZE||VICTOR'));
+checa('vendedor na FRENTE do freteiro também vale',
+  vendedorDe('JOAO||ZE') === 'JOÃO', vendedorDe('JOAO||ZE'));
+checa('barras a mais no meio não atrapalham',
+  vendedorDe('VENDA PRESENCIAL||LUCAS FRETE|||VICTOR') === 'JOÃO');
+checa('lixo no começo é ignorado, mas não vira suposição',
+  parsear('D - INSTA||MARCOS').statusParse === 'nao_reconhecido', parsear('D - INSTA||MARCOS').statusParse);
+
+// Dois vendedores no mesmo pedido: escolher um seria sorteio.
+const doisNomes = parsear('JOAO -- WHAST AMNADA||||JHONATAN');
+checa('dois vendedores no mesmo pedido vão pra revisão',
+  doisNomes.vendedor === '' && doisNomes.statusParse === 'nao_reconhecido', JSON.stringify(doisNomes));
+
+checa('"venda presencial" é reconhecido como canal',
+  canalDe('venda presencial||FERNANDO') === 'PRESENCIAL', canalDe('venda presencial||FERNANDO'));
+
+/* ================================================================== */
 titulo('8. CANAL SEM NOME VIRA JOÃO, MARCADO COMO SUPOSIÇÃO');
 
 let r = parsear('- INSTA');

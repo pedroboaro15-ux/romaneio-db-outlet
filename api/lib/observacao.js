@@ -34,8 +34,14 @@ const VENDEDORES = [
   { nome: 'ADELAIDE', tambem: [] },
   { nome: 'DAIANA',   tambem: ['DAYANA'] },
   { nome: 'LUCAS',    tambem: [] },
-  { nome: 'RAISSA',   tambem: ['RAÍSSA'] }
+  { nome: 'RAISSA',   tambem: ['RAÍSSA'] },
+  // Gerente que também vende. Conta como venda, mas não entra em comissão — por isso
+  // aparece marcado no relatório, junto com a venda que o dono lança.
+  { nome: 'FERNANDO', tambem: [], semComissao: true }
 ];
+
+/** Quem vende mas não recebe comissão. O relatório marca essas linhas. */
+const SEM_COMISSAO = new Set(VENDEDORES.filter(v => v.semComissao).map(v => v.nome));
 
 // Quando a observação traz o canal mas NÃO traz nome nenhum ("- INSTA"), quem vendeu
 // geralmente é o João. "Geralmente" não é "sempre", então o pedido é preenchido mas
@@ -59,7 +65,9 @@ const CANAIS = [
   // Em vez de listar cada erro, "perto de WHATS" resolve os três e os próximos.
   { nome: 'WHATSAPP',      perto: ['whats'], reconhece: /^w$|^w[sp]{1,3}$|ats|zap/ },
   { nome: 'INSTA',         perto: ['insta'], reconhece: /^(insta|instagram|direct)$/ },
-  { nome: 'PRESENCIAL',    perto: ['presencial'], reconhece: /^(presencial|loja|balcao|pessoalmente)$/ },
+  // "venda presencial" e "venda online" são como o time escreve de verdade nos
+  // pedidos — o "venda" na frente não é opcional, é o normal.
+  { nome: 'PRESENCIAL',    perto: ['presencial', 'venda presencial'], reconhece: /^(venda ?presencial|presencial|loja|balcao|pessoalmente)$/ },
   { nome: 'VENDA ONLINE',  perto: ['venda online', 'online'], reconhece: /^(venda ?online|online|site)$/ }
 ];
 
@@ -194,81 +202,82 @@ function parsear(bruta) {
     return { canal: '', vendedor: '', obsLivre: '', statusParse: 'vazio' };
   }
 
-  // Sem filter: a posição de cada campo importa. Se o vendedor vier em branco
-  // ("PRESENCIAL||||OBS: x"), o pedaço tem que continuar vazio no lugar dele, senão
-  // o texto do OBS escorrega pra posição do vendedor e vira um vendedor inventado.
-  const partes = texto.split(SEPARADOR).map(limpar);
+  let partes = texto.split(SEPARADOR).map(limpar).filter(Boolean);
 
-  if (partes.length < 2) {
-    // Sem separador nenhum, mas às vezes o canal e o nome vieram grudados por um
-    // espaço só ("WHAST AMANDA"). Não dá pra simplesmente cortar no espaço: "VENDA
-    // ONLINE" e "JOAO VITOR" têm espaço dentro e seriam partidos ao meio.
-    //
-    // Então testa cada corte possível e só aceita quando OS DOIS lados são conhecidos:
-    // a esquerda um canal, a direita um vendedor da lista. "PEÇA DE MOSTRUARIO" não
-    // passa por nenhum corte, e continua indo pra revisão.
-    const palavras = texto.split(' ');
-    for (let corte = 1; corte < palavras.length; corte++) {
-      const canalTentado = canalDe(palavras.slice(0, corte).join(' '));
-      if (!canalTentado) continue;
-      const vendedorTentado = vendedorDe(palavras.slice(corte).join(' '));
-      if (!vendedorTentado) continue;
-      return { canal: canalTentado, vendedor: vendedorTentado, obsLivre: '', statusParse: 'ok' };
-    }
-    return { canal: '', vendedor: '', obsLivre: tirarRotuloObs(texto), statusParse: 'nao_reconhecido' };
-  }
-
-  // A ordem combinada é canal primeiro, mas metade do time escreve o nome na frente
-  // ("JOAO - INSTA"). Só inverte quando não há dúvida: um lado é canal conhecido e o
-  // outro não. Se os dois forem canal, ou nenhum for, mantém a ordem combinada.
-  let bruto0 = partes[0];
-  let bruto1 = partes[1];
-  if (!pareceCanal(bruto0) && pareceCanal(bruto1)) {
-    const troca = bruto0; bruto0 = bruto1; bruto1 = troca;
-  }
-
-  // O canal vira o nome único ("WPP" e "Whast" viram os dois WHATSAPP). O que não for
-  // canal conhecido fica como foi escrito, pra aparecer no relatório do jeito que está
-  // e você decidir o que fazer, em vez de eu enfiar num balde errado calado.
-  const canal = canalDe(bruto0) || normalizar(bruto0);
-  const obsLivre = tirarRotuloObs(partes.slice(2).join(' | '));
-
-  // Daqui pra baixo é bruto1, não partes[1]: depois da inversão eles podem ser
-  // pedaços diferentes, e olhar a posição velha acusaria o campo errado.
-
-  // Esqueceram o vendedor e emendaram o OBS no lugar dele ("PRESENCIAL||OBS: x").
-  if (bruto1 && ROTULO_OBS.test(bruto1)) {
-    return { canal, vendedor: '', obsLivre: tirarRotuloObs(partes.slice(1).join(' | ')), statusParse: 'nao_reconhecido' };
-  }
-
-  // Canal sem nome nenhum ("- INSTA"). Quem vendeu geralmente é o João, mas
-  // "geralmente" não é "sempre": preenche e MARCA como suposição, pra aparecer num
-  // quadro à parte. Chutar sem marcar mandaria a venda de outro pro nome dele sem
-  // deixar rastro de quais foram chutados.
-  if (canal && !bruto1) {
-    return { canal, vendedor: VENDEDOR_SUPOSTO, obsLivre, statusParse: 'suposicao' };
-  }
-
-  // A regra que substituiu quatro: só é vendedor quem está na lista.
+  // Um campo pode trazer canal e nome grudados por um espaço só ("WHAST AMANDA"), e
+  // isso acontece no meio de outros campos também. Expande ANTES de procurar: sem
+  // isso o par fica invisível pros dois lados, e em "JOAO -- WHAST AMNADA||JHONATAN"
+  // a Amanda some — o pedido passaria como venda do João sem ninguém notar que havia
+  // dois nomes ali.
   //
-  // É isso que barra LUCAS FRETE, ZE, MARTINS, MARCOS (freteiros), INSTA e PRESENCIAL
-  // (canais que foram parar no campo errado) e PEÇA DE MOSTRUARIO (recado pro estoque).
-  // Nada disso precisou de regra própria: nenhum deles está na lista, e pronto.
-  const vendedor = vendedorDe(bruto1);
-  if (!vendedor) {
-    return {
-      canal,
-      vendedor: '',
-      obsLivre: obsLivre || tirarRotuloObs(bruto1 || ''),
-      statusParse: 'nao_reconhecido'
-    };
+  // Não dá pra simplesmente cortar no espaço: "VENDA ONLINE" e "JOAO VITOR" têm espaço
+  // dentro e seriam partidos ao meio. Por isso só corta quando OS DOIS lados são
+  // conhecidos: canal de um lado, vendedor do outro.
+  const expandidas = [];
+  for (const parte of partes) {
+    const palavras = parte.split(' ');
+    let partiu = false;
+    for (let corte = 1; corte < palavras.length && !partiu; corte++) {
+      const esquerda = palavras.slice(0, corte).join(' ');
+      const direita = palavras.slice(corte).join(' ');
+      if (canalDe(esquerda) && vendedorDe(direita)) { expandidas.push(esquerda, direita); partiu = true; }
+    }
+    if (!partiu) expandidas.push(parte);
+  }
+  partes = expandidas;
+
+  // Procura o vendedor e o canal em QUALQUER campo, não numa posição fixa.
+  //
+  // A posição fixa era a suposição errada. Os pedidos de verdade mostraram que o campo
+  // é usado pra duas coisas ao mesmo tempo, e o formato mais comum tem TRÊS partes:
+  //
+  //     venda presencial || LUCAS FRETE || fernando
+  //     canal                freteiro       vendedor
+  //
+  // Lendo a posição 2 como vendedor, o freteiro levava o crédito e o vendedor de
+  // verdade — que estava ali, escrito — era ignorado. Era boa parte dos R$ 222 mil no
+  // nome errado. Também resolve "JOAO||ZE" (vendedor na frente) e "D - INSTA||MARCOS"
+  // (lixo no começo) sem precisar de uma regra pra cada jeito de escrever.
+  const vendedoresAchados = [];
+  const canaisAchados = [];
+  const sobras = [];
+  for (const parte of partes) {
+    const v = vendedorDe(parte);
+    if (v) { if (!vendedoresAchados.includes(v)) vendedoresAchados.push(v); continue; }
+    const c = canalDe(parte);
+    if (c) { if (!canaisAchados.includes(c)) canaisAchados.push(c); continue; }
+    sobras.push(parte);
   }
 
-  if (!canal) {
-    return { canal: '', vendedor, obsLivre, statusParse: 'nao_reconhecido' };
+  const canal = canaisAchados[0] || '';
+  const obsLivre = tirarRotuloObs(sobras.join(' | '));
+
+  // Dois vendedores no mesmo pedido: escolher um seria sorteio.
+  if (vendedoresAchados.length > 1) {
+    return { canal, vendedor: '', obsLivre, statusParse: 'nao_reconhecido' };
   }
 
-  return { canal, vendedor, obsLivre, statusParse: 'ok' };
+  if (vendedoresAchados.length === 1) {
+    // Sem canal o pedido ainda vale: quem vendeu é a informação cara, o canal é o
+    // detalhe. Melhor creditar a venda com o canal em branco (que aparece na tela) do
+    // que jogar o pedido inteiro na revisão e perder o vendedor que foi encontrado.
+    return { canal, vendedor: vendedoresAchados[0], obsLivre, statusParse: 'ok' };
+  }
+
+  // Só o canal, e mais nada escrito ("- INSTA"). Quem vendeu geralmente é o João, mas
+  // "geralmente" não é "sempre": preenche e MARCA como suposição, num quadro à parte.
+  //
+  // A exigência de não ter sobra é o que separa isso de "D - INSTA||MARCOS": ali tem
+  // nome escrito, só não é de vendedor. Supor João por cima de um nome que está lá
+  // seria chutar contra a evidência.
+  // Exatamente UM canal: dois canais escritos ("PRESENCIAL||INSTA") é bagunça de
+  // digitação, não o padrão do "- INSTA", e supor o João ali seria chute em cima
+  // de confusão.
+  if (canaisAchados.length === 1 && !sobras.length) {
+    return { canal, vendedor: VENDEDOR_SUPOSTO, obsLivre: '', statusParse: 'suposicao' };
+  }
+
+  return { canal, vendedor: '', obsLivre: obsLivre || tirarRotuloObs(texto), statusParse: 'nao_reconhecido' };
 }
 
-module.exports = { parsear, VENDEDORES, CANAIS };
+module.exports = { parsear, VENDEDORES, CANAIS, SEM_COMISSAO };

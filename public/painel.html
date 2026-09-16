@@ -293,7 +293,7 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
       <div id="graficoFrete" style="margin-top:14px"></div>
       <div style="margin-top:10px"><button class="btn ghost sm" id="relExportar" hidden>Exportar CSV</button></div>
       <div style="overflow-x:auto;margin-top:12px"><table>
-        <thead><tr><th>Freteiro</th><th class="right">Frete faturado</th><th class="center">Paradas</th><th class="center">Entregues</th><th class="center">Falharam</th><th class="center">Com problema</th><th class="center">% problema do freteiro</th></tr></thead>
+        <thead><tr><th>Freteiro</th><th class="center">Paradas</th><th class="center">Entregues</th><th class="center">Falharam</th><th class="center">Com problema</th><th class="center">% problema do freteiro</th></tr></thead>
         <tbody id="tabRel"><tr><td colspan="7"><div class="empty">Escolha um período e clique em Buscar.</div></td></tr></tbody>
       </table></div>
     </div>
@@ -1249,18 +1249,13 @@ function renderRelatorio(r){
   $('#relResumo').innerHTML = `Problemas registrados no período — <strong>vendedores:</strong> ${s.vendedores} · <strong>estoque:</strong> ${s.estoque} · <strong>freteiro:</strong> ${s.freteiro}`;
   $('#relExportar').hidden = !r.porFreteiro.length;
 
-  // Gráfico simples de barras (sem biblioteca nenhuma) — cada barra proporcional ao maior frete do período.
-  const maiorFrete = Math.max(1, ...r.porFreteiro.map(f=>f.totalFrete||0));
-  $('#graficoFrete').innerHTML = r.porFreteiro.some(f=>f.totalFrete>0) ? r.porFreteiro.map(f => `
-    <div class="barrafrete">
-      <span class="barrafrete-nome">${esc(f.nome)}</span>
-      <div class="barrafrete-trilho"><div class="barrafrete-cheio" style="width:${Math.max(2, f.totalFrete/maiorFrete*100)}%"></div></div>
-      <span class="barrafrete-valor">${money(f.totalFrete)}</span>
-    </div>`).join('') : '';
+  // O quanto cada freteiro recebe saiu da tela a pedido do Pedro. O dado continua no
+  // banco (valor_frete no romaneio) e continua saindo no CSV — o que mudou é que não
+  // fica exposto no painel, que é aberto na loja com gente em volta.
+  $('#graficoFrete').innerHTML = '';
 
   $('#tabRel').innerHTML = r.porFreteiro.length ? r.porFreteiro.map(f => `<tr>
     <td>${esc(f.nome)}</td>
-    <td class="right">${money(f.totalFrete)}</td>
     <td class="center">${f.totalParadas}</td>
     <td class="center">${f.entregues}</td>
     <td class="center">${f.falharam}</td>

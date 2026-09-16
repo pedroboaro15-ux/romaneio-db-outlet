@@ -8,6 +8,7 @@
 const { requireAdmin } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
+const { SEM_COMISSAO } = require('./lib/observacao');
 
 const PAGINA = 1000;   // o PostgREST devolve no máximo 1000 linhas por chamada
 const MAX_REVISAR = 300;
@@ -138,7 +139,10 @@ exports.handler = async event => {
       if (!porVendedor.has(nome)) {
         porVendedor.set(nome, {
           vendedor: nome, pedidos: 0, valor: 0, presencial: 0, online: 0, outros: 0,
-          semComissao: nome === SEM_VENDEDOR, porMes: {}
+          // Venda do dono não tem vendedor; o Fernando é gerente e vende, mas não
+          // entra em comissão. Os dois aparecem marcados pela mesma razão: o número
+          // conta como venda da loja, só não vira pagamento pra ninguém.
+          semComissao: nome === SEM_VENDEDOR || SEM_COMISSAO.has(nome), porMes: {}
         });
       }
       const acc = porVendedor.get(nome);
