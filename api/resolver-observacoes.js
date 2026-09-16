@@ -56,7 +56,7 @@ exports.handler = async event => {
   const user = await requireAdmin(event);
   if (!user) return json(401, { erro: 'não autenticado' });
   if (event.httpMethod !== 'POST') return json(405, { erro: 'método não permitido' });
-  if (!temChave()) return json(400, { erro: 'GEMINI_API_KEY não configurada nas variáveis de ambiente do Netlify.' });
+  if (!temChave()) return json(400, { erro: 'GEMINI_API_KEY não configurada. No Cloudflare: Settings > Variables and Secrets (a seção Runtime, do topo da página).' });
 
   const sb = admin();
   const inicio = Date.now();
