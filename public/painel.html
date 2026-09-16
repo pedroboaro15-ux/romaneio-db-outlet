@@ -751,6 +751,9 @@ function renderListaRom(){
               <td>
                 <span class="tag ${cls}">${esc(p.status)}</span>${p.entregue_em?`<div class="mut">${new Date(p.entregue_em).toLocaleString('pt-BR')}</div>`:''}
                 ${p.status==='pendente'?`<div style="margin-top:4px"><button class="btn ghost sm" style="padding:3px 8px;font-size:11px" onclick="marcarEmRota('${p.id}')">Marcar em rota</button></div>`:''}
+                ${p.status!=='entregue'
+                  ? `<div style="margin-top:4px"><button class="btn sm" style="padding:3px 8px;font-size:11px" onclick="darBaixa('${p.id}')">Dar baixa</button></div>`
+                  : `<div style="margin-top:4px"><button class="btn ghost sm" style="padding:3px 8px;font-size:11px" onclick="desfazerBaixa('${p.id}')">Desfazer</button></div>`}
               </td>
               <td class="mut">${esc(p.recebedor||'—')}${(p.lat&&p.lng)?`<div><a href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank">local da confirmação</a></div>`:''}</td>
               <td style="min-width:170px">
@@ -872,6 +875,32 @@ async function marcarEmRota(paradaId){
     await api('/api/parada-status', { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ paradaId, status: 'em_rota' }) });
     toast('Marcado como em rota');
+    carregarRomaneios();
+  }catch(e){ erro(e.message); }
+}
+
+// Baixa dada por você, gerente, quando o freteiro entregou mas não marcou no app dele.
+//
+// Um clique só, de propósito: pedir recebedor aqui viria de memória e seria pior que
+// nada. A diferença entre esta baixa e a do freteiro fica visível sozinha na tabela —
+// a dele traz nome de quem recebeu e o "local da confirmação" pelo GPS, esta não traz
+// nenhum dos dois. Quem olhar sabe de onde veio cada uma.
+async function darBaixa(paradaId){
+  try{
+    await api('/api/parada-status', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ paradaId, status: 'entregue' }) });
+    toast('Entrega dada como feita');
+    carregarRomaneios();
+  }catch(e){ erro(e.message); }
+}
+
+// Desfazer do gerente não pede confirmação de nome (o do freteiro pede, pra ele não
+// desfazer sem querer com o celular no bolso). Aqui quem clicou já é o dono.
+async function desfazerBaixa(paradaId){
+  try{
+    await api('/api/parada-status', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ paradaId, desfazer: true }) });
+    toast('Voltou pra pendente');
     carregarRomaneios();
   }catch(e){ erro(e.message); }
 }
@@ -1501,6 +1530,8 @@ window.salvarProblema = salvarProblema;
 window.atualizarMotivos = atualizarMotivos;
 window.marcarEmRota = marcarEmRota;
 window.removerParada = removerParada;
+window.darBaixa = darBaixa;
+window.desfazerBaixa = desfazerBaixa;
 
 checarSessao();
 </script>

@@ -134,6 +134,57 @@ checa('e limpa o quando', !p('p1').janela, 'janela=' + JSON.stringify(p('p1').ja
 checa('e limpa o problema', !p('p1').motivo, 'motivo=' + JSON.stringify(p('p1').motivo));
 
 /* ================================================================== */
+titulo('6. A BAIXA QUE O GERENTE DÁ PELO PAINEL');
+
+// O caso real: o freteiro entregou e não marcou no app dele. Sem isso, o gerente não
+// tinha como fechar a parada sem mexer direto no banco.
+const TOKEN_DONO = 'jwt-do-dono';
+process.env.ADMIN_EMAILS = 'pedro@exemplo.com';
+banco.usuarios[TOKEN_DONO] = { id: 'u-pedro', email: 'pedro@exemplo.com' };
+
+const comoGerente = corpo => status.handler({
+  httpMethod: 'POST',
+  headers: { authorization: 'Bearer ' + TOKEN_DONO },
+  queryStringParameters: {},
+  body: JSON.stringify(corpo)
+});
+
+cenario();
+banco.usuarios[TOKEN_DONO] = { id: 'u-pedro', email: 'pedro@exemplo.com' };
+
+r = await comoGerente({ paradaId: 'p1', status: 'entregue' });
+checa('o gerente dá baixa num clique', r.statusCode === 200 && p('p1').status === 'entregue',
+  `status ${r.statusCode}, parada ${p('p1').status}`);
+checa('e a baixa dele não inventa quem recebeu', !p('p1').recebedor,
+  `recebedor=${JSON.stringify(p('p1').recebedor)}`);
+
+// A trava do vidro vale pro freteiro, que está na porta do cliente e tem como tirar a
+// foto. O gerente está no escritório depois do fato — exigir dele seria travar a baixa
+// pra sempre, porque a foto que faltou não vai mais existir.
+cenario();
+banco.usuarios[TOKEN_DONO] = { id: 'u-pedro', email: 'pedro@exemplo.com' };
+banco.tabelas.paradas[0].itens = [{ descricao: 'Espelho', fragil: true, volumes: 1 }];
+
+r = await comoGerente({ paradaId: 'p1', status: 'entregue' });
+checa('pedido com vidro: o gerente passa mesmo sem foto', r.statusCode === 200 && p('p1').status === 'entregue',
+  `status ${r.statusCode}`);
+
+r = await chamar({ paradaId: 'p2', status: 'entregue' });
+const p2ComVidro = banco.tabelas.paradas[1];
+p2ComVidro.itens = [{ descricao: 'Espelho', fragil: true, volumes: 1 }];
+r = await chamar({ paradaId: 'p2', status: 'entregue' });
+checa('mas o FRETEIRO continua barrado sem a foto do vidro', r.statusCode === 400,
+  JSON.parse(r.body).erro);
+
+// Desfazer: o gerente não digita nome; o freteiro digita, pra não desfazer sem querer.
+cenario();
+banco.usuarios[TOKEN_DONO] = { id: 'u-pedro', email: 'pedro@exemplo.com' };
+await comoGerente({ paradaId: 'p1', status: 'entregue' });
+r = await comoGerente({ paradaId: 'p1', desfazer: true });
+checa('o gerente desfaz sem digitar nome', r.statusCode === 200 && p('p1').status === 'pendente',
+  `status ${r.statusCode}, parada ${p('p1').status}`);
+
+/* ================================================================== */
 console.log('\n============================================================');
 console.log(`${ok} verificações passaram · ${falhas} falharam`);
 if (falhas) { achados.forEach(a => console.log('  - ' + a)); process.exit(1); }
