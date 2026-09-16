@@ -78,10 +78,29 @@ exports.handler = async event => {
     const meses = new Set();
     const totaisPorMes = {};
 
+    // Quanto se vende em cada dia da semana. Serve pra decidir escala de gente e
+    // quando fazer promoção — a pergunta é "que dia vende mais", não "que data".
+    // Índice 0 = domingo, igual ao getDay() do JavaScript.
+    const porDiaDaSemana = Array.from({ length: 7 }, () => ({ pedidos: 0, valor: 0 }));
+
     for (const l of linhas) {
       const valor = Number(l.valor) || 0;
       totais.pedidos++;
       totais.valor += valor;
+
+      // Conta o dia ANTES de qualquer filtro de vendedor: pedido sem vendedor
+      // identificado continua sendo uma venda que aconteceu naquele dia.
+      //
+      // O "T12:00" não é enfeite. Sem ele o JavaScript lê "2026-09-14" como meia-noite
+      // em UTC, e no nosso fuso isso vira 21h do dia 13 — todo pedido cairia no dia
+      // anterior. Meio-dia fica longe da virada nos dois sentidos.
+      if (l.data_pedido) {
+        const d = new Date(l.data_pedido + 'T12:00:00');
+        if (!isNaN(d)) {
+          porDiaDaSemana[d.getDay()].pedidos++;
+          porDiaDaSemana[d.getDay()].valor += valor;
+        }
+      }
       if (l.corrigido_manual) totais.corrigidosNaMao++;
 
       // 'ok'        = o parser leu sozinho, ou o gerente arrumou na mão.
@@ -156,6 +175,7 @@ exports.handler = async event => {
     return json(200, {
       periodo: { de: q.de, ate: q.ate },
       porVendedor: lista,
+      porDiaDaSemana,
       meses: listaMeses,
       totaisPorMes,
       totais,

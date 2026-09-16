@@ -318,6 +318,12 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
       </table></div>
     </div>
 
+    <div class="card" id="cardDias" hidden>
+      <h2>Que dia da semana vende mais</h2>
+      <p class="mut" style="margin-top:-6px">Soma de tudo que foi vendido no período, por dia da semana. Conta todo pedido, inclusive os que ainda estão sem vendedor identificado.</p>
+      <div id="graficoDias"></div>
+    </div>
+
     <div class="card" id="cardMeses" hidden>
       <h2>Mês a mês</h2>
       <p class="mut" style="margin-top:-6px">Quanto cada vendedor fez em cada mês do período escolhido. Serve pra comparar se está subindo ou caindo. Escolha um período de vários meses pra essa tabela ficar útil.</p>
@@ -355,7 +361,9 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
         <div><label>Histórico de</label><input type="date" id="vdBfDe"></div>
         <div><label>até</label><input type="date" id="vdBfAte"></div>
         <div class="auto"><button class="btn ghost" id="vdBfIniciar">Puxar histórico</button></div>
+        <div class="auto"><button class="btn ghost danger" id="vdZerar">Recomeçar do zero</button></div>
       </div>
+      <p class="mut" style="margin-top:8px;font-size:12px">"Recomeçar do zero" apaga as vendas lidas e as suas correções manuais, pra tudo ser relido com as regras atuais. Não mexe em romaneio, parada nem foto.</p>
       <div id="vdBfStatus" class="mut" style="margin-top:10px"></div>
       <pre id="vdDiagOut" hidden style="background:#0f1115;color:#d5dae1;padding:12px;border-radius:8px;overflow:auto;max-height:340px;font-size:12px;margin-top:10px"></pre>
     </div>
@@ -1372,6 +1380,34 @@ function renderVendas(r){
     corrigirPedido(b, linha.querySelector('.vdCanal').value.trim(), 'SEM VENDEDOR');
   });
 
+  // Gráfico por dia da semana. Barra desenhada com div, sem biblioteca — é o padrão
+  // do resto do app e não vale carregar uma só por causa de sete barras.
+  const dias = r.porDiaDaSemana || [];
+  const temDias = dias.some(d => d && d.pedidos);
+  $('#cardDias').hidden = !temDias;
+  if(temDias){
+    const NOMES = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+    const maior = Math.max(...dias.map(d => d.valor));
+    // O melhor e o pior ficam destacados, que é a única coisa que alguém quer saber
+    // olhando isso. Dia sem venda nenhuma não disputa o posto de pior.
+    const comVenda = dias.map((d,i)=>({...d, i})).filter(d => d.pedidos);
+    const melhor = comVenda.reduce((a,b)=> b.valor > a.valor ? b : a).i;
+    const pior = comVenda.reduce((a,b)=> b.valor < a.valor ? b : a).i;
+    $('#graficoDias').innerHTML = dias.map((d,i)=>{
+      const larg = maior ? Math.round(d.valor / maior * 100) : 0;
+      const cor = i===melhor ? 'var(--ok)' : i===pior ? 'var(--bad)' : 'var(--ink)';
+      const selo = i===melhor ? ' <strong style="color:var(--ok)">melhor</strong>'
+                 : i===pior ? ' <strong style="color:var(--bad)">pior</strong>' : '';
+      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
+        <div style="width:78px;font-size:13px;font-weight:600">${NOMES[i]}</div>
+        <div style="flex:1;background:#edede4;border-radius:5px;height:22px;overflow:hidden">
+          <div style="width:${larg}%;height:100%;background:${cor};border-radius:5px"></div>
+        </div>
+        <div style="width:190px;font-size:13px;text-align:right">${money(d.valor)} <span class="mut">· ${d.pedidos} pedido(s)</span>${selo}</div>
+      </div>`;
+    }).join('');
+  }
+
   // Comparação mês a mês: vendedores nas linhas, meses nas colunas.
   const meses = r.meses || [];
   $('#cardMeses').hidden = meses.length < 2;
@@ -1490,6 +1526,29 @@ $('#vdBfIniciar').onclick = async () => {
     backfillRodando = false;
     $('#vdBfIniciar').disabled = false;
   }
+};
+
+// Apagar tudo é irreversível, então pede confirmação. Em dois toques no próprio
+// botão, e não numa caixa de diálogo: o resto do app não usa nenhuma, e caixa de
+// diálogo é o tipo de coisa que a pessoa fecha no automático sem ler.
+let zerarArmado = false;
+$('#vdZerar').onclick = async () => {
+  const b = $('#vdZerar');
+  if(!zerarArmado){
+    zerarArmado = true;
+    b.textContent = 'Tem certeza? Clique de novo';
+    setTimeout(() => { zerarArmado = false; b.textContent = 'Recomeçar do zero'; }, 5000);
+    return;
+  }
+  zerarArmado = false;
+  b.textContent = 'Recomeçar do zero';
+  b.disabled = true;
+  try{
+    const r = await api('/api/ingerir-pedidos-omie?zerar=1');
+    $('#vdBfStatus').textContent = r.aviso || 'Vendas apagadas.';
+    $('#vdBuscar').click();
+  }catch(e){ erro(e.message); }
+  finally{ b.disabled = false; }
 };
 
 /* ---------------- diagnóstico ---------------- */

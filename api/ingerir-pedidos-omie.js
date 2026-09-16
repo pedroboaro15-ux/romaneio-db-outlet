@@ -193,6 +193,23 @@ exports.handler = async event => {
   const sb = admin();
 
   try {
+    // ---- recomeçar do zero ----
+    //
+    // Existe porque o jeito de ler a observação mudou muito depois que os pedidos de
+    // verdade apareceram, e 31% do relatório estava no nome errado. Repuxar por cima
+    // não bastava: linhas marcadas como corrigidas na mão são protegidas da carga de
+    // propósito, então continuariam com o entendimento antigo pra sempre.
+    //
+    // Apaga só o que é recalculável a partir da Omie. Romaneio, parada e foto não são
+    // tocados — esta tabela guarda leitura de observação, nada que só exista aqui.
+    if (q.zerar) {
+      const { error: e1 } = await sb.from('vendas_observacoes').delete().neq('pedido_id', '');
+      if (e1) return json(500, { erro: e1.message });
+      const { error: e2 } = await sb.from('ingestao_estado').delete().eq('chave', 'backfill');
+      if (e2) return json(500, { erro: e2.message });
+      return json(200, { ok: true, aviso: 'Vendas apagadas. Puxe o histórico de novo pra ler tudo com as regras novas.' });
+    }
+
     // ---- conferir de onde sai a observação (não grava nada) ----
     if (q.diagnostico) {
       const ate = hojeBR(), de = emDiasBR(-30);
