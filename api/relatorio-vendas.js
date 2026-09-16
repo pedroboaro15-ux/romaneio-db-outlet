@@ -72,7 +72,7 @@ exports.handler = async event => {
     const linhas = await lerTudo(sb, q.de, q.ate);
 
     const porVendedor = new Map();
-    const totais = { pedidos: 0, valor: 0, presencial: 0, online: 0, outros: 0, naoReconhecidos: 0, vazios: 0, corrigidosNaMao: 0, porIA: 0, semVendedor: 0 };
+    const totais = { pedidos: 0, valor: 0, presencial: 0, online: 0, outros: 0, naoReconhecidos: 0, vazios: 0, corrigidosNaMao: 0, porIA: 0, porSuposicao: 0, semVendedor: 0 };
     const revisar = [];
     const conferirIA = [];
     const meses = new Set();
@@ -84,10 +84,14 @@ exports.handler = async event => {
       totais.valor += valor;
       if (l.corrigido_manual) totais.corrigidosNaMao++;
 
-      // 'ok'  = o parser leu sozinho, ou o gerente arrumou na mão.
-      // 'ia'  = quem preencheu foi o Gemini. Conta no ranking, mas fica marcado
-      //         pro gerente conferir por cima (foi o que ele pediu).
-      const identificado = l.status_parse === 'ok' || l.status_parse === 'ia';
+      // 'ok'        = o parser leu sozinho, ou o gerente arrumou na mão.
+      // 'ia'        = quem preencheu foi o Gemini.
+      // 'suposicao' = a observação trazia canal mas nenhum nome ("- INSTA"), e nesses
+      //               casos quem vendeu GERALMENTE é o João. Conta, mas fica marcado.
+      //
+      // Os três contam no ranking; os dois últimos aparecem em quadros separados pro
+      // gerente conferir por cima. Contar sem marcar esconderia o chute.
+      const identificado = l.status_parse === 'ok' || l.status_parse === 'ia' || l.status_parse === 'suposicao';
 
       if (!identificado) {
         if (l.status_parse === 'vazio') totais.vazios++; else totais.naoReconhecidos++;
@@ -100,12 +104,13 @@ exports.handler = async event => {
         continue; // sem vendedor confiável, não entra no ranking
       }
 
-      if (l.status_parse === 'ia') {
-        totais.porIA++;
+      if (l.status_parse === 'ia' || l.status_parse === 'suposicao') {
+        if (l.status_parse === 'ia') totais.porIA++; else totais.porSuposicao++;
         if (conferirIA.length < MAX_REVISAR) {
           conferirIA.push({
             pedidoId: l.pedido_id, numeroPedido: l.numero_pedido, dataPedido: l.data_pedido,
-            valor, obsBruta: l.obs_bruta || '', canal: l.canal, vendedor: l.vendedor
+            valor, obsBruta: l.obs_bruta || '', canal: l.canal, vendedor: l.vendedor,
+            comoFoi: l.status_parse === 'ia' ? 'IA' : 'Suposição'
           });
         }
       }

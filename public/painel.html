@@ -339,10 +339,10 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
     </div>
 
     <div class="card" id="cardIA" hidden>
-      <h2>Identificados pela IA</h2>
-      <p class="mut" style="margin-top:-6px">A IA escolheu esses vendedores de uma lista de quem já existe nos seus pedidos, ela não inventa nome. Ainda assim vale bater o olho. Se algum estiver errado, arrume no quadro acima que ele passa a valer como correção sua.</p>
+      <h2>Preenchidos sem certeza</h2>
+      <p class="mut" style="margin-top:-6px">Estes contam no relatório, mas não foram lidos direto da observação. <strong>Suposição</strong> é quando veio só o canal, sem nome, e o sistema assumiu o João, que é quem costuma vender assim. <strong>IA</strong> é quando o Gemini escolheu de uma lista de vendedores reais. Vale bater o olho nos dois. Se algum estiver errado, arrume no quadro acima que ele passa a valer como correção sua.</p>
       <div style="overflow-x:auto"><table>
-        <thead><tr><th>Pedido</th><th>Data</th><th class="right">Valor</th><th>Vendedor</th><th>Canal</th><th>Observação original</th></tr></thead>
+        <thead><tr><th>Pedido</th><th>Data</th><th class="right">Valor</th><th>Vendedor</th><th>Canal</th><th>Como foi</th><th>Observação original</th></tr></thead>
         <tbody id="tabIA"></tbody>
       </table></div>
     </div>
@@ -1303,6 +1303,7 @@ function renderVendas(r){
     + (t.outros ? ` · outros canais: <strong>${t.outros}</strong>` : '')
     + (t.corrigidosNaMao ? ` · <span class="mut">${t.corrigidosNaMao} corrigido(s) na mão</span>` : '')
     + (t.porIA ? ` · <span class="mut">${t.porIA} identificado(s) pela IA</span>` : '')
+    + (t.porSuposicao ? ` · <span class="mut">${t.porSuposicao} por suposição</span>` : '')
     + (pendentes ? `<div class="err" style="margin-top:8px">${pendentes} pedido(s) sem vendedor identificado — estão fora da conta acima. Veja o quadro abaixo.</div>` : '');
 
   $('#vdExportar').hidden = !r.porVendedor.length;
@@ -1398,6 +1399,7 @@ function renderVendas(r){
     <td class="right">${money(p.valor)}</td>
     <td>${esc(p.vendedor)}</td>
     <td>${esc(p.canal || '-')}</td>
+    <td><span class="tag ${p.comoFoi === 'Suposição' ? 'remarcada' : 'alt'}">${esc(p.comoFoi || 'IA')}</span></td>
     <td class="mut">${esc(p.obsBruta)}</td>
   </tr>`).join('');
 

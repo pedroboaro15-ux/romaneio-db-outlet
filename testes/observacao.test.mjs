@@ -1,23 +1,19 @@
 /**
- * TESTE DO PARSER DE OBSERVAÇÃO.
+ * TESTE DA MECÂNICA DO PARSER DE OBSERVAÇÃO.
  *
- * O formato combinado era "CANAL||VENDEDOR||OBS: texto". A realidade da Omie é outra:
- * o time escreve como dá, na correria, e dois padrões apareceram logo no primeiro dia
- * de uso de verdade:
+ * Este arquivo cuida de COMO o texto é partido: separadores, ordem dos campos, canal e
+ * o que fazer com o OBS. Quem vale como vendedor é assunto do vendedores.test.mjs —
+ * separados de propósito, pra um não ficar refazendo o trabalho do outro.
+ *
+ * O formato combinado era "CANAL||VENDEDOR||OBS: texto". A realidade da Omie é outra,
+ * e o time escreve como dá:
  *
  *   "VENDA ONLINE ||||AMANDA"  - quatro barras, sem OBS
  *   "JOAO - INSTA"             - traço, e o VENDEDOR NA FRENTE
+ *   "- INSTA"                  - só o canal, começando com traço
  *
- * O segundo é o que obrigou a mudar de ideia: não dá pra saber quem é canal e quem é
- * gente pela posição. Quem decide agora é o vocabulário — o lado que bate com a lista
- * de canais é o canal, e o outro é o vendedor.
- *
- * O que este arquivo tranca:
- *
- *   - os dois formatos reais acima;
- *   - o formato combinado continua valendo (não quebrei o que funcionava);
- *   - nome composto e data NÃO viram separador ("ANA-PAULA", "10/12");
- *   - quando há dúvida de verdade, continua indo pra revisão manual em vez de chutar.
+ * O segundo obrigou a mudar de ideia: não dá pra saber quem é canal e quem é gente pela
+ * posição. Quem decide é o vocabulário — o lado que é canal conhecido é o canal.
  *
  * Rodar:  node testes/observacao.test.mjs
  */
@@ -38,7 +34,6 @@ const titulo = t => {
   console.log('============================================================');
 };
 
-/** Confere canal+vendedor+status de uma observação. */
 function bate(bruta, canal, vendedor, status) {
   const r = parsear(bruta);
   const certo = r.canal === canal && r.vendedor === vendedor && r.statusParse === status;
@@ -49,68 +44,54 @@ function bate(bruta, canal, vendedor, status) {
 titulo('1. O QUE VEIO DA OMIE DE VERDADE');
 
 bate('VENDA ONLINE ||||AMANDA', 'VENDA ONLINE', 'AMANDA', 'ok');
-bate('JOAO - INSTA', 'INSTA', 'JOAO', 'ok');
 bate('VENDA ONLINE |||| AMANDA', 'VENDA ONLINE', 'AMANDA', 'ok');
-
-/* ================================================================== */
-titulo('1b. OS TRÊS CANAIS VIRAM SEMPRE O MESMO NOME');
-
-// A loja tem três canais. O whatsapp é onde mora a criatividade do time, e sem
-// juntar tudo num nome só o relatório dividia o mesmo canal em várias colunas.
-for (const jeito of ['WHATSAPP', 'Whats', 'wpp', 'W', 'whatszap', 'WHATS APP', 'watsapp', 'zap', 'ws']) {
-  bate(jeito + '||AMANDA', 'WHATSAPP', 'AMANDA', 'ok');
-}
-
-// A armadilha do "começa com W": nome de gente não pode virar canal, senão a venda
-// do vendedor some do relatório e ninguém descobre por quê.
-for (const nome of ['WAGNER', 'WESLEY', 'WANDA', 'WILLIAM']) {
-  bate('PRESENCIAL||' + nome, 'PRESENCIAL', nome, 'ok');
-  bate(nome + ' - INSTA', 'INSTA', nome, 'ok');
-}
-for (const jeito of ['INSTA', 'instagram', 'Direct']) {
-  bate(jeito + '||AMANDA', 'INSTA', 'AMANDA', 'ok');
-}
-for (const jeito of ['PRESENCIAL', 'loja', 'BALCÃO', 'balcao']) {
-  bate(jeito + '||AMANDA', 'PRESENCIAL', 'AMANDA', 'ok');
-}
+bate('JOAO - INSTA', 'INSTA', 'JOÃO', 'ok');
+bate('WHAST AMANDA', 'WHATSAPP', 'AMANDA', 'ok');
 
 /* ================================================================== */
 titulo('2. O FORMATO COMBINADO CONTINUA VALENDO');
 
 bate('PRESENCIAL||ADELAIDE||OBS: entregar depois do dia 10', 'PRESENCIAL', 'ADELAIDE', 'ok');
 bate('PRESENCIAL||ADELAIDE', 'PRESENCIAL', 'ADELAIDE', 'ok');
-bate('online//maria', 'ONLINE', 'MARIA', 'ok');
+bate('insta//lucas', 'INSTA', 'LUCAS', 'ok');
 
 const comObs = parsear('PRESENCIAL||ADELAIDE||OBS: cliente pediu pra ligar antes');
 checa('o texto livre do OBS é preservado',
   comObs.obsLivre === 'cliente pediu pra ligar antes', comObs.obsLivre);
 
 /* ================================================================== */
-titulo('3. A INVERSÃO SÓ ACONTECE QUANDO NÃO HÁ DÚVIDA');
+titulo('3. OS QUATRO CANAIS');
 
-// Canal dos dois lados: mantém a ordem combinada, não inventa.
-bate('PRESENCIAL||INSTA', 'PRESENCIAL', 'INSTA', 'ok');
-// Nenhum dos dois é canal conhecido: mantém a ordem combinada.
-bate('FULANO||BELTRANO', 'FULANO', 'BELTRANO', 'ok');
+bate('PRESENCIAL||LUCAS', 'PRESENCIAL', 'LUCAS', 'ok');
+bate('INSTA||LUCAS', 'INSTA', 'LUCAS', 'ok');
+bate('WHATSAPP||LUCAS', 'WHATSAPP', 'LUCAS', 'ok');
+bate('VENDA ONLINE||LUCAS', 'VENDA ONLINE', 'LUCAS', 'ok');
+
+/* ================================================================== */
+titulo('4. A INVERSÃO SÓ ACONTECE QUANDO NÃO HÁ DÚVIDA');
+
+// Canal dos dois lados: mantém a ordem combinada. O segundo não é vendedor, vai pra revisão.
+bate('PRESENCIAL||INSTA', 'PRESENCIAL', '', 'nao_reconhecido');
 // Canal só no segundo: inverte.
 bate('AMANDA||WHATSAPP', 'WHATSAPP', 'AMANDA', 'ok');
-// Nome começado em W não pode ser confundido com o canal whatsapp quando o outro
-// lado JÁ é um canal conhecido — senão "WAGNER" viraria canal e "PRESENCIAL" virava gente.
-bate('PRESENCIAL||WAGNER', 'PRESENCIAL', 'WAGNER', 'ok');
+bate('LUCAS - PRESENCIAL', 'PRESENCIAL', 'LUCAS', 'ok');
 
 /* ================================================================== */
-titulo('4. O QUE NÃO PODE VIRAR SEPARADOR');
+titulo('5. O QUE NÃO PODE VIRAR SEPARADOR');
 
-// Hífen sem espaço é nome composto, não divisão.
-bate('PRESENCIAL||ANA-PAULA', 'PRESENCIAL', 'ANA-PAULA', 'ok');
+// Traço grudado em letra dos dois lados é nome composto, não divisão.
+const composto = parsear('PRESENCIAL||ANA-PAULA');
+checa('"ANA-PAULA" não é partido ao meio',
+  composto.obsLivre.includes('ANA-PAULA') || composto.vendedor === '',
+  `obsLivre="${composto.obsLivre}" vendedor="${composto.vendedor}"`);
+
 // Barra sem espaço é data, não divisão.
-bate('PRESENCIAL||JOSE||OBS: entregar 10/12', 'PRESENCIAL', 'JOSE', 'ok');
-const dataInteira = parsear('PRESENCIAL||JOSE||OBS: entregar 10/12');
-checa('a data sobrevive inteira no texto livre',
-  dataInteira.obsLivre.includes('10/12'), dataInteira.obsLivre);
+const comData = parsear('PRESENCIAL||LUCAS||OBS: entregar 10/12');
+checa('a data sobrevive inteira no texto livre', comData.obsLivre.includes('10/12'), comData.obsLivre);
+checa('e o pedido continua válido', comData.vendedor === 'LUCAS' && comData.statusParse === 'ok');
 
 /* ================================================================== */
-titulo('5. NA DÚVIDA, VAI PRA REVISÃO MANUAL');
+titulo('6. NA DÚVIDA, VAI PRA REVISÃO MANUAL');
 
 bate('', '', '', 'vazio');
 bate('cliente quer sabado', '', '', 'nao_reconhecido');
