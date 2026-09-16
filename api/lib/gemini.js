@@ -9,7 +9,11 @@
 // variável no Netlify — não precisa mexer em código.
 // Usa fetch (e não o módulo https do Node) pra rodar igual no Cloudflare Workers.
 const HOST = 'generativelanguage.googleapis.com';
-const MODELO_PADRAO = 'gemini-2.0-flash';
+// O trabalho aqui é o mais simples que existe: ler uma frase curta e escolher um
+// nome de uma lista fechada. Não precisa do modelo caro — e como roda uma vez por
+// pedido que o parser não entendeu, o barato é o que faz a conta fechar.
+// Se o Google aposentar este, troque pela variável GEMINI_MODEL, sem mexer no código.
+const MODELO_PADRAO = 'gemini-3.5-flash-lite';
 
 function temChave() {
   return !!process.env.GEMINI_API_KEY;
