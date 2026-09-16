@@ -37,6 +37,9 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 .bwpp{background:#25d366}
 .bouvir{background:#6f6f66}
 .maprota{background:#F2F250;color:#14140F;text-decoration:none;display:block;text-align:center;padding:15px;border-radius:11px;margin:0 12px 10px;font-weight:800;font-size:16px}
+/* Volta pra lista quando o freteiro tem mais de uma rota no dia. Discreto de
+   propósito: o botão importante da tela é o Maps, logo abaixo. */
+.btnvoltarrotas{display:block;width:calc(100% - 24px);margin:0 12px 8px;background:#fff;color:#14140F;border:2px solid #d6d6c9;border-radius:11px;padding:12px;font-weight:700;font-size:14px}
 .status{margin-top:10px;font-size:15px;font-weight:700}
 .status.ok{background:none;color:#0f8a4a}
 .status.no{background:none;color:#b91c1c;border:0}
@@ -272,9 +275,20 @@ function atualizarBadgeNotif(totalAgora){
 }
 
 // Mostra as rotas de HOJE EM DIANTE — não some se você já criou a rota de amanhã.
+// Guardada pra saber se vale mostrar o botão de voltar: com uma rota só ele seria
+// um caminho pra lugar nenhum.
+let rotasDisponiveis = [];
+
+function voltarParaRotas(){
+  idAtual = null;
+  rom = null;
+  iniciar();
+}
+
 async function iniciar(){
   try{
     const rotas = await api('/api/minhas-rotas');
+    rotasDisponiveis = rotas;
     atualizarBadgeNotif(rotas.reduce((s,r)=>s+(r.totalParadas||0), 0));
     document.getElementById('rotaCompleta').innerHTML = '';
     document.getElementById('bar').style.width = '0%';
@@ -427,9 +441,15 @@ function render(){
   document.getElementById('bar').style.width = (rom.paradas.length ? ok/rom.paradas.length*100 : 0) + '%';
 
   const rotaLink = linkRotaCompleta();
-  document.getElementById('rotaCompleta').innerHTML = rotaLink
-    ? `<a class="maprota" target="_blank" href="${rotaLink}">Abrir rotas no Maps</a>`
+  // Quem tem mais de uma rota no dia entrava numa e ficava preso: a lista só aparecia
+  // ao abrir o app, e não havia caminho de volta. Terminar a primeira rota e começar a
+  // segunda exigia fechar e reabrir o app, o que ninguém adivinha.
+  const voltar = rotasDisponiveis.length > 1
+    ? '<button class="btnvoltarrotas" onclick="voltarParaRotas()">Minhas rotas de hoje</button>'
     : '';
+  document.getElementById('rotaCompleta').innerHTML = voltar + (rotaLink
+    ? `<a class="maprota" target="_blank" href="${rotaLink}">Abrir rotas no Maps</a>`
+    : '');
 
   document.getElementById('lista').innerHTML = rom.paradas.map((p,i)=>{
     const c = p.cliente || {};
@@ -774,6 +794,7 @@ window.abrirAssinatura = abrirAssinatura;
 window.limparAssinatura = limparAssinatura;
 window.confirmarAssinatura = confirmarAssinatura;
 window.abrirRota = abrirRota;
+window.voltarParaRotas = voltarParaRotas;
 window.ouvirEndereco = ouvirEndereco;
 window.ouvirTelefone = ouvirTelefone;
 window.abrirNovaRota = abrirNovaRota;
