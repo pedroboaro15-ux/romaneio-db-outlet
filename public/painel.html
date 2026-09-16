@@ -318,6 +318,17 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
       </table></div>
     </div>
 
+    <!-- Sugestões dos campos de correção. Preenchidas pelo servidor, não escritas
+         aqui, pra não virar uma segunda lista que discorda da de verdade. -->
+    <datalist id="vendedoresPadrao"></datalist>
+    <datalist id="canaisPadrao"></datalist>
+
+    <div class="card" id="cardVendedores" hidden>
+      <h2>Quanto cada vendedor vendeu</h2>
+      <div id="graficoVendedores"></div>
+      <p class="mut" id="avisoSemVendedor" style="margin-top:10px"></p>
+    </div>
+
     <div class="card" id="cardDias" hidden>
       <h2>Que dia da semana vende mais</h2>
       <p class="mut" style="margin-top:-6px">Soma de tudo que foi vendido no período, por dia da semana. Conta todo pedido, inclusive os que ainda estão sem vendedor identificado.</p>
@@ -348,7 +359,7 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
       <h2>Preenchidos sem certeza</h2>
       <p class="mut" style="margin-top:-6px">Estes contam no relatório, mas não foram lidos direto da observação. <strong>Suposição</strong> é quando veio só o canal, sem nome, e o sistema assumiu o João, que é quem costuma vender assim. <strong>IA</strong> é quando o Gemini escolheu de uma lista de vendedores reais. Vale bater o olho nos dois. Se algum estiver errado, arrume no quadro acima que ele passa a valer como correção sua.</p>
       <div style="overflow-x:auto"><table>
-        <thead><tr><th>Pedido</th><th>Data</th><th class="right">Valor</th><th>Vendedor</th><th>Canal</th><th>Como foi</th><th>Observação original</th></tr></thead>
+        <thead><tr><th>Pedido</th><th>Data</th><th class="right">Valor</th><th>Vendedor</th><th>Canal</th><th>Como foi</th><th>Observação original</th><th></th></tr></thead>
         <tbody id="tabIA"></tbody>
       </table></div>
     </div>
@@ -1307,7 +1318,7 @@ function renderVendas(r){
     + (t.corrigidosNaMao ? ` · <span class="mut">${t.corrigidosNaMao} corrigido(s) na mão</span>` : '')
     + (t.porIA ? ` · <span class="mut">${t.porIA} identificado(s) pela IA</span>` : '')
     + (t.porSuposicao ? ` · <span class="mut">${t.porSuposicao} por suposição</span>` : '')
-    + (pendentes ? `<div class="err" style="margin-top:8px">${pendentes} pedido(s) sem vendedor identificado — estão fora da conta acima. Veja o quadro abaixo.</div>` : '');
+    + (pendentes ? `<div class="err" style="margin-top:8px"><strong>${pendentes} pedido(s) sem vendedor identificado</strong> — estão fora da conta acima e fora do gráfico de vendedores. Veja o quadro abaixo.</div>` : '');
 
   $('#vdExportar').hidden = !r.porVendedor.length;
 
@@ -1349,6 +1360,44 @@ function renderVendas(r){
     </div>`).join('')
     + (r.revisarTruncado ? '<p class="mut">Mostrando os primeiros. Corrija esses e busque de novo pra ver o resto.</p>' : '');
 
+  // Editar um pedido que já tem vendedor preenchido (pela IA ou por suposição).
+  //
+  // O quadro de revisão embaixo só mostra pedido SEM vendedor, então o que a IA
+  // preencheu errado não tinha por onde ser corrigido: o texto dizia "arrume no quadro
+  // acima" e o pedido não estava lá. Isto abre uma linha de edição na própria tabela,
+  // já preenchida com o que está gravado.
+  window.editarPedidoVenda = function(pedidoId, canalAtual, vendedorAtual){
+    const linha = document.querySelector(`#tabIA tr[data-edit="${pedidoId}"]`);
+    if(linha){ linha.remove(); return; }   // clicou de novo: fecha
+    const botao = document.querySelector(`#tabIA button[onclick*="${pedidoId}"]`);
+    if(!botao) return;
+    const tr = botao.closest('tr');
+    const nova = document.createElement('tr');
+    nova.dataset.edit = pedidoId;
+    nova.innerHTML = `<td colspan="8" style="background:#fafaf4">
+      <div class="row" style="align-items:flex-end">
+        <div><label>Canal</label><input id="edCanal-${pedidoId}" list="canaisPadrao" value="${esc(canalAtual)}"></div>
+        <div><label>Vendedor</label><input id="edVend-${pedidoId}" list="vendedoresPadrao" value="${esc(vendedorAtual)}"></div>
+        <div class="auto"><button class="btn sm" onclick="salvarEdicaoVenda('${pedidoId}')">Salvar</button></div>
+        <div class="auto"><button class="btn ghost sm" onclick="editarPedidoVenda('${pedidoId}')">Cancelar</button></div>
+      </div>
+    </td>`;
+    tr.after(nova);
+    document.getElementById('edVend-' + pedidoId).focus();
+  };
+
+  window.salvarEdicaoVenda = async function(pedidoId){
+    const canal = (document.getElementById('edCanal-'+pedidoId).value || '').trim();
+    const vendedor = (document.getElementById('edVend-'+pedidoId).value || '').trim();
+    if(!vendedor) return toast('Informe o vendedor');
+    try{
+      await api('/api/relatorio-vendas',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({pedidoId, canal, vendedor})});
+      toast('Pedido corrigido');
+      $('#vdBuscar').click();
+    }catch(e){ erro(e.message); }
+  };
+
   async function corrigirPedido(botao, canal, vendedor){
     const linha = botao.closest('.linharevisar');
     botao.disabled = true;
@@ -1374,6 +1423,33 @@ function renderVendas(r){
     const linha = b.closest('.linharevisar');
     corrigirPedido(b, linha.querySelector('.vdCanal').value.trim(), 'SEM VENDEDOR');
   });
+
+  // Sugestões dos campos de correção, vindas do servidor.
+  const cad = r.cadastro || {vendedores:[],canais:[]};
+  $('#vendedoresPadrao').innerHTML = cad.vendedores.map(v=>`<option value="${esc(v)}">`).join('');
+  $('#canaisPadrao').innerHTML = cad.canais.map(c=>`<option value="${esc(c)}">`).join('');
+
+  // Gráfico de vendedores, mesma barra de div do gráfico de dias.
+  const vend = r.porVendedor || [];
+  $('#cardVendedores').hidden = !vend.length;
+  if(vend.length){
+    const maiorV = Math.max(1, ...vend.map(v=>v.valor));
+    $('#graficoVendedores').innerHTML = vend.map(v => `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
+        <div style="width:120px;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(v.vendedor)}</div>
+        <div style="flex:1;background:#edede4;border-radius:5px;height:22px;overflow:hidden">
+          <div style="width:${Math.max(2, v.valor/maiorV*100)}%;height:100%;background:${v.semComissao?'#b8b8ab':'var(--ink)'};border-radius:5px"></div>
+        </div>
+        <div style="width:210px;font-size:13px;text-align:right">${money(v.valor)} <span class="mut">· ${v.pedidos} pedido(s)</span>${v.semComissao?' <span class="mut">· sem comissão</span>':''}</div>
+      </div>`).join('');
+
+    // O número que o gráfico não mostra sozinho: quanto ficou de fora dele.
+    // Sem isso, o gráfico parece o retrato completo das vendas e não é.
+    const foraDoGrafico = (t.naoReconhecidos||0) + (t.vazios||0);
+    $('#avisoSemVendedor').innerHTML = foraDoGrafico
+      ? `<strong>${foraDoGrafico} pedido(s) estão fora deste gráfico</strong> porque ainda não têm vendedor identificado. Eles aparecem no quadro de revisão, mais abaixo.`
+      : 'Todos os pedidos do período têm vendedor identificado.';
+  }
 
   // Gráfico por dia da semana. Barra desenhada com div, sem biblioteca — é o padrão
   // do resto do app e não vale carregar uma só por causa de sete barras.
@@ -1432,6 +1508,8 @@ function renderVendas(r){
     <td>${esc(p.canal || '-')}</td>
     <td><span class="tag ${p.comoFoi === 'Suposição' ? 'remarcada' : 'alt'}">${esc(p.comoFoi || 'IA')}</span></td>
     <td class="mut">${esc(p.obsBruta)}</td>
+    <td><button class="btn ghost sm" style="padding:3px 8px;font-size:11px"
+      onclick="editarPedidoVenda('${esc(p.pedidoId)}','${esc(p.canal||'')}','${esc(p.vendedor||'')}')">Editar</button></td>
   </tr>`).join('');
 
   mostrarBackfill(r.backfill);

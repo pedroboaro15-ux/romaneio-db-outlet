@@ -47,7 +47,11 @@ for (const pagina of PAGINAS) {
   const exportados = new Set([...s.matchAll(/window\.([A-Za-z_$][\w$]*)\s*=/g)].map(m => m[1]));
   const declarados = new Set([
     ...[...s.matchAll(/function\s+([A-Za-z_$][\w$]*)/g)].map(m => m[1]),
-    ...[...s.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/g)].map(m => m[1])
+    ...[...s.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/g)].map(m => m[1]),
+    // "window.nome = function..." também é declaração. É o jeito usado quando a
+    // função nasce dentro de outra e precisa ser alcançável pelo onclick do HTML:
+    // ali um "function nome()" ficaria preso no escopo de fora e o botão não acharia.
+    ...[...s.matchAll(/window\.([A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?(?:function|\()/g)].map(m => m[1])
   ]);
 
   const semExportar = [...chamados].filter(f => !exportados.has(f));

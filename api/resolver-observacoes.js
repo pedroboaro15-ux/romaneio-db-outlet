@@ -17,10 +17,30 @@ const { requireAdmin } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 const { gerarJSON, temChave } = require('./lib/gemini');
+const { VENDEDORES, CANAIS } = require('./lib/observacao');
 
-const LOTE = 25;          // observações por chamada ao Gemini
+// Oito por vez, e não vinte e cinco.
+//
+// Com lote grande o Gemini responde sobre os primeiros e vai abandonando o resto: a
+// lista volta curta e as observações que ficaram de fora são marcadas como tentadas
+// sem nunca terem sido lidas. Lote pequeno gasta mais chamadas e resolve todas, que é
+// o que importa — são poucas dezenas de pedidos, não milhares.
+const LOTE = 8;
 const ORCAMENTO_MS = 7000;
 const SEM_VENDEDOR = 'SEM VENDEDOR';   // venda do próprio dono, sem comissão
+
+// Palavras que marcam quem ENTREGA. "LUCAS FRETE" e "DIOGO CAMINHAO" são pessoas do
+// frete, e frete nunca é venda.
+const QUALIFICADOR_DE_ENTREGA = /(frete|caminhao|caminhão|entrega|motorista)/i;
+
+/** O nome respondido aparece no texto colado num qualificador de entrega? */
+function ehEntregador(nome, obsBruta) {
+  const texto = String(obsBruta || '');
+  if (!nome || !texto) return false;
+  // Escapa o nome: ele vem de fora e entraria cru numa expressão regular.
+  const seguro = nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(seguro + '\\s*' + QUALIFICADOR_DE_ENTREGA.source, 'i').test(texto);
+}
 
 function montarPrompt(vendedores, canais, itens) {
   return [
@@ -44,6 +64,16 @@ function montarPrompt(vendedores, canais, itens) {
     '- "DESCONHECIDO" (não sei dizer) é diferente de "SEM VENDEDOR" (não teve vendedor).',
     '- Se o canal não aparecer, responda "DESCONHECIDO" no canal.',
     '',
+    'ATENÇÃO, este é o erro mais comum:',
+    'A observação muitas vezes traz quem fez a ENTREGA, não quem vendeu. Nome seguido',
+    'de FRETE ou CAMINHAO é o entregador, e entregador NUNCA é vendedor.',
+    'Existem duas pessoas chamadas Lucas: uma vende e a outra faz frete.',
+    '  "LUCAS FRETE"     -> DESCONHECIDO   (é o entregador, NÃO é o vendedor Lucas)',
+    '  "DIOGO CAMINHAO"  -> DESCONHECIDO',
+    '  "LUCAS"           -> LUCAS          (sem o FRETE, é o vendedor)',
+    'Não remova o FRETE do nome pra fazê-lo caber na lista. Se sobra qualificador,',
+    'a resposta é DESCONHECIDO.',
+    '',
     'OBSERVAÇÕES:',
     JSON.stringify(itens, null, 0),
     '',
@@ -62,28 +92,22 @@ exports.handler = async event => {
   const inicio = Date.now();
 
   try {
-    // Lista de vendedores de verdade: só quem o parser leu sozinho ou o gerente
-    // confirmou na mão. O que veio de IA não entra, pra IA não aprender com ela mesma.
-    const { data: bons, error: eBons } = await sb
-      .from('vendas_observacoes')
-      .select('vendedor, canal')
-      .eq('status_parse', 'ok')
-      .not('vendedor', 'eq', '')
-      .limit(5000);
-    if (eBons) return json(500, { erro: eBons.message });
-
-    const vendedores = [...new Set((bons || []).map(r => r.vendedor).filter(Boolean))].sort();
-    const canais = [...new Set((bons || []).map(r => r.canal).filter(Boolean))].sort();
-    if (!vendedores.length) {
-      return json(400, { erro: 'Ainda não há nenhum pedido com vendedor identificado, então a IA não teria com o que comparar. Puxe o histórico primeiro, ou arrume alguns pedidos na mão.' });
-    }
+    // A lista sai do cadastro de vendedores, não dos dados já lidos.
+    //
+    // Saía dos dados antes, e isso criava um erro difícil de ver: o Gemini recebia
+    // "LUCAS FRETE" e devolvia "LUCAS", que está na lista — então a conferência aqui
+    // aceitava. A resposta era um vendedor válido; o erro era ela ter sido escolhida
+    // pra aquela observação. Vindo do cadastro, a lista é a mesma que o parser usa, e
+    // não engorda sozinha com o que a própria IA foi acertando ou errando.
+    const vendedores = VENDEDORES.map(v => v.nome);
+    const canais = CANAIS.map(c => c.nome);
 
     let resolvidos = 0, desconhecidos = 0, analisados = 0;
 
     do {
       const { data: pendentes, error: ePend } = await sb
         .from('vendas_observacoes')
-        .select('pedido_id, obs_bruta')
+        .select('pedido_id, obs_bruta')   // obs_bruta é usada na conferência da resposta
         .eq('status_parse', 'nao_reconhecido')
         .eq('ia_tentou', false)
         .not('obs_bruta', 'eq', '')
@@ -111,6 +135,17 @@ exports.handler = async event => {
         // que é a venda do próprio dono). Qualquer outra coisa é chute e vai pro manual.
         const permitido = vendedores.includes(vend) || vend === SEM_VENDEDOR;
         if (!vend || vend === 'DESCONHECIDO' || !permitido) { desconhecidos++; continue; }
+
+        // Segunda trava, e é a que pega o erro que o prompt sozinho não pegava.
+        //
+        // O Gemini recebia "LUCAS FRETE" e devolvia "LUCAS": nome válido, lista certa,
+        // trava de cima satisfeita. Só que naquela observação o Lucas é o entregador,
+        // não o vendedor — são duas pessoas diferentes com o mesmo primeiro nome.
+        //
+        // Aqui a resposta é conferida contra o texto original: se o nome aparece
+        // colado num qualificador de entrega, ele não vale como vendedor. Pedir no
+        // prompt ajuda, mas prompt é pedido; isto é regra.
+        if (ehEntregador(vend, p.obs_bruta)) { desconhecidos++; continue; }
 
         const { error } = await sb.from('vendas_observacoes').update({
           canal: (canal && canal !== 'DESCONHECIDO') ? canal : '',

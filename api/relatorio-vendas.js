@@ -8,7 +8,7 @@
 const { requireAdmin } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
-const { SEM_COMISSAO } = require('./lib/observacao');
+const { SEM_COMISSAO, VENDEDORES, CANAIS } = require('./lib/observacao');
 
 const PAGINA = 1000;   // o PostgREST devolve no máximo 1000 linhas por chamada
 const MAX_REVISAR = 300;
@@ -179,6 +179,9 @@ exports.handler = async event => {
     return json(200, {
       periodo: { de: q.de, ate: q.ate },
       porVendedor: lista,
+      // Vão pra tela virar sugestão nos campos de correção. Saem daqui, e não de uma
+      // cópia no HTML, pra não existirem duas listas que um dia discordam.
+      cadastro: { vendedores: VENDEDORES.map(v => v.nome), canais: CANAIS.map(c => c.nome) },
       porDiaDaSemana,
       meses: listaMeses,
       totaisPorMes,
