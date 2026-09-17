@@ -3,6 +3,7 @@ import type { ConfigLoja } from '../lib/tipos';
 import { salvarMarkup } from '../lib/dados';
 import { moeda, moedaCent } from '../lib/formato';
 import { IcAlerta, IcCheck, IcInfo } from '../componentes/Icones';
+import PrecoComImposto from '../componentes/PrecoComImposto';
 
 /**
  * Calculadora de custo e preço.
@@ -101,6 +102,11 @@ export default function Calculadora({
 
   return (
     <div className="pagina" style={{ maxWidth: 940 }}>
+
+      {/* A conta com imposto vem primeiro de propósito: é a que diz o que sobra de
+          verdade. A de markup, abaixo, é a conta rápida de balcão — útil, mas ignora
+          frete e imposto, e o rodapé dela avisa isso. */}
+      <PrecoComImposto ehDono={ehDono} />
 
       {/* ---------- markup padrão ---------- */}
       <div className="cartao" style={{ marginBottom: 14 }}>
