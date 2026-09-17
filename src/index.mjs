@@ -24,7 +24,6 @@ import ingerirPedidosOmie from '../api/ingerir-pedidos-omie.js';
 import minhasRotas from '../api/minhas-rotas.js';
 import omieRaw from '../api/omie-raw.js';
 import painelDia from '../api/painel-dia.js';
-import paradaItemAdiar from '../api/parada-item-adiar.js';
 import paradaItemCarregado from '../api/parada-item-carregado.js';
 import paradaProblema from '../api/parada-problema.js';
 import paradaSeparar from '../api/parada-separar.js';
@@ -55,7 +54,6 @@ const FUNCOES = {
   'minhas-rotas': minhasRotas,
   'omie-raw': omieRaw,
   'painel-dia': painelDia,
-  'parada-item-adiar': paradaItemAdiar,
   'parada-item-carregado': paradaItemCarregado,
   'parada-problema': paradaProblema,
   'parada-separar': paradaSeparar,

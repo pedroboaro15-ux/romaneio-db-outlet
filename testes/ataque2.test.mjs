@@ -63,8 +63,8 @@ function cenario() {
   ];
   banco.tabelas.paradas = [{
     id: 'pjoao', romaneio_id: 'r-joao', ordem: 0, status: 'pendente', numero: '1001',
-    cliente: { nome: 'Dona Ana' }, valor: 3200, volumes: 3, volumes_confirmados: 0,
-    itens: [{ descricao: 'Guarda-roupa', volumes: 2 }, { descricao: 'Cômoda', volumes: 1 }],
+    cliente: { nome: 'Dona Ana' }, valor: 3200, volumes: 3,
+    itens: [{ descricao: 'Guarda-roupa', cor: 'Branco' }, { descricao: 'Cômoda', cor: 'Off' }],
     separado: false
   }];
   process.env.OMIE_APP_KEY = 'chave-secreta-da-omie';
@@ -214,22 +214,76 @@ cenario();
 }
 
 /* ================================================================== */
-titulo('13. CONFIRMAR VOLUME QUE NÃO EXISTE');
+titulo('13. MARCAR MÓVEL QUE NÃO EXISTE');
+
+// A separação deixou de contar volume e passou a marcar O MÓVEL, por índice. Isso
+// tirou o contador (e a classe de bug dele), mas trouxe um índice vindo do cliente —
+// que é exatamente o tipo de coisa que precisa apanhar aqui.
 
 cenario();
 {
-  for (let i = 0; i < 10; i++) await chamar(paradaSeparar, comoMaria({ paradaId: 'pjoao' }));
-  const p = banco.tabelas.paradas[0];
-  checa('não dá pra confirmar mais volume do que a parada tem',
-    p.volumes_confirmados <= p.volumes,
-    `confirmou ${p.volumes_confirmados} de ${p.volumes}`);
+  const r = await chamar(paradaSeparar, comoMaria({ paradaId: 'pjoao' }));
+  checa('sem índice é recusado, não marca no escuro', r.status === 400, r.corpo.erro);
 }
 cenario();
 {
-  for (let i = 0; i < 5; i++) await chamar(paradaSeparar, comoMaria({ paradaId: 'pjoao', desfazer: true }));
+  const r = await chamar(paradaSeparar, comoMaria({ paradaId: 'pjoao', indice: 99 }));
   const p = banco.tabelas.paradas[0];
-  checa('desfazer não deixa o contador negativo', p.volumes_confirmados >= 0,
-    'ficou em ' + p.volumes_confirmados);
+  checa('índice fora da lista é recusado',
+    r.status === 400 && !p.separado, `status ${r.status}, separado ${p.separado}`);
+}
+cenario();
+{
+  // O ataque de verdade: todo array tem "__proto__". Se o endpoint escrevesse em
+  // itens['__proto__'].carregado, TODA parada de TODA requisição atendida pelo mesmo
+  // isolate do Cloudflare passaria a parecer carregada — um caminhão sairia vazio
+  // com a tela dizendo que estava tudo certo.
+  const r = await chamar(paradaSeparar, comoMaria({ paradaId: 'pjoao', indice: '__proto__' }));
+  const limpo = [].carregado === undefined && {}.carregado === undefined;
+  checa('índice "__proto__" não suja o protótipo', r.status === 400 && limpo, `status ${r.status}`);
+}
+cenario();
+{
+  const r = await chamar(paradaSeparar, comoMaria({ paradaId: 'pjoao', indice: -1 }));
+  const r2 = await chamar(paradaSeparar, comoMaria({ paradaId: 'pjoao', indice: 1.5 }));
+  checa('índice negativo e quebrado são recusados',
+    r.status === 400 && r2.status === 400, `${r.status} e ${r2.status}`);
+}
+cenario();
+{
+  // Marcar dez vezes o mesmo móvel não pode "adiantar" a parada: cada móvel tem o
+  // próprio carregado, então repetir é inofensivo por construção — este teste é o
+  // que garante que continua assim.
+  for (let i = 0; i < 10; i++) await chamar(paradaSeparar, comoMaria({ paradaId: 'pjoao', indice: 0 }));
+  const p = banco.tabelas.paradas[0];
+  checa('marcar o mesmo móvel dez vezes não fecha a parada',
+    p.itens[0].carregado === true && !p.itens[1].carregado && !p.separado,
+    `separado ${p.separado}`);
+}
+cenario();
+{
+  // Item que veio carregado de outro estoque não tem o que carregar.
+  banco.tabelas.paradas[0].itens[0].jaNoFrete = true;
+  const r = await chamar(paradaSeparar, comoMaria({ paradaId: 'pjoao', indice: 0 }));
+  checa('móvel "já no frete" não aceita marcação', r.status === 400, r.corpo.erro);
+}
+cenario();
+{
+  // O caminho feliz, pra provar que as recusas acima não são só um endpoint quebrado.
+  await chamar(paradaSeparar, comoMaria({ paradaId: 'pjoao', indice: 0 }));
+  await chamar(paradaSeparar, comoMaria({ paradaId: 'pjoao', indice: 1 }));
+  const p = banco.tabelas.paradas[0];
+  checa('marcando os dois móveis, a parada fecha', p.separado === true, `separado ${p.separado}`);
+}
+cenario();
+{
+  // Desmarcar é permitido, mas não depois do carregamento confirmado.
+  await chamar(paradaSeparar, comoMaria({ paradaId: 'pjoao', indice: 0 }));
+  banco.tabelas.romaneios[0].carregamento_confirmado = true;
+  const r = await chamar(paradaSeparar, comoMaria({ paradaId: 'pjoao', indice: 0, carregado: false }));
+  const p = banco.tabelas.paradas[0];
+  checa('com o carregamento confirmado não dá pra desmarcar móvel',
+    r.status === 400 && p.itens[0].carregado === true, r.corpo.erro);
 }
 cenario();
 {

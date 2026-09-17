@@ -106,6 +106,8 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
 .fragilcheck{display:flex;align-items:center;gap:4px;flex:0 0 auto;margin:0;font-size:12px;font-weight:600;color:var(--ink);text-transform:none;white-space:nowrap;cursor:pointer}
 .fragilcheck input{width:auto;margin:0}
 .tag.fragil{background:#fdeaea;color:var(--bad)}
+.pequenacheck{color:#7a5a12}
+.tag.pequena{background:#fdf1d6;color:#7a5a12}
 @media(max-width:640px){
   .grid2{grid-template-columns:1fr}
   .hrow{height:auto;padding:10px 0;flex-wrap:wrap}
@@ -579,6 +581,9 @@ function renderResultado(){
     <label class="fragilcheck" title="Tem vidro/espelho ou é frágil — avisa o freteiro e o estoquista, e manda ir por cima">
       <input type="checkbox" id="itemFragil-${i}" ${it.fragil?'checked':''}> 🔴 vidro
     </label>
+    <label class="fragilcheck pequenacheck" title="Peça pequena: cabe na mão e some fácil no fundo do caminhão — o estoquista vê o aviso na separação">
+      <input type="checkbox" id="itemPequena-${i}" ${it.pequena?'checked':''}> 🤏 pequena
+    </label>
   </div>`).join('');
   $('#resultado').innerHTML = `
     <strong>Pedido ${esc(p.numero)}</strong> ${p.etapaLabel?`<span class="tag">${esc(p.etapaLabel)}</span>`:''}
@@ -618,12 +623,14 @@ $('#addRascunho').onclick = () => {
     const campoVol = document.getElementById('itemVol-'+i);
     const campoDesc = document.getElementById('descEdit-'+i);
     const campoFragil = document.getElementById('itemFragil-'+i);
+    const campoPequena = document.getElementById('itemPequena-'+i);
     return {
       ...it,
       descricao: campoDesc ? (campoDesc.value.trim() || it.descricao) : it.descricao,
       cor: campoCor ? campoCor.value.trim() : (it.cor||''),
       volumes: campoVol ? (Number(campoVol.value)||0) : (it.volumes||0),
-      fragil: campoFragil ? campoFragil.checked : !!it.fragil
+      fragil: campoFragil ? campoFragil.checked : !!it.fragil,
+      pequena: campoPequena ? campoPequena.checked : !!it.pequena
     };
   });
   if(modoBusca === 'assistencia'){
@@ -774,7 +781,7 @@ function renderListaRom(){
               </div>
             </td>
               <td>${esc(c.nome||'—')}<div class="mut">${esc([c.endereco,c.cidade].filter(Boolean).join(' - '))}</div></td>
-              <td>${tipoLabel} ${esc(p.numero||'')}${(p.itens||[]).some(it=>it.fragil)?' <span class="tag fragil">🔴 vidro</span>':''}
+              <td>${tipoLabel} ${esc(p.numero||'')}${(p.itens||[]).some(it=>it.fragil)?' <span class="tag fragil">🔴 vidro</span>':''}${(p.itens||[]).some(it=>it.pequena)?' <span class="tag pequena">🤏 peça pequena</span>':''}
                 ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut" style="display:flex;align-items:center;gap:5px"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span>${esc(it.descricao||'')}${it.volumes?' ('+it.volumes+' vol.)':''}: <strong>${esc(it.cor)}</strong></div>`).join('')}
                 ${(!((p.itens||[]).some(it=>it.cor)) && p.cor)?`<div class="mut">Cor: ${esc(p.cor)}</div>`:''}
                 ${(p.fotos&&p.fotos.length)?`<div class="galeriafotos">${p.fotos.map(f=>`<a href="${f.url}" target="_blank" class="fotoadm"><img src="${f.url}"><span>${f.tipo==='carro'?'carro':f.tipo==='vidro'?'vidro':f.tipo==='assinatura'?'assinatura':f.tipo==='pagamento'?'pagamento':'entrega'}</span></a>`).join('')}</div>`:''}

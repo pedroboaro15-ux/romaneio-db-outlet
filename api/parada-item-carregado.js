@@ -20,7 +20,7 @@ exports.handler = async event => {
   const sb = admin();
   const { data: parada, error: eBusca } = await sb
     .from('paradas')
-    .select('id, volumes, volumes_confirmados, itens')
+    .select('id, itens')
     .eq('id', b.paradaId)
     .maybeSingle();
   if (eBusca) return json(500, { erro: eBusca.message });

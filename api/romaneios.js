@@ -84,17 +84,30 @@ exports.handler = async event => {
       return json(400, { erro: 'cada parada precisa ser um objeto' });
     }
 
-    /** Deixa um item só com os campos que o app usa, nos tamanhos que ele aceita. */
+    /** Deixa um item só com os campos que o app usa, nos tamanhos que ele aceita.
+     *
+     * quantidade e valorTotal vinham da Omie, apareciam na tela de montar o
+     * romaneio e eram jogados fora AQUI, ao gravar. Dava pra não notar porque a
+     * tela de montagem lê o pedido da Omie, não o que foi gravado — mas a
+     * separação lia a parada salva, então mostrava "x Guarda-roupa" sem
+     * quantidade, e a visão "do mais caro pro mais barato" ordenava tudo por
+     * zero, porque o valor de todo item era zero. */
     const limparItem = it => ({
       descricao: texto(it && it.descricao, MAX_TEXTO),
+      codigo: texto(it && it.codigo, MAX_TEXTO),
       cor: texto(it && it.cor, MAX_TEXTO),
+      quantidade: numeroPositivo(it && it.quantidade, MAX_VOLUMES),
+      valorTotal: numeroPositivo(it && it.valorTotal, MAX_VALOR),
       volumes: numeroPositivo(it && it.volumes, MAX_VOLUMES),
       fragil: !!(it && it.fragil),
+      // Peça pequena: quem marca é o gerente, no painel. Cabe na mão e some fácil
+      // no fundo do caminhão, então o estoquista precisa ver isso na separação.
+      pequena: !!(it && it.pequena),
       jaNoFrete: !!(it && it.jaNoFrete),
-      // "vai por cima, deixa pro final" — quem marca é o estoquista, durante a
-      // separação. Entra aqui pra não ser jogado fora pelo saneamento caso um
-      // dia uma parada seja recriada a partir de outra.
-      adiado: !!(it && it.adiado)
+      // Cada móvel guarda o próprio "carregado" — é o que substituiu o contador de
+      // volumes por parada. Entra aqui pra sobreviver caso uma parada seja
+      // recriada a partir de outra.
+      carregado: !!(it && it.carregado)
     });
 
     const montarLinha = (p, romaneioId, ordem) => {

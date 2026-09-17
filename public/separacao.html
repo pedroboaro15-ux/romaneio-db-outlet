@@ -47,13 +47,14 @@ main{padding:12px}
 /* ---- "VAI POR CIMA": o móvel que não pode ter peso em cima ----
    Azul, não amarelo: amarelo já é o "confirmei". Duas cores diferentes pra duas
    ações diferentes, porque o dedo decide antes de a cabeça ler. */
-.btnporcima{width:100%;padding:13px;border-radius:12px;font:inherit;font-weight:800;font-size:14.5px;margin-top:9px;background:#e7f0ff;border:2px solid #b6cdf5;color:#1c3d73}
-.btnporcima:active{background:#d0e2ff}
-.dicaporcima{background:#e7f0ff;border:2px solid #b6cdf5;color:#1c3d73;border-radius:11px;padding:10px 12px;font-size:13.5px;font-weight:700;margin-top:9px}
-.chipporcima{display:inline-block;background:#e7f0ff;color:#1c3d73;border:1px solid #b6cdf5;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap}
-.porcimacabeca{background:#1c3d73;color:#fff;border-radius:14px;padding:15px 16px;margin-bottom:12px}
-.porcimacabeca h3{margin:0 0 6px;font-size:19px;color:#cfe0ff}
-.porcimacabeca p{margin:0;font-size:13.5px;color:#cfe0ff}
+.chippequena{display:inline-block;background:#fdf1d6;color:#7a5a12;border:1px solid #efd79a;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.chkmovel{flex:0 0 auto;padding:8px 11px;border-radius:10px;font:inherit;font-weight:800;font-size:12.5px;background:#fff;border:2px solid #d8d8cf;color:#57574e}
+.chkmovel.on{background:#e6f6ea;border-color:#8fcfa2;color:#1d6b35}
+.itemlinha.feito{opacity:.55}
+.modos{display:flex;gap:8px;margin-top:12px}
+.modos button{flex:1;padding:11px;border-radius:12px;font:inherit;font-weight:800;font-size:13.5px;background:#fff;border:2px solid #d8d8cf;color:#57574e}
+.modos button.on{background:#14140F;border-color:#14140F;color:#fff}
+.cabecarota{font-weight:900;font-size:13px;color:#14140F;background:#f0efe8;border-radius:9px;padding:7px 10px;margin:12px 0 4px}
 
 .confcabeca{background:#14140F;color:#fff;border-radius:14px;padding:15px 16px;margin-bottom:12px}
 .confcabeca h3{margin:0 0 6px;font-size:19px;color:#F2F250}
@@ -212,20 +213,6 @@ function corParaSwatch(nome){
   return n ? '#cbd5e1' : 'transparent';
 }
 
-/* ---------------- onde cada móvel vai no caminhão ----------------
-   A Omie não manda peso por item — só o peso total do pedido. Então o que dá pra usar
-   é o NOME do produto, que é o que diz o que a coisa é de verdade (colchão é caro e leve,
-   guarda-roupa é pesado). Se faltar algum produto seu nessas listas, é só pedir. */
-const VAI_POR_CIMA = ['COLCHAO','ESPELHO','VIDRO','TAMPO','LUMINARIA','ABAJUR','QUADRO','PUFF','ALMOFADA','CABECEIRA'];
-const VAI_EMBAIXO  = ['GUARDA','ROUPEIRO','ARMARIO','BASE','CAMA','RACK','BALCAO','BUFFET','COMODA','ESTANTE','MESA','SOFA','BANCADA','PAINEL','GELADEIRA','FOGAO'];
-const semAcento = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-function ondeVai(item){
-  if(item && item.fragil) return 'cima'; // marcado "🔴 vidro" na mão: manda no nome do produto
-  const d = semAcento(item && item.descricao);
-  if(VAI_POR_CIMA.some(x=>d.includes(x))) return 'cima';
-  if(VAI_EMBAIXO.some(x=>d.includes(x))) return 'baixo';
-  return '';
-}
 
 class ErroOffline extends Error {}
 async function api(url, opt){
@@ -505,123 +492,110 @@ function prepararOrdem(){
   mostrandoVisaoGeral = !rom.carregamento_confirmado;
 }
 
-/* ---- A FILA DE VOLUMES DE UMA PARADA ----
-   Cópia fiel de filaDeVolumes() em api/lib/carga.js. As duas
-   PRECISAM concordar: o servidor decide se a parada fechou, a tela decide o que
-   mostrar, e as duas leem o mesmo contador (volumes_confirmados, um número só).
-   Se divergirem, a tela cobra um volume e o banco acha que é outro.
+/* ---- A FILA DE MÓVEIS DE UMA PARADA ----
+   Cópia fiel de filaDeMoveis() em api/lib/carga.js. As duas PRECISAM concordar: o
+   servidor decide se a parada fechou e a tela decide o que mostrar.
 
-   A ordem é: primeiro o que vai agora, depois o que o estoquista mandou pro
-   final ("vai por cima" — colchão, cama, espelho). Com os adiados no fim, o
-   contador continua sendo um índice direto nesta lista. */
-// Pra onde o item adiado foi mandado: 'pedido' (volta no fim deste pedido) ou
-// 'rota' (volta só no fim de todos). Item antigo, sem escopo gravado, é 'rota' —
-// que era o único destino quando ele foi salvo. Igual a escopoDoAdiado() no servidor.
-function escopoAdiado(it){
-  if(!it || !it.adiado) return null;
-  return it.adiadoEscopo === 'pedido' ? 'pedido' : 'rota';
-}
-
+   Antes isso era uma fila de VOLUMES, com um contador por parada que servia de
+   índice nela. Saiu: o que o estoquista precisa saber é a COR e QUAL MÓVEL está
+   carregando, não quantas caixas. A troca também matou a classe de bug que vinha
+   do contador — qualquer reordenação da fila fazia o número apontar pro móvel
+   errado. Agora cada móvel carrega o próprio "carregado". */
 function filaDaParada(p){
   const itens = (p && p.itens) || [];
   const fila = [];
-  const empilhar = escopo => {
-    itens.forEach((it, indiceItem) => {
-      if(it && it.jaNoFrete) return;              // já está no caminhão
-      if(escopoAdiado(it) !== escopo) return;
-      const total = Number(it && it.volumes) || 0;
-      for(let unidade = 1; unidade <= total; unidade++){
-        // porCima só pro que sai desta passada. O adiado pro fim do pedido continua
-        // sendo cobrado agora, logo depois dos outros.
-        fila.push({ item: it, indiceItem, unidade, totalItem: total, porCima: escopo === 'rota', escopoAdiado: escopo });
-      }
-    });
-  };
-  empilhar(null);       // o que vai agora
-  empilhar('pedido');   // depois, o que ficou pro fim deste pedido
-  empilhar('rota');     // e no fim de tudo, o que vai por cima da carga inteira
+  itens.forEach((it, indiceItem) => {
+    if(it && it.jaNoFrete) return;   // já está no caminhão, veio do outro estoque
+    fila.push({ item: it, indiceItem, carregado: !!(it && it.carregado) });
+  });
   return fila;
 }
 
 /** Em que pé está a parada. Mesmos nomes de situacaoParada() no servidor. */
 function situacao(p){
   const fila = filaDaParada(p);
-  const confirmados = Number(p && p.volumes_confirmados) || 0;
-  const confirmarAgora = fila.filter(v => !v.porCima).length;
+  const feitos = fila.filter(m => m.carregado).length;
   return {
-    fila, confirmados, confirmarAgora,
-    confirmarTotal: fila.length,
-    temPorCima: fila.length > confirmarAgora,
-    prontoPorAgora: confirmados >= confirmarAgora,
-    separado: confirmados >= fila.length
+    fila,
+    total: fila.length,
+    feitos,
+    proximo: fila.find(m => !m.carregado) || null,
+    separado: feitos >= fila.length
   };
 }
 
-/** Quanto esta parada ainda cobra NESTA passada (o que não foi adiado). */
-function volumesEfetivos(p){ return situacao(p).confirmarAgora; }
-
-/** Ainda tem móvel esperando pra ir por cima, em qualquer parada da rota? */
-function pendentesPorCima(){
-  return ordemCarregamento.filter(p => {
-    const s = situacao(p);
-    return s.confirmados < s.confirmarTotal && s.confirmados >= s.confirmarAgora;
-  });
-}
-
-// Parada sem NADA pra confirmar (assistência sem peça, ou tudo já no frete) é
-// marcada como separada sozinho. Parada que só tem adiado não é marcada — ela
-// ainda deve; só sai da frente agora e volta na etapa do "por cima".
+// Parada sem NADA pra carregar (assistência sem peça, ou tudo já no frete) é
+// marcada como separada sozinha — senão o app parava nela pra sempre, sem botão
+// que a resolvesse.
 async function avancarSeSemVolume(){
   while(passo < ordemCarregamento.length){
     const p = ordemCarregamento[passo];
     const s = situacao(p);
-    if(!s.prontoPorAgora) break;          // ainda tem volume pra confirmar agora
-    if(s.separado){ passo++; continue; }  // já fechou de verdade
+    if(!s.separado) break;
+    if(p.separado){ passo++; continue; }   // já fechou no banco
 
-    if(s.confirmarTotal === 0){
-      // Nada a confirmar nunca: fecha sozinho, sem exigir clique.
-      try{
-        const atualizada = await api('/api/parada-separar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId: p.id }) });
-        // Object.assign (não spread) — ordemCarregamento e rom.paradas apontam pro MESMO
-        // objeto de cada parada; trocar por um objeto novo aqui desalinhava os dois e a
-        // tela de resumo (que lê rom.paradas) ficava com dado velho.
-        Object.assign(p, atualizada);
-      }catch(e){ break; }
-    }
+    try{
+      // Object.assign (não spread) — ordemCarregamento e rom.paradas apontam pro MESMO
+      // objeto de cada parada; trocar por um objeto novo aqui desalinhava os dois e a
+      // tela de resumo (que lê rom.paradas) ficava com dado velho.
+      const atualizada = await api('/api/parada-separar', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ paradaId: p.id, indice: 0, carregado: true })
+      });
+      Object.assign(p, atualizada);
+    }catch(e){ break; }
     passo++;
   }
 }
 
-// Descobre qual item corresponde ao N-ésimo volume da fila, pra mostrar o nome
-// do produto junto (ex: "Sofá 3 lugares — módulo 2 de 2"), não só um número solto.
-function itemDoVolume(p, indice){
-  const v = filaDaParada(p)[indice];
-  return v ? { item: v.item, indiceItem: v.indiceItem, unidade: v.unidade, totalItem: v.totalItem, porCima: v.porCima } : null;
-}
-
-/* ---- "vai por cima": tirar um móvel da vez dele e mandar pro fim ---- */
-async function marcarPorCima(paradaId, indice, adiar, escopo){
+/* ---- marcar um móvel como carregado (ou desmarcar) ----
+   O botão é travado durante a ida ao servidor. Sem isso, dois toques no mesmo
+   móvel viravam duas requisições; a segunda chegava com a tela já defasada e
+   podia marcar o móvel seguinte. */
+let marcando = false;
+async function marcarMovel(paradaId, indice, carregado){
+  if(marcando) return;
+  marcando = true;
+  const botao = document.getElementById('btnvol');
+  if(botao) botao.disabled = true;
   try{
-    const atualizada = await api('/api/parada-item-adiar', {
+    const atualizada = await api('/api/parada-separar', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ paradaId, indice, adiar, escopo: escopo || 'rota' })
+      body: JSON.stringify({ paradaId, indice, carregado })
     });
+    // Object.assign (não spread): ordemCarregamento e rom.paradas apontam pro MESMO
+    // objeto de cada parada. Trocar por um objeto novo desalinharia os dois.
     const na = ordemCarregamento.find(x=>x.id===paradaId);
     if(na) Object.assign(na, atualizada);
     const no = rom.paradas.find(x=>x.id===paradaId);
     if(no) Object.assign(no, atualizada);
-    toast(!adiar ? 'Trazido de volta pra fila'
-      : escopo === 'pedido' ? 'Volta no fim deste pedido'
-      : 'Guardado pro final da carga — vai por cima');
+    if(atualizada.separado && carregado) paradaAguardandoFoto = na || no;
     await avancarSeSemVolume();
     render();
-  }catch(e){ alert(e.message); }
+  }catch(e){
+    if(e instanceof ErroOffline){
+      // Offline: marca na tela, recalcula o "separado" com a MESMA conta do
+      // servidor, e guarda a marcação pra mandar quando voltar o sinal.
+      const alvo = ordemCarregamento.find(x=>x.id===paradaId) || rom.paradas.find(x=>x.id===paradaId);
+      if(alvo && alvo.itens && alvo.itens[indice]){
+        alvo.itens[indice].carregado = carregado;
+        alvo.separado = situacao(alvo).separado;
+        if(alvo.separado && carregado) paradaAguardandoFoto = alvo;
+      }
+      enfileirar({ url:'/api/parada-separar', body:{ paradaId, indice, carregado }, token: localStorage.getItem('equipeToken') });
+      localStorage.setItem('romCacheSep_'+idAtual, JSON.stringify(rom));
+      toast('Sem internet — marcado no celular, vai quando voltar o sinal');
+      await avancarSeSemVolume();
+      render();
+      return;
+    }
+    alert(e.message);
+    if(botao) botao.disabled = false;
+  }finally{
+    marcando = false;
+  }
 }
 
-/* Palpite de quando sugerir "vai por cima". Só um aviso: quem decide é quem está
-   olhando o móvel. A lista é curta de propósito — sugestão errada demais e as
-   pessoas param de ler. */
-const COSTUMA_IR_POR_CIMA = /colch[ãa]o|cama\b|box\b|espelho|cabeceira|travesseiro/i;
 
 function render(){
   const total = ordemCarregamento.length;
@@ -641,7 +615,6 @@ function render(){
   // volta AGORA — com o caminhão quase cheio, que é quando faz sentido pôr
   // colchão em cima de tudo.
   if(passo >= total){
-    if(pendentesPorCima().length){ renderPorCima(); return; }
     renderResumoFinal(false);
     return;
   }
@@ -655,22 +628,18 @@ function render(){
   else aviso = { txt: `entrega ${posicaoOriginal} de ${totalRota}`, cls: 'meio' };
 
   const rotulo = p.tipo==='assistencia' ? 'Assistência' : (p.tipo==='nf' ? 'NF' : 'Pedido');
-  const total_vol = volumesEfetivos(p);
-  const confirmados = Math.min(p.volumes_confirmados || 0, total_vol);
+  const s = situacao(p);
+  const prox = s.proximo;
   const fotos = (p.fotos||[]).map(f=>`<a href="${f.url}" target="_blank"><img src="${f.url}"></a>`).join('');
-  const proximoItem = total_vol > 0 && confirmados < total_vol ? itemDoVolume(p, confirmados) : null;
 
-  // A cor mostrada em destaque é a do volume que ele vai pegar AGORA. Se não der pra saber
-  // qual item é, cai pra cor da parada (campo legado) — nunca deixa a tela sem essa informação.
-  const corAgora = proximoItem ? (proximoItem.item.cor || '') : (p.cor || '');
-  const coresDoPedido = [...new Set((p.itens||[]).filter(it=>!it.jaNoFrete).map(it=>(it.cor||'').trim()).filter(Boolean))];
+  // A cor em destaque é a do móvel que ele vai pegar AGORA. Se a parada não tem
+  // móvel nenhum, cai pra cor da parada — nunca deixa a tela sem essa informação.
+  const corAgora = prox ? (prox.item.cor || '') : (p.cor || '');
+  const coresDoPedido = [...new Set(s.fila.map(m=>(m.item.cor||'').trim()).filter(Boolean))];
+  const jaNoFrete = (p.itens||[]).filter(it=>it.jaNoFrete);
 
-  // Mudou de produto dentro do mesmo pedido? (ex: acabaram os 2 volumes da bancada,
-  // agora começam os da base). É onde mais se erra, então avisa na cara.
-  const itemAnterior = confirmados > 0 ? itemDoVolume(p, confirmados - 1) : null;
-  const trocouProduto = proximoItem && itemAnterior && itemAnterior.item !== proximoItem.item;
-  // Primeiro volume desta parada = acabou o pedido anterior, começou outro.
-  const trocouPedido = confirmados === 0 && passo > 0;
+  // Primeiro móvel desta parada = acabou o pedido anterior, começou outro.
+  const trocouPedido = s.feitos === 0 && passo > 0;
 
   document.getElementById('lista').innerHTML = `
     <div class="p">
@@ -681,10 +650,10 @@ function render(){
       <div class="pedidodest">${rotulo} ${esc(p.numero||'—')}</div>
 
       ${coresDoPedido.length > 1 ? `<div class="misturado">⚠️ ATENÇÃO: esse pedido tem ${coresDoPedido.length} cores diferentes — confira uma por uma</div>` : ''}
-      ${trocouProduto ? `<div class="trocou produto">🔄 Mudou de produto! Os volumes de <b>${esc(itemAnterior.item.descricao||'')}</b> acabaram. Agora é <b>${esc(proximoItem.item.descricao||'')}</b> — confira a cor de novo.</div>` : ''}
-      ${(proximoItem && proximoItem.item.fragil) ? `
+
+      ${(prox && prox.item.fragil) ? `
       <div class="vidrocheck">
-        <div class="vidrocheck-titulo">🔴 Este volume é vidro — pegue com cuidado e deixe por cima de tudo</div>
+        <div class="vidrocheck-titulo">🔴 Esse móvel é de vidro — pegue com cuidado e deixe por cima de tudo</div>
         <label class="checkvidro">
           <input type="checkbox" id="chkVidroOk" onchange="atualizarBotaoVolume()"> Conferi — o vidro não está quebrado
         </label>
@@ -694,46 +663,43 @@ function render(){
       <div class="corcard">
         <div class="corchip" style="background:${corParaSwatch(corAgora)}"></div>
         <div class="cornome">
-          <div class="rot">Cor do produto</div>
+          <div class="rot">Cor do móvel</div>
           ${corAgora
             ? `<div class="nome">${esc(corAgora)}</div>`
             : `<div class="semcor">Sem cor cadastrada</div>`}
         </div>
       </div>
 
-      ${proximoItem?`<div class="volitem">Pegue agora: ${esc(proximoItem.item.descricao||'')}${proximoItem.totalItem>1?' — parte '+proximoItem.unidade+' de '+proximoItem.totalItem:''}</div>`:''}
+      ${prox ? `<div class="volitem">Carregue agora: ${esc(prox.item.descricao||'')}${prox.item.pequena?' <span class="chippequena">🤏 peça pequena</span>':''}</div>` : ''}
 
-      ${proximoItem && !proximoItem.escopoAdiado ? `
-        ${COSTUMA_IR_POR_CIMA.test(proximoItem.item.descricao||'') ? '<div class="dicaporcima">⬆️ Esse costuma ir por cima. Se for o caso, mande pro final — assim ele não fica embaixo de guarda-roupa.</div>' : ''}
-        <button type="button" class="btnporcima" onclick="marcarPorCima('${p.id}', ${proximoItem.indiceItem}, true, 'pedido')">
-          ⏭️ Pular — volta no fim deste pedido
-        </button>
-        <button type="button" class="btnporcima" onclick="marcarPorCima('${p.id}', ${proximoItem.indiceItem}, true, 'rota')">
-          ⬆️ Vai por cima — volta no fim de tudo
-        </button>` : ''}
-      ${proximoItem && proximoItem.escopoAdiado === 'pedido' ? '<div class="dicaporcima">⏭️ Este você tinha pulado. Ele voltou porque é o fim deste pedido.</div>' : ''}
+      ${s.fila.length ? `<div class="blocoitens">
+        <div class="tituloitens">Móveis deste pedido</div>
+        ${s.fila.map(m=>`<div class="itemlinha ${m.carregado?'feito':''}">
+          <span class="swmed" style="background:${corParaSwatch(m.item.cor)}"></span>
+          <span class="desc">${esc(m.item.quantidade)}x ${esc(m.item.descricao)}${m.item.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}${m.item.pequena?' <span class="chippequena">🤏 pequena</span>':''}
+            <div class="mut">${esc(m.item.cor||'sem cor')}</div>
+          </span>
+          <button type="button" class="chkmovel ${m.carregado?'on':''}" onclick="marcarMovel('${p.id}',${m.indiceItem},${!m.carregado})">${m.carregado?'✓ carregado':'marcar'}</button>
+        </div>`).join('')}
+      </div>` : ''}
 
-      ${(p.itens||[]).length ? `<div class="blocoitens">
-        <div class="tituloitens">Tudo desse pedido</div>
-        ${(p.itens||[]).map(it=>`<div class="itemlinha ${it.jaNoFrete?'jafrete':''}">
+      ${jaNoFrete.length ? `<div class="blocoitens">
+        <div class="tituloitens">Já veio no frete</div>
+        ${jaNoFrete.map(it=>`<div class="itemlinha jafrete">
           <span class="swmed" style="background:${corParaSwatch(it.cor)}"></span>
-          <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}${it.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}${it.volumes?` <span class="mut">(${it.volumes} vol.)</span>`:''}</span>
-          ${it.jaNoFrete
-            ? '<span class="chipnofrete">✓ já no frete</span>'
-            : it.adiado
-              ? '<span class="chipporcima">⬆️ vai por cima</span>'
-              : `<span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>`}
+          <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}</span>
+          <span class="chipnofrete">✓ já no frete</span>
         </div>`).join('')}
       </div>` : ''}
 
       ${p.observacao?`<div class="obs">📌 Recado do gerente: ${esc(p.observacao)}</div>`:''}
       ${fotos?`<div class="fotos">${fotos}</div>`:''}
-      ${total_vol > 0 ? `
-        <div class="vol"><b>${confirmados} / ${total_vol}</b><span>volumes confirmados</span></div>
-        ${confirmados < total_vol
-          ? `<button class="ok" id="btnvol" ${(proximoItem && proximoItem.item.fragil)?'disabled':''} style="margin-top:10px" onclick="confirmarVolume('${p.id}')">Confirmei o volume ${confirmados+1} de ${total_vol}</button>`
+      ${s.total > 0 ? `
+        <div class="vol"><b>${s.feitos} / ${s.total}</b><span>móveis carregados</span></div>
+        ${prox
+          ? `<button class="ok" id="btnvol" ${prox.item.fragil?'disabled':''} style="margin-top:10px" onclick="marcarMovel('${p.id}',${prox.indiceItem},true)">Carreguei ${esc(prox.item.descricao||'este móvel')}</button>`
           : `<div class="done">✓ Separado</div>`}
-      ` : `<div class="done" style="margin-top:10px">Sem volumes pra confirmar nessa parada</div>`}
+      ` : `<div class="done" style="margin-top:10px">Nada pra carregar nessa parada</div>`}
       <div class="nav">
         <button onclick="irPara(${passo-1})" ${passo===0?'disabled':''}>◀ Anterior</button>
         <button onclick="verVisaoGeral()">📋 Ver a carga</button>
@@ -742,15 +708,22 @@ function render(){
     </div>`;
 }
 
-/* ---------------- visão geral da carga (antes de começar a separar) ----------------
-   Junta tudo que vai no caminhão, do mais caro pro mais barato, e diz o que precisa ir
-   por cima. O detalhe que importa: carregar é LIFO — a última entrega entra primeiro e
-   fica no fundo. Então um colchão da última entrega tem que ir por cima MAS entra
-   primeiro: é justamente aí que dá briga com o freteiro. O app aponta esse caso. */
+/* ---------------- visão geral da carga ----------------
+   Dois modos, os dois que o Pedro pediu:
+
+     'valor' - do móvel mais caro pro mais barato. É por onde ele decide o que não
+               pode faltar e o que precisa de cuidado.
+     'rota'  - na ordem da rota (entrega 1, 2, 3, 4), pra conferência. A conferência
+               em si é no papel; o app serve pra revisar depois, e revisar só faz
+               sentido na mesma ordem em que a folha foi escrita.
+
+   Volume saiu da tela inteira. O que fica é COR e QUAL MÓVEL — que é o que o
+   estoquista de fato precisa olhar. */
+let modoCarga = 'valor';
+
 function itensDaCarga(){
   const itens = [];
   rom.paradas.forEach((p, i) => {
-    const posCarregamento = ordemCarregamento.indexOf(p); // 0 = entra primeiro = fundo
     (p.itens||[]).forEach((it, idx) => {
       itens.push({
         paradaId: p.id,
@@ -758,63 +731,72 @@ function itensDaCarga(){
         descricao: it.descricao || '(sem descrição)',
         cor: it.cor || '',
         quantidade: Number(it.quantidade) || 0,
-        volumes: Number(it.volumes) || 0,
         valor: Number(it.valorTotal) || 0,
         pedido: p.numero || '',
         entrega: i + 1,
-        posCarregamento,
-        onde: ondeVai(it),
         fragil: !!it.fragil,
+        pequena: !!it.pequena,
+        carregado: !!it.carregado,
         jaNoFrete: !!it.jaNoFrete
       });
     });
   });
+  if(modoCarga === 'rota'){
+    // Ordem da rota. Dentro da mesma entrega, o mais caro primeiro — assim a
+    // linha que mais dói de errar fica no topo do bloco.
+    return itens.sort((a,b) => a.entrega - b.entrega || b.valor - a.valor);
+  }
   return itens.sort((a,b) => b.valor - a.valor);
 }
 
+function trocarModoCarga(m){ modoCarga = m; render(); }
+
 function renderVisaoGeral(){
   const itens = itensDaCarga();
-  const totalVol = rom.paradas.reduce((s,p)=>s+volumesEfetivos(p), 0);
-  const totalValor = itens.reduce((s,it)=>s+it.valor, 0);
-  const ultimoACarregar = ordemCarregamento.length - 1;
+  const totalMoveis = rom.paradas.reduce((soma,p)=>soma + situacao(p).total, 0);
+  const totalValor = itens.reduce((soma,it)=>soma+it.valor, 0);
+  const porRota = modoCarga === 'rota';
 
-  // "Vai por cima" mas entra cedo no caminhão = alguém vai empilhar coisa em cima dele.
-  const conflitos = itens.filter(it => it.onde === 'cima' && it.posCarregamento < ultimoACarregar);
-
-  // As setinhas de cima/embaixo em toda linha viraram poluição visual — o que importa de
-  // verdade é só avisar quando dá conflito de verdade (aviso acima). A lista aqui fica
-  // só o panorama: produto, cor, pedido, volumes e valor.
-  const linhas = itens.map(it => `
-    <div class="itemlinha ${it.jaNoFrete?'jafrete':''}">
+  let entregaAtual = null;
+  const linhas = itens.map(it => {
+    // No modo rota, um cabeçalho por entrega — é o que casa com a folha de papel.
+    let cabeca = '';
+    if(porRota && it.entrega !== entregaAtual){
+      entregaAtual = it.entrega;
+      cabeca = `<div class="cabecarota">Entrega ${it.entrega} de ${rom.paradas.length}</div>`;
+    }
+    return cabeca + `
+    <div class="itemlinha ${it.jaNoFrete?'jafrete':''} ${it.carregado?'feito':''}">
       <span class="swmed" style="background:${corParaSwatch(it.cor)}"></span>
-      <span class="desc">${esc(it.descricao)}${it.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}
-        <div class="mut">Pedido ${esc(it.pedido)} · entrega ${it.entrega} de ${rom.paradas.length}${it.volumes?' · '+it.volumes+' vol.':''}${it.valor?' · '+money(it.valor):''}</div>
+      <span class="desc">${esc(it.descricao)}${it.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}${it.pequena?' <span class="chippequena">🤏 pequena</span>':''}
+        <div class="mut">${esc(it.cor||'sem cor')} · pedido ${esc(it.pedido)}${porRota?'':' · entrega '+it.entrega+' de '+rom.paradas.length}${it.valor?' · '+money(it.valor):''}</div>
       </span>
       <button type="button" class="botaonofrete ${it.jaNoFrete?'marcado':''}" onclick="marcarJaNoFrete('${it.paradaId}',${it.indice},${!it.jaNoFrete})">
         ${it.jaNoFrete?'✓ já no frete':'📦 já no frete?'}
       </button>
-    </div>`).join('') || '<div class="mut" style="padding:10px 0">Nenhum item cadastrado nessa rota.</div>';
+    </div>`;
+  }).join('') || '<div class="mut" style="padding:10px 0">Nenhum item cadastrado nessa rota.</div>';
 
-  const jaComecou = ordemCarregamento.some(p=>p.separado || (p.volumes_confirmados||0) > 0);
+  const jaComecou = ordemCarregamento.some(p=>p.separado || situacao(p).feitos > 0);
   const comRecado = rom.paradas.filter(p=>p.observacao);
 
   document.getElementById('lista').innerHTML = `
     <div class="p">
       <h3 style="margin:0 0 2px;font-size:20px">Visão geral da carga</h3>
-      <div class="mut">${rom.paradas.length} pedido(s) · ${totalVol} volume(s)${totalValor?' · '+money(totalValor):''}</div>
+      <div class="mut">${rom.paradas.length} pedido(s) · ${totalMoveis} móvel(is)${totalValor?' · '+money(totalValor):''}</div>
+
+      <div class="modos">
+        <button type="button" class="${porRota?'':'on'}" onclick="trocarModoCarga('valor')">💰 Por valor</button>
+        <button type="button" class="${porRota?'on':''}" onclick="trocarModoCarga('rota')">🗺️ Pela rota</button>
+      </div>
 
       ${comRecado.length ? comRecado.map(p=>`<div class="obs">📌 Recado do gerente (pedido ${esc(p.numero||'—')}): ${esc(p.observacao)}</div>`).join('') : ''}
 
-      ${conflitos.length ? `<div class="misturado" style="margin-top:12px">
-        ⚠️ CUIDADO AO EMPILHAR
-        ${conflitos.map(c=>`<div style="font-weight:600;margin-top:7px">
-          <b>${esc(c.descricao)}</b> (pedido ${esc(c.pedido)}) tem que ir por cima, mas é a entrega ${c.entrega} de ${rom.paradas.length} — entra cedo no caminhão e fica embaixo. Combine com o freteiro antes de carregar.
-        </div>`).join('')}
-      </div>` : ''}
-
       <div class="blocoitens" style="margin-top:12px">
-        <div class="tituloitens">Do mais caro pro mais barato</div>
-        <p class="mut" style="padding:8px 0 0;margin:0">Já separou algum desses num outro estoque? Toque em "já no frete" — some da conferência, sem precisar confirmar de novo.</p>
+        <div class="tituloitens">${porRota ? 'Na ordem da rota, pra conferir com a folha' : 'Do mais caro pro mais barato'}</div>
+        <p class="mut" style="padding:8px 0 0;margin:0">${porRota
+          ? 'A conferência é no papel. Aqui você revisa depois, na mesma ordem em que escreveu.'
+          : 'Já separou algum desses num outro estoque? Toque em "já no frete" — some da separação.'}</p>
         ${linhas}
       </div>
 
@@ -847,22 +829,21 @@ function renderResumoFinal(jaConfirmado){
           <span class="desc">${esc(it.quantidade)}x ${esc(it.descricao)}${it.fragil?' <span class="selovidro">🔴 VIDRO</span>':''}</span>
           ${it.jaNoFrete
             ? '<span class="chipnofrete">✓ já no frete</span>'
-            : it.adiado
-              ? '<span class="chipporcima">⬆️ vai por cima</span>'
-              : `<span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>`}
+            : `<span class="corpill ${it.cor?'':'vazio'}">${esc(it.cor||'sem cor')}</span>`}
         </div>`).join('')
       : '<div class="mut" style="padding:8px 0">Sem itens cadastrados nesse pedido.</div>';
-    // Só dá pra desfazer volume enquanto o carregamento ainda não foi confirmado —
-    // depois de confirmado, tem que desfazer o carregamento inteiro primeiro.
-    const podeDesfazer = !jaConfirmado && (p.volumes_confirmados||0) > 0;
+    // Só dá pra desmarcar enquanto o carregamento não foi confirmado — depois,
+    // tem que desfazer o carregamento inteiro primeiro.
+    const sp = situacao(p);
+    const podeDesfazer = !jaConfirmado && sp.feitos > 0;
     return `<div class="resumoLinha">
       <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
         <span class="pedidodest" style="font-size:18px;margin:0;padding:5px 11px">${rotulo} ${esc(p.numero||'—')}</span>
-        <span class="n">${p.volumes||0} volume(s)</span>
+        <span class="n">${sp.feitos} de ${sp.total} móvel(is)</span>
       </div>
       ${p.observacao?`<div class="obs">📌 Recado do gerente: ${esc(p.observacao)}</div>`:''}
       ${itens}
-      ${podeDesfazer?`<button type="button" class="desfazervol" onclick="desfazerVolumeResumo('${p.id}')">↩️ Desfazer último volume separado</button>`:''}
+      ${podeDesfazer?`<button type="button" class="desfazervol" onclick="desfazerUltimoMovel('${p.id}')">↩️ Desmarcar o último móvel</button>`:''}
     </div>`;
   }).join('');
   document.getElementById('lista').innerHTML = `
@@ -887,88 +868,6 @@ function renderResumoFinal(jaConfirmado){
     </div>`;
 }
 
-/* ================= O QUE VAI POR CIMA =================
-   Etapa entre "separei tudo" e a conferência final. Mostra, um por vez, os
-   móveis que o estoquista tirou da fila durante a separação.
-
-   A ordem aqui é a MESMA da separação (ordemCarregamento, que é a ordem de
-   entrega ao contrário) e isso não é detalhe: entre os que vão por cima, o da
-   última entrega também entra primeiro. Senão resolveríamos o problema do peso
-   e criaríamos o do acesso — o freteiro teria que desenterrar o colchão da
-   primeira parada. */
-function renderPorCima(){
-  const pendentes = pendentesPorCima();
-  const p = pendentes[0];
-  const s = situacao(p);
-  const volume = s.fila[s.confirmados];
-
-  const totalPorCima = ordemCarregamento.reduce((soma, x) => {
-    const sx = situacao(x);
-    return soma + Math.max(sx.confirmarTotal - Math.max(sx.confirmados, sx.confirmarAgora), 0);
-  }, 0);
-  const jaFeitos = ordemCarregamento.reduce((soma, x) => {
-    const sx = situacao(x);
-    return soma + Math.max(sx.confirmados - sx.confirmarAgora, 0);
-  }, 0);
-
-  const rotulo = p.tipo==='assistencia' ? 'Assistência' : 'Pedido';
-  const posicaoOriginal = rom.paradas.indexOf(p) + 1;
-
-  document.getElementById('lista').innerHTML = `
-    <div class="porcimacabeca">
-      <h3>⬆️ Agora o que vai por cima</h3>
-      <p>O resto já está no caminhão. Estes ${totalPorCima + jaFeitos} volume(s) você guardou pro final — ponha por cima de tudo, sem peso em cima.</p>
-    </div>
-    <div class="p">
-      <span class="n">Faltam ${totalPorCima} de ${totalPorCima + jaFeitos}</span>
-      <span class="tagpos meio">entrega ${posicaoOriginal} de ${rom.paradas.length}</span>
-
-      <div class="pedidodest">${rotulo} ${esc(p.numero||'—')}</div>
-
-      ${volume && volume.item.fragil ? `
-      <div class="vidrocheck">
-        <div class="vidrocheck-titulo">🔴 Este volume é vidro — pegue com cuidado e deixe por cima de tudo</div>
-        <label class="checkvidro">
-          <input type="checkbox" id="chkVidroOk" onchange="atualizarBotaoVolume()"> Conferi — o vidro não está quebrado
-        </label>
-        <button type="button" class="btnquebrado" onclick="reportarVidroQuebrado('${p.id}')">🔴 Está quebrado — avisar o gerente</button>
-      </div>` : ''}
-
-      <div class="corcard">
-        <div class="corchip" style="background:${corParaSwatch(volume ? volume.item.cor : '')}"></div>
-        <div class="cornome">
-          <div class="rot">Cor do produto</div>
-          ${volume && volume.item.cor
-            ? `<div class="nome">${esc(volume.item.cor)}</div>`
-            : `<div class="semcor">Sem cor cadastrada</div>`}
-        </div>
-      </div>
-
-      ${volume ? `<div class="volitem">Ponha por cima: ${esc(volume.item.descricao||'')}${volume.totalItem>1?' — parte '+volume.unidade+' de '+volume.totalItem:''}</div>` : ''}
-
-      <button class="ok" id="btnvol" ${(volume && volume.item.fragil)?'disabled':''} style="margin-top:10px" onclick="confirmarVolume('${p.id}')">
-        Coloquei por cima ${volume && volume.totalItem>1 ? '('+volume.unidade+' de '+volume.totalItem+')' : ''}
-      </button>
-
-      <button type="button" class="btnsec" onclick="marcarPorCima('${p.id}', ${volume ? volume.indiceItem : 0}, false)">
-        ↩️ Trazer de volta pra fila normal
-      </button>
-    </div>
-
-    ${pendentes.length > 1 ? `<div class="p" style="padding:13px">
-      <div class="mut" style="font-weight:800;font-size:13px;margin-bottom:6px">Depois deste, ainda vão por cima:</div>
-      ${pendentes.slice(1).map(x => {
-        const sx = situacao(x);
-        const v = sx.fila[sx.confirmados];
-        const rot = x.tipo==='assistencia' ? 'Assistência' : 'Pedido';
-        return `<div class="itemlinha">
-          <span class="swmed" style="background:${corParaSwatch(v ? v.item.cor : '')}"></span>
-          <span class="desc">${esc(v ? v.item.descricao : '')} <span class="mut">(${rot} ${esc(x.numero||'')})</span></span>
-          <span class="chipporcima">⬆️ por cima</span>
-        </div>`;
-      }).join('')}
-    </div>` : ''}`;
-}
 
 /* ================= CONFERÊNCIA FINAL =================
    Última etapa antes de fechar o caminhão. Três estados:
@@ -1173,20 +1072,16 @@ function renderConferencia(){
 
 function voltarParaRotas(){ idAtual = null; rom = null; conf = null; iniciar(true); }
 
-async function desfazerVolumeResumo(paradaId){
-  try{
-    const atualizada = await api('/api/parada-separar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, desfazer:true }) });
-    const p = rom.paradas.find(x=>x.id===paradaId);
-    if(p) Object.assign(p, atualizada);
-    const noArray = ordemCarregamento.find(x=>x.id===paradaId);
-    if(noArray) Object.assign(noArray, atualizada);
-    // Recalcula em qual parada parar, sem mexer em mostrandoVisaoGeral (senão voltava
-    // pro "panorama" em vez de continuar mostrando o resumo/tela certa).
-    passo = ordemCarregamento.findIndex(x => !x.separado);
-    if(passo === -1) passo = ordemCarregamento.length;
-    toast('Volume desfeito');
-    render();
-  }catch(e){ alert('Não foi possível desfazer: ' + e.message); }
+// Desmarca o ÚLTIMO móvel carregado da parada. Antes isso decrementava um contador;
+// agora tem endereço — o índice do móvel — então desmarcar não pode mais desalinhar
+// a fila.
+async function desfazerUltimoMovel(paradaId){
+  const parada = ordemCarregamento.find(x=>x.id===paradaId) || rom.paradas.find(x=>x.id===paradaId);
+  if(!parada) return;
+  const feitos = situacao(parada).fila.filter(m=>m.carregado);
+  if(!feitos.length) return;
+  await marcarMovel(paradaId, feitos[feitos.length-1].indiceItem, false);
+  toast('Móvel desmarcado');
 }
 
 async function desfazerCarregamento(){
@@ -1231,40 +1126,6 @@ async function reportarVidroQuebrado(paradaId){
   }catch(e){ alert('Não foi possível avisar: ' + e.message); }
 }
 
-async function confirmarVolume(paradaId){
-  const botao = document.getElementById('btnvol');
-  if(botao && botao.disabled) return; // trava clique duplo (não conta o mesmo volume 2x)
-  if(botao) botao.disabled = true;
-  const i = ordemCarregamento.findIndex(x=>x.id===paradaId);
-  try{
-    const atualizada = await api('/api/parada-separar', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId }) });
-    if(i>=0) Object.assign(ordemCarregamento[i], atualizada);
-    if(atualizada.separado) paradaAguardandoFoto = ordemCarregamento[i>=0?i:passo];
-    render();
-  }catch(e){
-    if(e instanceof ErroOffline){
-      if(i>=0){
-        const p = ordemCarregamento[i];
-        // Mesma conta do servidor (situacao/filaDaParada): o teto é o tamanho da
-        // fila, não o volume bruto da parada. Usar o bruto aqui deixava o contador
-        // passar do que existe pra confirmar quando havia item "já no frete", e
-        // marcava como separada uma parada que ainda devia volume.
-        const s = situacao(p);
-        const novoTotal = Math.min(s.confirmados + 1, s.confirmarTotal || 1);
-        p.volumes_confirmados = novoTotal;
-        p.separado = novoTotal >= s.confirmarTotal;
-        enfileirar({ url: '/api/parada-separar', body: { paradaId }, token: localStorage.getItem('equipeToken') });
-        localStorage.setItem('romCacheSep_'+idAtual, JSON.stringify(rom));
-        toast('Sem internet — confirmado no celular, será enviado quando voltar o sinal');
-        if(p.separado) paradaAguardandoFoto = p;
-      }
-      render();
-    } else {
-      alert('Falha ao salvar: ' + e.message);
-      if(botao) botao.disabled = false;
-    }
-  }
-}
 
 function renderDialogoFoto(p){
   document.getElementById('lista').innerHTML = `
@@ -1321,7 +1182,7 @@ async function enviarFoto(paradaId, file, tipo){
 }
 
 window.irPara = irPara;
-window.confirmarVolume = confirmarVolume;
+window.marcarMovel = marcarMovel;
 window.escolherTipoFoto = escolherTipoFoto;
 window.pularFoto = pularFoto;
 window.abrirRota = abrirRota;
@@ -1329,8 +1190,8 @@ window.confirmarCarregamento = confirmarCarregamento;
 window.voltarParaRotas = voltarParaRotas;
 window.comecarSeparacao = comecarSeparacao;
 window.verVisaoGeral = verVisaoGeral;
-window.desfazerVolumeResumo = desfazerVolumeResumo;
-window.marcarPorCima = marcarPorCima;
+window.desfazerUltimoMovel = desfazerUltimoMovel;
+window.trocarModoCarga = trocarModoCarga;
 window.abrirConferencia = abrirConferencia;
 window.sairDaConferencia = sairDaConferencia;
 window.mudarContagem = mudarContagem;

@@ -130,70 +130,40 @@ function conferir(paradas, contagem) {
 }
 
 /**
- * A fila de volumes de UMA parada, na ordem em que serão confirmados.
+ * A fila de MÓVEIS de uma parada, na ordem em que vão ser carregados.
  *
- * Existe por causa do móvel que vai por cima. Colchão, cama, espelho: coisa que
- * não pode ter peso em cima. Mas a ordem de carregamento é ditada pela ordem de
- * ENTREGA ao contrário (quem sai primeiro entra por último), e essas duas regras
- * brigam — o colchão da última entrega deveria entrar primeiro, lá no fundo, e
- * acabar esmagado por tudo.
+ * Antes isso era uma fila de VOLUMES: cada item virava N entradas, e a parada
+ * guardava um contador (volumes_confirmados) que era o índice dentro dessa lista.
+ * Saiu, a pedido do Pedro: "é muito difícil errar uma cama". O que o estoquista
+ * precisa saber é a COR e QUAL MÓVEL está carregando — contar caixa não ajudava e
+ * dava trabalho.
  *
- * A saída é o estoquista marcar "vai por cima" e o móvel voltar no fim da
- * separação. Esta função é o que torna isso simples: devolve a fila inteira com
- * os adiados NO FINAL, então o contador da parada (um número só,
- * volumes_confirmados) continua sendo um índice direto nesta lista. Sem ela,
- * seria preciso guardar quais volumes de quais itens já foram — e aí o estado
- * vira um problema de verdade.
+ * A troca simplificou o estado em vez de complicar. O contador por índice era a
+ * origem de uma classe inteira de bug: qualquer coisa que reordenasse a fila
+ * (adiar um móvel, marcar como já no frete) fazia o contador apontar pro volume
+ * errado, e o app passava a cobrar outra peça. Agora cada móvel carrega o próprio
+ * "carregado", e não existe índice pra desalinhar.
  *
- * Cada elemento: { indiceItem, descricao, cor, fragil, unidade, totalDoItem, porCima }
+ * Cada elemento: { indiceItem, descricao, cor, fragil, pequena, carregado }
  */
-/**
- * Pra onde um item adiado foi mandado.
- *
- *   'pedido' - volta no fim DESTE pedido, antes de passar pro próximo.
- *   'rota'   - volta só no fim de TODOS os pedidos, na etapa final da rota.
- *
- * Item antigo, gravado quando só existia um destino, vem com adiado:true e sem
- * escopo nenhum — e naquela época o destino era o fim da rota. Por isso o padrão
- * é 'rota': manter o que já está no banco se comportando como sempre se comportou.
- */
-function escopoDoAdiado(it) {
-  if (!it || !it.adiado) return null;
-  return it.adiadoEscopo === 'pedido' ? 'pedido' : 'rota';
-}
-
-function filaDeVolumes(parada) {
+function filaDeMoveis(parada) {
   const itens = Array.isArray(parada && parada.itens) ? parada.itens : [];
   const fila = [];
 
-  const empilhar = escopo => {
-    itens.forEach((it, indiceItem) => {
-      // "Já no frete" não entra na fila: veio carregado de outro estoque, não há
-      // o que confirmar — só o que conferir no fim, na contagem do caminhão.
-      if (it && it.jaNoFrete) return;
-      if (escopoDoAdiado(it) !== escopo) return;
-
-      const total = Number(it && it.volumes) || 0;
-      for (let unidade = 1; unidade <= total; unidade++) {
-        fila.push({
-          indiceItem,
-          descricao: String((it && it.descricao) || ''),
-          cor: String((it && it.cor) || ''),
-          fragil: !!(it && it.fragil),
-          unidade,
-          totalDoItem: total,
-          // porCima marca só o que sai DESTA passada. O adiado pro fim do pedido
-          // continua sendo cobrado agora, logo depois dos outros — por isso false.
-          porCima: escopo === 'rota',
-          escopoAdiado: escopo
-        });
-      }
+  itens.forEach((it, indiceItem) => {
+    // "Já no frete" não entra: veio carregado de outro estoque, não há o que fazer.
+    if (it && it.jaNoFrete) return;
+    fila.push({
+      indiceItem,
+      descricao: String((it && it.descricao) || ''),
+      cor: String((it && it.cor) || ''),
+      fragil: !!(it && it.fragil),
+      // Peça pequena: o gerente marca no painel. Serve pro estoquista saber que
+      // aquilo cabe na mão e some fácil no fundo do caminhão.
+      pequena: !!(it && it.pequena),
+      carregado: !!(it && it.carregado)
     });
-  };
-
-  empilhar(null);       // o que vai agora
-  empilhar('pedido');   // depois, o que ficou pro fim deste pedido
-  empilhar('rota');     // e, no fim de tudo, o que vai por cima da carga inteira
+  });
 
   return fila;
 }
@@ -201,9 +171,10 @@ function filaDeVolumes(parada) {
 /**
  * Em que pé está uma parada.
  *
- *   confirmarAgora  - quantos volumes ela cobra NESTA passada
- *   confirmarTotal  - quantos ela cobra no fim das contas (com os adiados)
- *   separado        - já cobriu tudo
+ *   total     - quantos móveis ela cobra
+ *   feitos    - quantos já foram carregados
+ *   proximo   - o próximo móvel a carregar, ou null se acabou
+ *   separado  - já cobriu tudo
  *
  * O "separado" nasce aqui, e não em cada endpoint, por um motivo: ele já estava
  * divergindo. parada-separar comparava com o volume BRUTO da parada, ignorando o
@@ -213,19 +184,18 @@ function filaDeVolumes(parada) {
  * não havia botão nenhum pra sair dela.
  */
 function situacaoParada(parada) {
-  const fila = filaDeVolumes(parada);
-  const confirmados = Number(parada && parada.volumes_confirmados) || 0;
-  const confirmarAgora = fila.filter(v => !v.porCima).length;
+  const fila = filaDeMoveis(parada);
+  const feitos = fila.filter(m => m.carregado).length;
 
   return {
     fila,
-    confirmados,
-    confirmarAgora,
-    confirmarTotal: fila.length,
-    temPorCima: fila.length > confirmarAgora,
-    prontoPorAgora: confirmados >= confirmarAgora,
-    separado: confirmados >= fila.length
+    total: fila.length,
+    feitos,
+    proximo: fila.find(m => !m.carregado) || null,
+    // Parada sem nada pra carregar (tudo já no frete, ou pedido sem item) conta
+    // como separada: senão o app parava nela pra sempre, sem botão que a resolvesse.
+    separado: feitos >= fila.length
   };
 }
 
-module.exports = { consolidar, conferir, versaoDaCarga, normalizar, filaDeVolumes, situacaoParada, escopoDoAdiado };
+module.exports = { consolidar, conferir, versaoDaCarga, normalizar, filaDeMoveis, situacaoParada };
