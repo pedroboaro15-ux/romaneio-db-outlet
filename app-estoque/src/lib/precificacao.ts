@@ -46,6 +46,50 @@ export const ALIQUOTAS_PADRAO: Aliquotas = {
   custoFixo: 0.05,
 };
 
+/**
+ * O redutor de cada imposto: quanto DELE é cobrado nesta peça.
+ *
+ * Não é um desconto no preço — é o mesmo imposto incidindo sobre uma base menor. O
+ * IPI de móvel, por exemplo, ora vem cheio, ora pela metade, ora por um terço, ora
+ * não vem. Em vez de o Pedro reescrever a alíquota na mão toda vez (e esquecer de
+ * voltar), ele escolhe a fração e a alíquota continua sendo a da planilha.
+ *
+ * 1 = cheio · 0,5 = metade · 1/3 = um terço · 0 = isento. Qualquer fração entre 0 e 1
+ * vale, pra caso apareça uma redução que não é nenhuma dessas.
+ */
+export type Redutores = Partial<Record<keyof Aliquotas, number>>;
+
+/** As quatro que aparecem na prática, que viram os botões da tela. */
+export const OPCOES_REDUTOR: { valor: number; rotulo: string }[] = [
+  { valor: 1, rotulo: 'Cheio' },
+  { valor: 1 / 2, rotulo: 'Metade' },
+  { valor: 1 / 3, rotulo: 'Um terço' },
+  { valor: 0, rotulo: 'Isento' },
+];
+
+/**
+ * As alíquotas que valem de verdade nesta peça, já com os redutores aplicados.
+ *
+ * Todo o resto do módulo continua recebendo um Aliquotas comum. É de propósito: as
+ * contas reversas (precoParaMargem e companhia) não precisam saber que existe
+ * redutor, só qual é o percentual que vale. Quem tem redutor chama esta função uma
+ * vez e passa o resultado adiante.
+ *
+ * Fração fora de 0..1, ou que não seja número, é ignorada — vale o cheio. Um redutor
+ * inválido virando NaN contaminaria o preço inteiro em silêncio.
+ */
+export function comRedutores(a: Aliquotas, r?: Redutores): Aliquotas {
+  if (!r) return a;
+  const saida = { ...a };
+  for (const chave of Object.keys(a) as (keyof Aliquotas)[]) {
+    const f = r[chave];
+    if (typeof f === 'number' && Number.isFinite(f) && f >= 0 && f <= 1) {
+      saida[chave] = a[chave] * f;
+    }
+  }
+  return saida;
+}
+
 export interface Entrada {
   /** O que foi pago na peça, por unidade. */
   precoCompra: number;
@@ -54,6 +98,8 @@ export interface Entrada {
   /** Multiplicador sobre o preço de compra. */
   multiplicador: number;
   aliquotas?: Aliquotas;
+  /** Quanto de cada imposto é cobrado nesta peça. Sem isso, tudo cheio. */
+  redutores?: Redutores;
 }
 
 export interface Resultado {
@@ -75,6 +121,8 @@ export interface Resultado {
   margem: number;
   /** O multiplicador real, sobre o custo total — quase sempre menor que o informado. */
   multiplicadorReal: number;
+  /** As alíquotas que a conta usou, já com os redutores. É o que a tela deve exibir. */
+  aliquotasEfetivas: Aliquotas;
 }
 
 /**
@@ -87,7 +135,12 @@ export function fatiaDaVenda(a: Aliquotas = ALIQUOTAS_PADRAO): number {
   return a.icms + a.pisCofins + a.maquininha + a.custoFixo;
 }
 
-export function calcular({ precoCompra, fretePercent, multiplicador, aliquotas = ALIQUOTAS_PADRAO }: Entrada): Resultado {
+export function calcular({ precoCompra, fretePercent, multiplicador, aliquotas: base = ALIQUOTAS_PADRAO, redutores }: Entrada): Resultado {
+  // A partir daqui só existem as alíquotas efetivas. Misturar as duas versões na
+  // mesma conta seria o jeito mais fácil de cobrar IPI cheio na entrada e meio na
+  // hora de mostrar na tela.
+  const aliquotas = comRedutores(base, redutores);
+
   const ipi = precoCompra * aliquotas.ipi;
   const entradaFronteira = precoCompra * aliquotas.entradaFronteira;
   const frete = precoCompra * fretePercent;
@@ -110,6 +163,7 @@ export function calcular({ precoCompra, fretePercent, multiplicador, aliquotas =
     lucro,
     margem: precoVenda > 0 ? lucro / precoVenda : 0,
     multiplicadorReal: custoTotal > 0 ? precoVenda / custoTotal : 0,
+    aliquotasEfetivas: aliquotas,
   };
 }
 

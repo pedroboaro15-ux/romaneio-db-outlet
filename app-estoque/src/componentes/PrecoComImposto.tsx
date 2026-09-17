@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
   calcular, precoParaMargem, margemDoPreco, lucroDoPreco,
-  fatiaDaVenda, ALIQUOTAS_PADRAO, type Aliquotas,
+  fatiaDaVenda, ALIQUOTAS_PADRAO, comRedutores, OPCOES_REDUTOR,
+  type Aliquotas, type Redutores,
 } from '../lib/precificacao';
 import { moedaCent } from '../lib/formato';
 import { IcAlerta, IcInfo } from './Icones';
@@ -20,6 +21,11 @@ import { IcAlerta, IcInfo } from './Icones';
  */
 
 const CHAVE = 'aliquotas.v1';
+
+// Os redutores são por PEÇA, não da loja: o IPI cai pela metade neste roupeiro e vem
+// cheio no próximo. Por isso não ficam salvos — cada conta começa com tudo cheio, que
+// é o caso comum. Salvar seria pior: o Pedro isentaria um item e o seguinte sairia
+// isento sem ele perceber, com preço abaixo do que deveria.
 
 function lerSalvas(): Aliquotas {
   try {
@@ -73,7 +79,13 @@ const NOMES: { chave: keyof Aliquotas; rotulo: string; base: string }[] = [
 
 export default function PrecoComImposto({ ehDono }: { ehDono: boolean }) {
   const [aliquotas, setAliquotas] = useState<Aliquotas>(lerSalvas);
+  const [redutores, setRedutores] = useState<Redutores>({});
   const [abrirAliquotas, setAbrirAliquotas] = useState(false);
+
+  // As alíquotas que valem NESTA peça. Tudo na tela lê daqui, nunca de "aliquotas"
+  // cru — senão o detalhamento mostraria IPI de 3,5% enquanto a conta usou 1,75%.
+  const efetivas = useMemo(() => comRedutores(aliquotas, redutores), [aliquotas, redutores]);
+  const temReducao = Object.values(redutores).some((f) => typeof f === 'number' && f !== 1);
 
   const [compra, setCompra] = useState('');
   const [fretePct, setFretePct] = useState('10');
@@ -91,24 +103,27 @@ export default function PrecoComImposto({ ehDono }: { ehDono: boolean }) {
 
   const r = useMemo(() => {
     if (nCompra === null || nCompra <= 0 || nMult === null || nMult <= 0) return null;
-    return calcular({ precoCompra: nCompra, fretePercent: nFrete, multiplicador: nMult, aliquotas });
-  }, [nCompra, nFrete, nMult, aliquotas]);
+    return calcular({ precoCompra: nCompra, fretePercent: nFrete, multiplicador: nMult, aliquotas, redutores });
+  }, [nCompra, nFrete, nMult, aliquotas, redutores]);
 
   const nMargemAlvo = pctParaFracao(margemAlvo);
-  const sugerido = r && nMargemAlvo !== null ? precoParaMargem(r.custoTotal, nMargemAlvo, aliquotas) : null;
+  const sugerido = r && nMargemAlvo !== null ? precoParaMargem(r.custoTotal, nMargemAlvo, efetivas) : null;
 
   const nDesejado = paraNumero(precoDesejado);
   const margemResultante = r && nDesejado !== null && nDesejado > 0
-    ? margemDoPreco(r.custoTotal, nDesejado, aliquotas) : null;
+    ? margemDoPreco(r.custoTotal, nDesejado, efetivas) : null;
   const lucroResultante = r && nDesejado !== null && nDesejado > 0
-    ? lucroDoPreco(r.custoTotal, nDesejado, aliquotas) : null;
+    ? lucroDoPreco(r.custoTotal, nDesejado, efetivas) : null;
 
   return (
     <div className="cartao" style={{ marginBottom: 14 }}>
       <div className="cartao-cab">
         <h2>Preço com imposto e frete</h2>
         <span className="dim" style={{ fontSize: 12 }}>
-          impostos somam {pct(fatiaDaVenda(aliquotas))} da venda
+          impostos somam {pct(fatiaDaVenda(efetivas))} da venda
+          {temReducao && (
+            <strong style={{ color: 'var(--aviso, #7a5a12)' }}> · com imposto reduzido</strong>
+          )}
         </span>
       </div>
 
@@ -185,14 +200,14 @@ export default function PrecoComImposto({ ehDono }: { ehDono: boolean }) {
                 </thead>
                 <tbody>
                   <Linha rotulo="Preço de compra" valor={nCompra!} />
-                  <Linha rotulo={`IPI (${pct(aliquotas.ipi)})`} valor={r.ipi} />
-                  <Linha rotulo={`Imposto de entrada (${pct(aliquotas.entradaFronteira)})`} valor={r.entradaFronteira} />
+                  <Linha rotulo={`IPI (${pct(efetivas.ipi)})`} valor={r.ipi} />
+                  <Linha rotulo={`Imposto de entrada (${pct(efetivas.entradaFronteira)})`} valor={r.entradaFronteira} />
                   <Linha rotulo={`Frete (${fretePct}%)`} valor={r.frete} />
                   <Linha rotulo="Custo total" valor={r.custoTotal} forte />
-                  <Linha rotulo={`ICMS (${pct(aliquotas.icms)})`} valor={-r.icms} base={moedaCent(r.precoVenda)} />
-                  <Linha rotulo={`PIS/COFINS (${pct(aliquotas.pisCofins)})`} valor={-r.pisCofins} base={moedaCent(r.precoVenda)} />
-                  <Linha rotulo={`Maquininha (${pct(aliquotas.maquininha)})`} valor={-r.maquininha} base={moedaCent(r.precoVenda)} />
-                  <Linha rotulo={`Custo fixo (${pct(aliquotas.custoFixo)})`} valor={-r.custoFixo} base={moedaCent(r.precoVenda)} />
+                  <Linha rotulo={`ICMS (${pct(efetivas.icms)})`} valor={-r.icms} base={moedaCent(r.precoVenda)} />
+                  <Linha rotulo={`PIS/COFINS (${pct(efetivas.pisCofins)})`} valor={-r.pisCofins} base={moedaCent(r.precoVenda)} />
+                  <Linha rotulo={`Maquininha (${pct(efetivas.maquininha)})`} valor={-r.maquininha} base={moedaCent(r.precoVenda)} />
+                  <Linha rotulo={`Custo fixo (${pct(efetivas.custoFixo)})`} valor={-r.custoFixo} base={moedaCent(r.precoVenda)} />
                   <Linha rotulo="Sobra pra você" valor={r.lucro} forte />
                 </tbody>
               </table>
@@ -211,7 +226,7 @@ export default function PrecoComImposto({ ehDono }: { ehDono: boolean }) {
                 <p style={{ margin: '7px 0 0', fontSize: 12.5, color: 'var(--tinta-2)' }}>
                   {sugerido === null
                     ? <b style={{ color: 'var(--ruptura)' }}>
-                        Essa margem não cabe: imposto ({pct(fatiaDaVenda(aliquotas))}) mais a
+                        Essa margem não cabe: imposto ({pct(fatiaDaVenda(efetivas))}) mais a
                         margem passariam de 100% do preço.
                       </b>
                     : <>Venda por <b>{moedaCent(sugerido)}</b>.</>}
@@ -267,6 +282,30 @@ export default function PrecoComImposto({ ehDono }: { ehDono: boolean }) {
                       <span className="dim" style={{ fontSize: 13 }}>%</span>
                     </div>
                     <span className="dim" style={{ fontSize: 11 }}>{base}</span>
+
+                    {/* Quanto DESTE imposto é cobrado nesta peça. O rótulo mostra o
+                        percentual que sobrou, pra não precisar fazer a conta de
+                        cabeça pra saber no que 3,5% pela metade dá. */}
+                    <div style={{ display: 'flex', gap: 3, marginTop: 5, flexWrap: 'wrap' }}>
+                      {OPCOES_REDUTOR.map((o) => {
+                        const atual = redutores[chave] ?? 1;
+                        const ligado = Math.abs(atual - o.valor) < 1e-9;
+                        return (
+                          <button key={o.rotulo} type="button"
+                                  className={ligado ? 'btn btn-p' : 'btn btn-fantasma btn-p'}
+                                  style={{ fontSize: 11, padding: '3px 7px' }}
+                                  title={`${o.rotulo}: ${pct(aliquotas[chave] * o.valor)}`}
+                                  onClick={() => setRedutores({ ...redutores, [chave]: o.valor })}>
+                            {o.rotulo}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {(redutores[chave] ?? 1) !== 1 && (
+                      <span style={{ fontSize: 11, color: 'var(--aviso, #7a5a12)', fontWeight: 700 }}>
+                        vale {pct(efetivas[chave])}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -275,6 +314,11 @@ export default function PrecoComImposto({ ehDono }: { ehDono: boolean }) {
                 {ehDono && (
                   <button className="btn btn-p" onClick={() => setAliquotas(ALIQUOTAS_PADRAO)}>
                     Voltar aos valores da planilha
+                  </button>
+                )}
+                {temReducao && (
+                  <button className="btn btn-p" onClick={() => setRedutores({})}>
+                    Cobrar todos os impostos cheios
                   </button>
                 )}
                 <span className="dim" style={{ fontSize: 12 }}>

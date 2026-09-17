@@ -9,7 +9,7 @@
  */
 import {
   calcular, precoParaMargem, margemDoPreco, lucroDoPreco, precoDeEmpate,
-  fatiaDaVenda, ALIQUOTAS_PADRAO,
+  fatiaDaVenda, ALIQUOTAS_PADRAO, comRedutores, OPCOES_REDUTOR,
 } from '../app-estoque/src/lib/precificacao.ts';
 
 let ok = 0, falhas = 0;
@@ -91,6 +91,84 @@ const comIcmsMenor = calcular({ precoCompra: 359, fretePercent: 0.10, multiplica
 checa('ICMS menor dá mais lucro', comIcmsMenor.lucro > r.lucro,
   `${comIcmsMenor.lucro.toFixed(2)} contra ${r.lucro.toFixed(2)}`);
 checa('e o custo total não muda (ICMS é de saída)', perto(comIcmsMenor.custoTotal, r.custoTotal));
+
+/* ================================================================== */
+titulo('7. IMPOSTO REDUZIDO: METADE, UM TERÇO, ISENTO');
+
+// O IPI de móvel ora vem cheio, ora pela metade, ora por um terço, ora não vem. O
+// redutor existe pra isso não virar "apagar a alíquota e esquecer de repor".
+
+{
+  const meio = calcular({ precoCompra: 359, fretePercent: 0.10, multiplicador: 2.9,
+                          redutores: { ipi: 1 / 2 } });
+  comp('IPI pela metade dá metade do IPI', meio.ipi, r.ipi / 2, 0.005);
+  checa('e a alíquota efetiva aparece no resultado',
+    perto(meio.aliquotasEfetivas.ipi, ALIQUOTAS_PADRAO.ipi / 2, 1e-9),
+    String(meio.aliquotasEfetivas.ipi));
+  checa('custo total cai junto (IPI é de entrada)', meio.custoTotal < r.custoTotal,
+    `${meio.custoTotal.toFixed(2)} contra ${r.custoTotal.toFixed(2)}`);
+  checa('e o preço de venda NÃO muda — o multiplicador é sobre a compra',
+    perto(meio.precoVenda, r.precoVenda), meio.precoVenda.toFixed(2));
+  checa('logo sobra mais lucro', meio.lucro > r.lucro,
+    `${meio.lucro.toFixed(2)} contra ${r.lucro.toFixed(2)}`);
+}
+
+{
+  const terco = calcular({ precoCompra: 359, fretePercent: 0.10, multiplicador: 2.9,
+                           redutores: { ipi: 1 / 3 } });
+  comp('IPI a um terço', terco.ipi, r.ipi / 3, 0.005);
+}
+
+{
+  const isento = calcular({ precoCompra: 359, fretePercent: 0.10, multiplicador: 2.9,
+                            redutores: { ipi: 0 } });
+  comp('IPI isento é zero', isento.ipi, 0, 1e-9);
+  comp('e o custo total vira compra + fronteira + frete',
+    isento.custoTotal, 359 + 359 * ALIQUOTAS_PADRAO.entradaFronteira + 35.9, 0.005);
+}
+
+{
+  // Imposto de SAÍDA reduzido mexe na fatia da venda, que é o que manda nas contas
+  // reversas — o caso que erra silencioso se alguém esquecer de propagar.
+  const semIcms = calcular({ precoCompra: 359, fretePercent: 0.10, multiplicador: 2.9,
+                             redutores: { icms: 0 } });
+  comp('ICMS isento zera o ICMS', semIcms.icms, 0, 1e-9);
+  comp('a fatia da venda cai o ICMS inteiro',
+    fatiaDaVenda(semIcms.aliquotasEfetivas), fatiaDaVenda() - ALIQUOTAS_PADRAO.icms, 1e-9);
+  checa('e o preço pra 20% de margem fica menor',
+    precoParaMargem(semIcms.custoTotal, 0.20, semIcms.aliquotasEfetivas)
+      < precoParaMargem(r.custoTotal, 0.20));
+}
+
+{
+  // Tudo zerado de uma vez: "0 custos de impostos".
+  const zero = { ipi: 0, entradaFronteira: 0, icms: 0, pisCofins: 0, maquininha: 0, custoFixo: 0 };
+  const livre = calcular({ precoCompra: 359, fretePercent: 0.10, multiplicador: 2.9, redutores: zero });
+  comp('sem imposto nenhum, o custo é compra + frete', livre.custoTotal, 359 + 35.9, 0.005);
+  comp('e o lucro é a venda menos esse custo', livre.lucro, livre.precoVenda - livre.custoTotal, 0.005);
+  comp('a fatia da venda vira zero', fatiaDaVenda(livre.aliquotasEfetivas), 0, 1e-9);
+}
+
+{
+  // Redutor bobo não pode contaminar o preço com NaN.
+  const ruim = comRedutores(ALIQUOTAS_PADRAO, { ipi: NaN, icms: -1, pisCofins: 2, maquininha: 'meio' });
+  checa('redutor NaN, negativo, acima de 1 ou texto é ignorado — vale o cheio',
+    ruim.ipi === ALIQUOTAS_PADRAO.ipi && ruim.icms === ALIQUOTAS_PADRAO.icms
+    && ruim.pisCofins === ALIQUOTAS_PADRAO.pisCofins && ruim.maquininha === ALIQUOTAS_PADRAO.maquininha);
+  checa('sem redutor nenhum, nada muda',
+    comRedutores(ALIQUOTAS_PADRAO) === ALIQUOTAS_PADRAO);
+}
+
+checa('as quatro opções da tela são cheio, metade, um terço e isento',
+  OPCOES_REDUTOR.map(o => o.valor).join(',') === [1, 0.5, 1 / 3, 0].join(','),
+  OPCOES_REDUTOR.map(o => o.rotulo).join(' · '));
+
+{
+  // A conta antiga não pode ter mudado de resultado por causa disso.
+  const semNada = calcular({ precoCompra: 359, fretePercent: 0.10, multiplicador: 2.9 });
+  checa('sem redutor, a conta é idêntica à da planilha',
+    perto(semNada.lucro, r.lucro) && perto(semNada.custoTotal, r.custoTotal));
+}
 
 /* ================================================================== */
 console.log('\n============================================================');
