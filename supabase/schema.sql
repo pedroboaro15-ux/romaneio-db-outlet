@@ -179,6 +179,14 @@ alter table public.paradas add column if not exists problema_motivo text default
 alter table public.paradas add column if not exists revisao_em date;
 alter table public.paradas add column if not exists revisao_feita boolean default false;
 
+-- Quem vendeu o pedido, lido da observacao da Omie na hora de montar a rota.
+-- Fica gravado na parada de proposito, e nao so consultado na hora de mostrar: a
+-- observacao da Omie pode ser editada depois, e o que importa aqui e quem vendeu
+-- quando a rota foi montada. Sem vendedor identificado, fica vazio e a tela mostra
+-- "Vendido pela loja".
+alter table public.paradas add column if not exists vendedor text default '';
+alter table public.paradas add column if not exists canal_venda text default '';
+
 create index if not exists paradas_romaneio_idx on public.paradas(romaneio_id);
 
 -- Fotos que o freteiro/estoquista mandam de uma parada (ida pro Storage do Supabase).

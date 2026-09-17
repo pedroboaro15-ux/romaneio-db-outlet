@@ -108,6 +108,10 @@ export function criarSupabaseFalso() {
     let contando = false;
     let limite = null;
     let colunas = '*';
+    // range() corta a página DEPOIS de contar — igual ao PostgREST, que devolve o
+    // total no header e só a fatia no corpo. Contar já cortado faria a paginação
+    // dizer "10 de 10" em toda página.
+    let fatia = null;
 
     const casa = l => filtros.every(f => f(l));
     const selecionadas = () => {
@@ -121,8 +125,9 @@ export function criarSupabaseFalso() {
 
       if (modo === 'select') {
         const achadas = selecionadas();
+        const pagina = fatia ? achadas.slice(fatia[0], fatia[1] + 1) : achadas;
         return {
-          data: contando ? null : achadas.map(l => juntar(nome, l, colunas)),
+          data: contando && !fatia ? null : pagina.map(l => juntar(nome, l, colunas)),
           error: null,
           count: achadas.length
         };
@@ -154,6 +159,35 @@ export function criarSupabaseFalso() {
       lte(campo, valor) { filtros.push(l => String(valorDoCampo(l, campo)) <= String(valor)); return api; },
       order() { return api; },
       limit(n) { limite = n; return api; },
+      range(de, ate) { fatia = [de, ate]; return api; },
+
+      /** LIKE sem diferenciar maiúscula, com % nas pontas — o bastante pro que usamos. */
+      ilike(campo, padrao) {
+        const alvo = String(padrao).replace(/%/g, '').toLowerCase();
+        filtros.push(l => String(valorDoCampo(l, campo) ?? '').toLowerCase().includes(alvo));
+        return api;
+      },
+
+      /**
+       * or('a.is.null,a.eq.,a.eq.X') — só as três formas que o código usa (is.null,
+       * eq.valor). Qualquer outra derruba o teste de propósito: um "or" que ignora
+       * calado o que não entende daria teste verde com filtro que não filtra.
+       */
+      or(expr) {
+        const partes = String(expr).split(',').map(x => x.trim()).filter(Boolean);
+        const testes = partes.map(parte => {
+          const m = /^([^.]+)\.(is|eq)\.(.*)$/.exec(parte);
+          if (!m) throw new Error('or() não entende: ' + parte);
+          const [, campo, op, valor] = m;
+          if (op === 'is') {
+            if (valor !== 'null') throw new Error('or() só faz is.null: ' + parte);
+            return l => valorDoCampo(l, campo) == null;
+          }
+          return l => igual(valorDoCampo(l, campo), valor);
+        });
+        filtros.push(l => testes.some(t => t(l)));
+        return api;
+      },
 
       insert(entrada) {
         const novas = (Array.isArray(entrada) ? entrada : [entrada]).map(r => ({ ...r }));

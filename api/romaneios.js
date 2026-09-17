@@ -134,6 +134,11 @@ exports.handler = async event => {
         valor: numeroPositivo(p.valor, MAX_VALOR),
         observacao: texto(p.observacao, MAX_OBSERVACAO),
         cor: texto(p.cor, MAX_TEXTO),
+        // Quem vendeu, congelado no momento em que a rota foi montada. A observação
+        // na Omie pode ser editada depois; o que interessa na entrega é quem vendeu
+        // quando o pedido entrou na rota.
+        vendedor: texto(p.vendedor, MAX_TEXTO),
+        canal_venda: texto(p.canalVenda, MAX_TEXTO),
         status: 'pendente'
       };
     };

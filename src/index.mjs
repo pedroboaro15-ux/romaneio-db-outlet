@@ -32,6 +32,7 @@ import pedido from '../api/pedido.js';
 import pushSubscrever from '../api/push-subscrever.js';
 import relatorio from '../api/relatorio.js';
 import relatorioVendas from '../api/relatorio-vendas.js';
+import pedidosVendas from '../api/pedidos-vendas.js';
 import reordenarParadas from '../api/reordenar-paradas.js';
 import resolverObservacoes from '../api/resolver-observacoes.js';
 import romaneioCarregado from '../api/romaneio-carregado.js';
@@ -62,6 +63,7 @@ const FUNCOES = {
   'push-subscrever': pushSubscrever,
   'relatorio': relatorio,
   'relatorio-vendas': relatorioVendas,
+  'pedidos-vendas': pedidosVendas,
   'reordenar-paradas': reordenarParadas,
   'resolver-observacoes': resolverObservacoes,
   'romaneio-carregado': romaneioCarregado,

@@ -308,8 +308,8 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
       <div id="graficoFrete" style="margin-top:14px"></div>
       <div style="margin-top:10px"><button class="btn ghost sm" id="relExportar" hidden>Exportar CSV</button></div>
       <div style="overflow-x:auto;margin-top:12px"><table>
-        <thead><tr><th>Freteiro</th><th class="center">Paradas</th><th class="center">Entregues</th><th class="center">Falharam</th><th class="center">Com problema</th><th class="center">% problema do freteiro</th></tr></thead>
-        <tbody id="tabRel"><tr><td colspan="7"><div class="empty">Escolha um período e clique em Buscar.</div></td></tr></tbody>
+        <thead><tr><th>Freteiro</th><th class="center">Entregas</th><th class="center">Assistências</th><th class="center">Paradas</th><th class="center">Entregues</th><th class="center">Falharam</th><th class="center">Com problema</th><th class="center">% problema do freteiro</th></tr></thead>
+        <tbody id="tabRel"><tr><td colspan="8"><div class="empty">Escolha um período e clique em Buscar.</div></td></tr></tbody>
       </table></div>
     </div>
   </section>
@@ -331,6 +331,30 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
         <thead><tr><th>Vendedor</th><th class="right">Valor vendido</th><th class="center">Pedidos</th><th class="center">Ticket médio</th><th class="center">Presencial</th><th class="center">Online</th><th class="center">Outros</th></tr></thead>
         <tbody id="tabVendas"><tr><td colspan="7"><div class="empty">Escolha um período e clique em Buscar.</div></td></tr></tbody>
       </table></div>
+    </div>
+
+    <div class="card">
+      <h2>Pedidos, um por um</h2>
+      <p class="mut" style="margin-top:-6px">Filtre por vendedor pra ver o que ele vendeu, do mais novo pro mais antigo. Pelo número, acha o pedido direto — e aí o período não importa. Pedido sem vendedor identificado aparece como <strong>Vendido pela loja</strong>.</p>
+      <div class="row">
+        <div>
+          <label>Vendedor</label>
+          <select id="pvVendedor">
+            <option value="">Todos</option>
+            <option value="SEM VENDEDOR">Vendido pela loja</option>
+          </select>
+        </div>
+        <div><label>Número do pedido</label><input id="pvNumero" placeholder="ex.: 1042" inputmode="numeric"></div>
+        <div class="auto"><button class="btn" id="pvBuscar">Buscar</button></div>
+        <div class="auto"><button class="btn ghost" id="pvLimpar">Limpar</button></div>
+      </div>
+      <p class="mut" style="font-size:12px;margin-top:6px">Usa o mesmo período lá de cima, menos quando você busca por número.</p>
+      <div id="pvResumo" class="mut" style="margin-top:10px"></div>
+      <div style="overflow-x:auto;margin-top:10px"><table>
+        <thead><tr><th>Pedido</th><th>Data</th><th>Cliente</th><th class="right">Valor</th><th>Vendedor</th><th>Canal</th><th>Como foi</th></tr></thead>
+        <tbody id="tabPedidosVendas"><tr><td colspan="7"><div class="empty">Escolha um filtro e clique em Buscar.</div></td></tr></tbody>
+      </table></div>
+      <div id="pvPaginacao" style="margin-top:10px;display:flex;gap:8px;align-items:center"></div>
     </div>
 
     <!-- Sugestões dos campos de correção. Preenchidas pelo servidor, não escritas
@@ -589,6 +613,9 @@ function renderResultado(){
     <strong>Pedido ${esc(p.numero)}</strong> ${p.etapaLabel?`<span class="tag">${esc(p.etapaLabel)}</span>`:''}
     ${c.alternativo?`<span class="tag alt">endereço de entrega alternativo</span>`:''}
     <span class="mut" style="margin-left:8px">${esc(p.data||'')}</span>
+    ${p.venda ? `<div style="margin-top:8px">
+      Vendido por <strong>${esc(p.venda.rotulo)}</strong>${p.venda.canal?` <span class="tag">${esc(p.venda.canal)}</span>`:''}${p.venda.certeza?'':' <span class="tag alt">confira, não deu pra ler direito</span>'}
+    </div>` : ''}
     <div style="margin-top:8px"><strong>${esc(c.nome||'(sem cliente)')}</strong>${c.doc?` <span class="mut">${esc(c.doc)}</span>`:''}</div>
     <div class="mut">${esc(end||'(endereço não informado)')}${cid?' · '+esc(cid):''}${c.cep?' · CEP '+esc(c.cep):''}</div>
     ${c.telefone?`<div class="mut">Tel: ${esc(c.telefone)}</div>`:''}
@@ -633,15 +660,20 @@ $('#addRascunho').onclick = () => {
       pequena: campoPequena ? campoPequena.checked : !!it.pequena
     };
   });
+  // Quem vendeu vai junto pro romaneio. O servidor lê "vendedor"/"canalVenda", não o
+  // objeto "venda" que veio da Omie — por isso a tradução acontece aqui, uma vez só.
+  const venda = pedidoAtual.venda || {};
+  const dadosDaVenda = { vendedor: venda.vendedor || '', canalVenda: venda.canal || '' };
+
   if(modoBusca === 'assistencia'){
     const motivos = { cor: 'Cor', defeito: 'Defeito na peça', esquecimento: 'Esquecimento' };
     const motivo = motivos[$('#rTipoProblema').value] || '';
     const obsExtra = $('#rObs').value.trim();
-    rascunho.push({ ...pedidoAtual, tipo: 'assistencia', itens: itensComCorEVolume,
+    rascunho.push({ ...pedidoAtual, ...dadosDaVenda, tipo: 'assistencia', itens: itensComCorEVolume,
       observacao: 'Assistência — ' + motivo + (obsExtra ? ': ' + obsExtra : '') });
     $('#numAssist').value = '';
   } else {
-    rascunho.push({ ...pedidoAtual, itens: itensComCorEVolume, observacao: $('#rObs').value || '' });
+    rascunho.push({ ...pedidoAtual, ...dadosDaVenda, itens: itensComCorEVolume, observacao: $('#rObs').value || '' });
     $('#numPedido').value = '';
   }
   pedidoAtual = null;
@@ -772,7 +804,10 @@ function renderListaRom(){
           ${r.paradas.map((p,i)=>{
             const c=p.cliente||{};
             const cls = p.status==='entregue'?'ok':p.status==='falhou'?'falhou':p.status==='em_rota'?'alt':'pend';
-            const tipoLabel = p.tipo==='assistencia'?'Assist.':(p.tipo==='nf'?'NF':'Ped.');
+            const ehAssist = p.tipo==='assistencia';
+            const tipoLabel = ehAssist
+              ? '<span class="tag alt">Assistência</span>'
+              : (p.tipo==='nf'?'<span class="tag">NF</span>':'Ped.');
             const finalizado = p.status==='entregue' || p.status==='falhou';
             return `<tr><td>${i+1}
               <div style="display:flex;gap:2px;margin-top:4px">
@@ -781,7 +816,10 @@ function renderListaRom(){
               </div>
             </td>
               <td>${esc(c.nome||'—')}<div class="mut">${esc([c.endereco,c.cidade].filter(Boolean).join(' - '))}</div></td>
-              <td>${tipoLabel} ${esc(p.numero||'')}${(p.itens||[]).some(it=>it.fragil)?' <span class="tag fragil">🔴 vidro</span>':''}${(p.itens||[]).some(it=>it.pequena)?' <span class="tag pequena">🤏 peça pequena</span>':''}
+              <td>${tipoLabel} ${esc(p.numero||'')}
+                ${p.vendedor
+                  ? `<div class="mut">Vendido por <strong>${esc(p.vendedor)}</strong>${p.canal_venda?' · '+esc(p.canal_venda):''}</div>`
+                  : (ehAssist ? '' : '<div class="mut">Vendido pela loja</div>')}${(p.itens||[]).some(it=>it.fragil)?' <span class="tag fragil">🔴 vidro</span>':''}${(p.itens||[]).some(it=>it.pequena)?' <span class="tag pequena">🤏 peça pequena</span>':''}
                 ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut" style="display:flex;align-items:center;gap:5px"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span>${esc(it.descricao||'')}${it.volumes?' ('+it.volumes+' vol.)':''}: <strong>${esc(it.cor)}</strong></div>`).join('')}
                 ${(!((p.itens||[]).some(it=>it.cor)) && p.cor)?`<div class="mut">Cor: ${esc(p.cor)}</div>`:''}
                 ${(p.fotos&&p.fotos.length)?`<div class="galeriafotos">${p.fotos.map(f=>`<a href="${f.url}" target="_blank" class="fotoadm"><img src="${f.url}"><span>${f.tipo==='carro'?'carro':f.tipo==='vidro'?'vidro':f.tipo==='assinatura'?'assinatura':f.tipo==='pagamento'?'pagamento':'entrega'}</span></a>`).join('')}</div>`:''}
@@ -1277,7 +1315,13 @@ let relatorioAtual = null;
 function renderRelatorio(r){
   relatorioAtual = r;
   const s = r.resumoResponsaveis;
-  $('#relResumo').innerHTML = `Problemas registrados no período — <strong>vendedores:</strong> ${s.vendedores} · <strong>estoque:</strong> ${s.estoque} · <strong>freteiro:</strong> ${s.freteiro}`;
+  // Entrega e assistência aparecem separadas: assistência é a loja voltando num
+  // pedido que já foi, não venda saindo. Somadas, um mês ruim de assistência parecia
+  // um mês bom de entrega.
+  const g = r.totaisGerais || { entregas: 0, assistencias: 0, paradas: 0 };
+  $('#relResumo').innerHTML =
+    `<strong>${g.entregas}</strong> entrega(s) e <strong>${g.assistencias}</strong> assistência(s) no período.`
+    + `<br>Problemas registrados — <strong>vendedores:</strong> ${s.vendedores} · <strong>estoque:</strong> ${s.estoque} · <strong>freteiro:</strong> ${s.freteiro}`;
   $('#relExportar').hidden = !r.porFreteiro.length;
 
   // O quanto cada freteiro recebe saiu da tela a pedido do Pedro. O dado continua no
@@ -1287,17 +1331,19 @@ function renderRelatorio(r){
 
   $('#tabRel').innerHTML = r.porFreteiro.length ? r.porFreteiro.map(f => `<tr>
     <td>${esc(f.nome)}</td>
-    <td class="center">${f.totalParadas}</td>
+    <td class="center">${f.entregas || 0}</td>
+    <td class="center">${f.assistencias ? `<span class="tag alt">${f.assistencias}</span>` : '0'}</td>
+    <td class="center mut">${f.totalParadas}</td>
     <td class="center">${f.entregues}</td>
     <td class="center">${f.falharam}</td>
     <td class="center">${f.comProblema}</td>
     <td class="center">${f.percProblemaFreteiro}%</td>
-  </tr>`).join('') : '<tr><td colspan="7"><div class="empty">Nenhum romaneio nesse período.</div></td></tr>';
+  </tr>`).join('') : '<tr><td colspan="8"><div class="empty">Nenhum romaneio nesse período.</div></td></tr>';
 }
 $('#relExportar').onclick = () => {
   if(!relatorioAtual) return;
-  const linhas = [['Freteiro','Frete faturado','Paradas','Entregues','Falharam','Com problema','% problema do freteiro']];
-  relatorioAtual.porFreteiro.forEach(f => linhas.push([f.nome, f.totalFrete, f.totalParadas, f.entregues, f.falharam, f.comProblema, f.percProblemaFreteiro+'%']));
+  const linhas = [['Freteiro','Frete faturado','Entregas','Assistencias','Paradas','Entregues','Falharam','Com problema','% problema do freteiro']];
+  relatorioAtual.porFreteiro.forEach(f => linhas.push([f.nome, f.totalFrete, f.entregas||0, f.assistencias||0, f.totalParadas, f.entregues, f.falharam, f.comProblema, f.percProblemaFreteiro+'%']));
   const csv = linhas.map(l => l.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
   const blob = new Blob(['﻿'+csv], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
@@ -1317,6 +1363,101 @@ function abrirVendas(){
   }
   $('#vdBuscar').click();
 }
+
+
+/* ================= LISTA DE PEDIDOS DA ABA VENDAS =================
+   Os totais respondem "quanto o João vendeu". Esta lista responde "quais pedidos
+   foram esses", que é a pergunta que aparece quando um total parece errado. */
+let pvPagina = 0;
+
+// "2026-09-14" -> "14/09/2026". Sem passar por Date de proposito: o construtor le
+// data pura como meia-noite UTC, e no nosso fuso isso volta um dia.
+const dataCurta = d => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d||''));
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : (d || '—');
+};
+
+// Mantém o que o usuário tinha escolhido: a lista de vendedores só chega depois da
+// primeira busca de relatório, e repintar o select zerava a escolha dele.
+function preencherVendedoresDaLista(vendedores){
+  const sel = $('#pvVendedor');
+  if(!sel) return;
+  const antes = sel.value;
+  sel.innerHTML = '<option value="">Todos</option><option value="SEM VENDEDOR">Vendido pela loja</option>'
+    + (vendedores||[]).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  sel.value = antes;
+}
+
+async function buscarPedidosVendas(){
+  const corpo = $('#tabPedidosVendas');
+  const numero = $('#pvNumero').value.trim();
+  const vendedor = $('#pvVendedor').value;
+
+  const params = new URLSearchParams();
+  if(numero){
+    // Por número, o período sai da conta — quem sabe o número não deve ter que
+    // acertar o mês também.
+    params.set('numero', numero);
+  } else {
+    const de = $('#vdDe').value, ate = $('#vdAte').value;
+    if(!de || !ate){
+      corpo.innerHTML = '<tr><td colspan="7"><div class="empty">Escolha o período lá em cima, ou busque por número do pedido.</div></td></tr>';
+      $('#pvResumo').textContent = '';
+      $('#pvPaginacao').innerHTML = '';
+      return;
+    }
+    params.set('de', de); params.set('ate', ate);
+  }
+  if(vendedor) params.set('vendedor', vendedor);
+  params.set('pagina', String(pvPagina));
+
+  corpo.innerHTML = '<tr><td colspan="7"><div class="empty">Buscando...</div></td></tr>';
+  try{
+    const r = await api('/api/pedidos-vendas?' + params.toString());
+    const lista = r.pedidos || [];
+    if(!lista.length){
+      corpo.innerHTML = '<tr><td colspan="7"><div class="empty">Nenhum pedido com esses filtros.</div></td></tr>';
+      $('#pvResumo').textContent = '';
+      $('#pvPaginacao').innerHTML = '';
+      return;
+    }
+    corpo.innerHTML = lista.map(pd => `<tr>
+      <td><strong>${esc(pd.numero||'—')}</strong>${pd.corrigidoNaMao?' <span class="tag">arrumado na mão</span>':''}</td>
+      <td>${esc(dataCurta(pd.data))}</td>
+      <td>${esc(pd.cliente||'—')}</td>
+      <td class="right">${money(pd.valor)}</td>
+      <td>${pd.semVendedor?'<span class="tag alt">Vendido pela loja</span>':esc(pd.vendedor)}</td>
+      <td>${esc(pd.canal||'—')}</td>
+      <td class="mut" title="${esc(pd.obsBruta)}">${esc(pd.comoFoi)}</td>
+    </tr>`).join('');
+
+    const inicio = r.pagina * r.porPagina + 1;
+    const fim = r.pagina * r.porPagina + lista.length;
+    $('#pvResumo').innerHTML = `Mostrando <strong>${inicio}–${fim}</strong> de <strong>${r.total}</strong> pedido(s). Soma desta página: <strong>${money(r.somaDaPagina)}</strong>.`;
+
+    $('#pvPaginacao').innerHTML =
+      (r.pagina > 0 ? '<button class="btn ghost sm" id="pvAnterior">◀ Anteriores</button>' : '')
+      + (r.temMais ? '<button class="btn ghost sm" id="pvProxima">Próximos ▶</button>' : '');
+    const ant = $('#pvAnterior'), prox = $('#pvProxima');
+    if(ant) ant.onclick = () => { pvPagina--; buscarPedidosVendas(); };
+    if(prox) prox.onclick = () => { pvPagina++; buscarPedidosVendas(); };
+  }catch(e){
+    corpo.innerHTML = `<tr><td colspan="7"><div class="empty">Não deu pra buscar: ${esc(e.message)}</div></td></tr>`;
+    $('#pvResumo').textContent = '';
+    $('#pvPaginacao').innerHTML = '';
+  }
+}
+
+// Trocar de filtro volta pra primeira página. Sem isso, filtrar estando na página 3
+// mostraria "nenhum pedido" num filtro que tem resultado.
+$('#pvBuscar').onclick = () => { pvPagina = 0; buscarPedidosVendas(); };
+$('#pvNumero').addEventListener('keydown', e => { if(e.key === 'Enter'){ pvPagina = 0; buscarPedidosVendas(); } });
+$('#pvVendedor').onchange = () => { pvPagina = 0; buscarPedidosVendas(); };
+$('#pvLimpar').onclick = () => {
+  $('#pvNumero').value = ''; $('#pvVendedor').value = ''; pvPagina = 0;
+  $('#tabPedidosVendas').innerHTML = '<tr><td colspan="7"><div class="empty">Escolha um filtro e clique em Buscar.</div></td></tr>';
+  $('#pvResumo').textContent = ''; $('#pvPaginacao').innerHTML = '';
+};
 
 $('#vdBuscar').onclick = async () => {
   const de = $('#vdDe').value, ate = $('#vdAte').value;
@@ -1447,6 +1588,7 @@ function renderVendas(r){
   // Sugestões dos campos de correção, vindas do servidor.
   const cad = r.cadastro || {vendedores:[],canais:[]};
   $('#vendedoresPadrao').innerHTML = cad.vendedores.map(v=>`<option value="${esc(v)}">`).join('');
+  preencherVendedoresDaLista(cad.vendedores);
   $('#canaisPadrao').innerHTML = cad.canais.map(c=>`<option value="${esc(c)}">`).join('');
 
   // Gráfico de vendedores, mesma barra de div do gráfico de dias.

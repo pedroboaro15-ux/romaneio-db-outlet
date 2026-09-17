@@ -3,6 +3,7 @@
 // Freteiro/estoquista também usam isso pra "começar uma rota" direto do celular.
 const { identificar } = require('./lib/auth');
 const { json } = require('./lib/http');
+const { parsear } = require('./lib/observacao');
 const omie = require('./lib/omie');
 const { buscarCliente } = require('./lib/clientes');
 
@@ -77,6 +78,26 @@ function normalizarPedido(raw) {
     volumesOmie: num(pick(frete.quantidade_volumes, 0)),
     peso: num(pick(frete.peso_bruto, 0)),
     observacao: pick(obs.obs_venda, '') || '',
+    // Quem vendeu, lido da observação pelo MESMO parser da aba Vendas. Serve pra
+    // montar a rota já sabendo de quem é o pedido, sem abrir outra tela — e, quando
+    // dá problema na entrega, pra saber a quem perguntar.
+    //
+    // Reusar o parser não é economia de código: se a rota lesse a observação por
+    // conta própria, um dia diria "Amanda" onde o relatório diz "João", e não
+    // haveria como saber qual dos dois está certo.
+    venda: (() => {
+      const bruta = pick(obs.obs_venda, '') || '';
+      const lido = parsear(bruta);
+      return {
+        vendedor: lido.vendedor || '',
+        canal: lido.canal || '',
+        // Sem vendedor identificado a venda é da loja — é o mesmo rótulo da aba
+        // Vendas, de propósito.
+        rotulo: lido.vendedor || 'Vendido pela loja',
+        statusParse: lido.statusParse,
+        certeza: lido.statusParse === 'ok'
+      };
+    })(),
     itens,
     enderecoAlternativo: enderecoAlternativo(p)
   };
