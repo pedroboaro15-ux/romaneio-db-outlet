@@ -21,7 +21,12 @@ header{background:var(--ink);padding:0 16px;position:sticky;top:0;z-index:20}
 .marca img{width:38px;height:38px;border-radius:7px;display:block}
 .logo{font-weight:700;font-size:15px;letter-spacing:-.02em;color:#fff;line-height:1.15}
 .logo span{display:block;font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--amarelo)}
-nav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+/* Rola de lado em vez de quebrar linha. Quebrando, a navegação empurrava a altura do
+   cabeçalho pra cima — e como ele é sticky e fica por cima de tudo, numa janela baixa
+   ele passava a ocupar 61% da tela e engolia todo clique do conteúdo. */
+nav{display:flex;gap:2px;margin-left:auto;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:0 0 auto}
 nav button{background:none;border:0;padding:8px 13px;border-radius:7px;cursor:pointer;color:#b9b9ae;font:inherit;font-weight:600;font-size:13px}
 nav button:hover{background:#ffffff1a;color:#fff}
 nav button.on{background:var(--amarelo);color:var(--ink)}
@@ -107,6 +112,14 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
   nav{margin-left:0;width:100%}
   nav button{padding:7px 10px;font-size:12px}
   .navlink{padding:7px 10px;font-size:12px}
+}
+/* Janela baixa (painel aberto numa janelinha, ou celular deitado): o cabeçalho
+   para de ser fixo. Preso no topo de uma tela de 300px ele sobra pouco espaço pro
+   que importa, e o pouco que sobra fica atrás dele. */
+@media(max-height:560px){
+  header{position:static}
+  .hrow{height:auto;padding:8px 0;flex-wrap:nowrap}
+  .logo span{display:none}
 }
 </style>
 </head>
