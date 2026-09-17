@@ -335,7 +335,7 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
 
     <div class="card">
       <h2>Pedidos, um por um</h2>
-      <p class="mut" style="margin-top:-6px">Filtre por vendedor pra ver o que ele vendeu, do mais novo pro mais antigo. Pelo número, acha o pedido direto — e aí o período não importa. Pedido sem vendedor identificado aparece como <strong>Vendido pela loja</strong>.</p>
+      <p class="mut" style="margin-top:-6px">Filtre por vendedor pra ver o que ele vendeu, do mais novo pro mais antigo. Pelo número, acha o pedido direto — e aí o período não importa. Cada linha mostra <strong>quem vendeu</strong> (lido da observação da Omie) e <strong>quem entregou</strong> (do romaneio). Pedido sem vendedor identificado aparece como <strong>Vendido pela loja</strong>.</p>
       <div class="row">
         <div>
           <label>Vendedor</label>
@@ -351,7 +351,7 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
       <p class="mut" style="font-size:12px;margin-top:6px">Usa o mesmo período lá de cima, menos quando você busca por número.</p>
       <div id="pvResumo" class="mut" style="margin-top:10px"></div>
       <div style="overflow-x:auto;margin-top:10px"><table>
-        <thead><tr><th>Pedido</th><th>Data</th><th>Cliente</th><th class="right">Valor</th><th>Vendedor</th><th>Canal</th><th>Como foi</th></tr></thead>
+        <thead><tr><th>Pedido</th><th>Data</th><th>Cliente</th><th class="right">Valor</th><th>Quem vendeu</th><th>Quem entregou</th><th>Observação da Omie</th></tr></thead>
         <tbody id="tabPedidosVendas"><tr><td colspan="7"><div class="empty">Escolha um filtro e clique em Buscar.</div></td></tr></tbody>
       </table></div>
       <div id="pvPaginacao" style="margin-top:10px;display:flex;gap:8px;align-items:center"></div>
@@ -1388,6 +1388,21 @@ function preencherVendedoresDaLista(vendedores){
   sel.value = antes;
 }
 
+/* Quem entregou, do jeito que cabe numa célula.
+
+   Um pedido pode ter mais de uma parada: a entrega e, depois, uma assistência no
+   mesmo pedido. As duas aparecem, marcadas — "quem entregou" e "quem foi lá
+   consertar" são perguntas diferentes.
+
+   Pedido que nunca entrou em romaneio não é erro: é venda que ainda não virou rota. */
+function entregaEmTexto(entregas){
+  if(!entregas || !entregas.length) return '<span class="mut">Ainda não entrou em rota</span>';
+  return entregas.map(e => `<div style="margin-bottom:4px">
+    ${e.assistencia?'<span class="tag alt">assistência</span> ':''}<strong>${esc(e.freteiro)}</strong>
+    <div class="mut">${esc(e.situacao)}${e.dataRota?' · '+esc(dataCurta(e.dataRota)):''}${e.recebedor?' · recebeu: '+esc(e.recebedor):''}</div>
+  </div>`).join('');
+}
+
 async function buscarPedidosVendas(){
   const corpo = $('#tabPedidosVendas');
   const numero = $('#pvNumero').value.trim();
@@ -1426,9 +1441,12 @@ async function buscarPedidosVendas(){
       <td>${esc(dataCurta(pd.data))}</td>
       <td>${esc(pd.cliente||'—')}</td>
       <td class="right">${money(pd.valor)}</td>
-      <td>${pd.semVendedor?'<span class="tag alt">Vendido pela loja</span>':esc(pd.vendedor)}</td>
-      <td>${esc(pd.canal||'—')}</td>
-      <td class="mut" title="${esc(pd.obsBruta)}">${esc(pd.comoFoi)}</td>
+      <td>
+        ${pd.semVendedor?'<span class="tag alt">Vendido pela loja</span>':'<strong>'+esc(pd.vendedor)+'</strong>'}
+        <div class="mut">${esc(pd.canal||'sem canal')} · ${esc(pd.comoFoi)}</div>
+      </td>
+      <td>${entregaEmTexto(pd.entregas)}</td>
+      <td class="mut" style="max-width:260px">${pd.obsBruta?esc(pd.obsBruta):'<em>sem observação</em>'}</td>
     </tr>`).join('');
 
     const inicio = r.pagina * r.porPagina + 1;

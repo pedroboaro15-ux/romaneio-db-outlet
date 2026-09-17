@@ -206,6 +206,95 @@ cenarioRotas();
 }
 
 /* ================================================================== */
+titulo('QUEM VENDEU E QUEM ENTREGOU, NA MESMA LINHA');
+
+// As duas pontas do mesmo pedido viviam em telas separadas: quem vendeu sai da
+// observação da Omie, quem entregou sai do romaneio. Responder "quem vendeu e quem
+// entregou o 1042?" exigia abrir duas abas e casar na mão.
+
+function cenarioVendaEEntrega() {
+  zerar();
+  process.env.ADMIN_EMAILS = EMAIL;
+  banco.usuarios['token-do-gerente'] = { id: 'u1', email: EMAIL };
+  banco.tabelas.vendas_observacoes = [
+    { pedido_id: 'a', numero_pedido: '1042', data_pedido: '2026-08-10', valor: 3200,
+      cliente_nome: 'Dona Ana', canal: 'WHATSAPP', vendedor: 'AMANDA', status_parse: 'ok',
+      obs_bruta: 'WPP||AMANDA||OBS: entregar de manha' },
+    { pedido_id: 'b', numero_pedido: '1043', data_pedido: '2026-08-11', valor: 900,
+      cliente_nome: 'Seu Zé', canal: 'PRESENCIAL', vendedor: 'LUCAS', status_parse: 'ok',
+      obs_bruta: 'PRESENCIAL||LUCAS' }
+  ];
+  banco.tabelas.freteiros = [{ id: 'f1', nome: 'João' }, { id: 'f2', nome: 'Pedro Frete' }];
+  banco.tabelas.romaneios = [
+    { id: 'r1', codigo: 'R0001', freteiro_id: 'f1', data_rota: '2026-08-12' },
+    { id: 'r2', codigo: 'R0002', freteiro_id: 'f2', data_rota: '2026-08-20' }
+  ];
+  banco.tabelas.paradas = [
+    { id: 'p1', romaneio_id: 'r1', numero: '1042', tipo: 'pedido',
+      status: 'entregue', entregue_em: '2026-08-12T15:00:00Z', recebedor: 'Ana' },
+    // O MESMO pedido, semanas depois, numa assistência — outro freteiro.
+    { id: 'p2', romaneio_id: 'r2', numero: '1042', tipo: 'assistencia',
+      status: 'entregue', entregue_em: '2026-08-20T11:00:00Z', recebedor: 'Ana' }
+  ];
+}
+
+cenarioVendaEEntrega();
+{
+  const r = await chamar(pedidosVendas, comoGerente({ numero: '1042' }));
+  const pd = r.corpo.pedidos[0];
+  checa('a mesma linha traz quem vendeu', pd.vendedor === 'AMANDA', pd.vendedor);
+  checa('e quem entregou', pd.entregas.length === 2, `${pd.entregas.length} entrega(s)`);
+
+  const entrega = pd.entregas.find(e => !e.assistencia);
+  const assist = pd.entregas.find(e => e.assistencia);
+  checa('a entrega veio com o freteiro certo',
+    entrega && entrega.freteiro === 'João', entrega && entrega.freteiro);
+  checa('a assistência do mesmo pedido veio separada, com o outro freteiro',
+    assist && assist.freteiro === 'Pedro Frete', assist && assist.freteiro);
+  checa('e a situação vem em português, não em código de banco',
+    entrega.situacao === 'Entregue', entrega.situacao);
+  checa('a rota e a data vêm junto',
+    entrega.rota === 'R0001' && entrega.dataRota === '2026-08-12',
+    `${entrega.rota} · ${entrega.dataRota}`);
+  checa('o recebedor também', entrega.recebedor === 'Ana', entrega.recebedor);
+}
+
+cenarioVendaEEntrega();
+{
+  const r = await chamar(pedidosVendas, comoGerente({ numero: '1043' }));
+  const pd = r.corpo.pedidos[0];
+  checa('venda que ainda não virou rota não é erro — só vem sem entrega',
+    pd.entregas.length === 0 && pd.vendedor === 'LUCAS',
+    `${pd.entregas.length} entrega(s), vendedor ${pd.vendedor}`);
+}
+
+cenarioVendaEEntrega();
+{
+  const r = await chamar(pedidosVendas, comoGerente({ de: '2026-08-01', ate: '2026-08-31' }));
+  checa('a observação crua vem junto — é ela que explica um vendedor errado',
+    r.corpo.pedidos.every(p => typeof p.obsBruta === 'string')
+    && r.corpo.pedidos.find(p => p.numero === '1042').obsBruta.includes('AMANDA'));
+}
+
+cenarioVendaEEntrega();
+{
+  // Se a busca das entregas falhar, a lista tem que sair mesmo assim: saber quem
+  // vendeu já é metade da resposta.
+  const deVerdade = banco.tabelas.paradas;
+  Object.defineProperty(banco.tabelas, 'paradas', {
+    get() { throw new Error('banco caiu'); }, configurable: true
+  });
+  let r;
+  try { r = await chamar(pedidosVendas, comoGerente({ numero: '1042' })); }
+  catch (e) { r = { status: 500, corpo: { erro: e.message } }; }
+  delete banco.tabelas.paradas;
+  banco.tabelas.paradas = deVerdade;
+  checa('entrega indisponível não derruba a lista de vendas',
+    r.status === 200 && r.corpo.pedidos.length === 1,
+    `status ${r.status}`);
+}
+
+/* ================================================================== */
 console.log('\n============================================================');
 console.log(`${ok} verificação(ões) passaram · ${falhas} falharam`);
 if (falhas) {

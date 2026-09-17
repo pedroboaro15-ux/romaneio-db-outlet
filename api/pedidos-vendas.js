@@ -13,6 +13,11 @@
 // Pedido sem vendedor identificado NÃO é escondido. Ele aparece como "Vendido pela
 // loja", que é o que de fato aconteceu: a venda existiu, só não tem comissão. Some
 // da lista seria perder de vista justamente o que precisa de conserto.
+//
+// A lista junta as DUAS pontas do mesmo pedido: quem vendeu (vem da observação da
+// Omie, tabela vendas_observacoes) e quem entregou (vem do romaneio, tabela paradas).
+// Elas viviam em telas separadas, então responder "quem vendeu e quem entregou o
+// 1042?" exigia abrir duas abas e casar na mão.
 const { requireAdmin } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
@@ -25,6 +30,65 @@ function rotuloVendedor(l) {
   const nome = String(l.vendedor || '').trim();
   if (!nome || nome === SEM_VENDEDOR) return 'Vendido pela loja';
   return nome;
+}
+
+const SITUACAO = {
+  entregue: 'Entregue',
+  falhou: 'Não entregue',
+  em_rota: 'Saiu pra entrega',
+  reagendada: 'Remarcada',
+  pendente: 'Na rota, ainda não saiu'
+};
+
+/**
+ * Quem entregou cada pedido, procurado pelo NÚMERO.
+ *
+ * O número é o que o Pedro digita e o que aparece nas duas telas; o id interno da
+ * Omie não chega até a parada. Um mesmo número pode ter mais de uma parada — a
+ * entrega e, depois, uma assistência no mesmo pedido — e as duas voltam, porque
+ * "quem entregou" e "quem foi lá consertar" são perguntas diferentes e o gerente
+ * costuma querer as duas.
+ *
+ * Se a busca falhar, a lista sai SEM a entrega em vez de não sair: saber quem
+ * vendeu já é metade da resposta, e derrubar a tela inteira por causa da outra
+ * metade seria pior.
+ */
+async function entregasPorNumero(sb, numeros) {
+  const mapa = new Map();
+  if (!numeros.length) return mapa;
+
+  // try/catch além de conferir o "error": o cliente devolve erro de consulta no
+  // objeto, mas queda de rede e resposta corrompida ESTOURAM. Só conferir o error
+  // deixava a exceção subir e derrubar a lista inteira — que é justamente o que
+  // esta função não pode fazer.
+  let data;
+  try {
+    const r = await sb
+      .from('paradas')
+      .select('numero, tipo, status, entregue_em, recebedor, romaneios(codigo, data_rota, freteiros(nome))')
+      .in('numero', numeros);
+    if (r.error || !r.data) return mapa;
+    data = r.data;
+  } catch (e) {
+    return mapa;
+  }
+
+  for (const p of data) {
+    const rom = p.romaneios || {};
+    const fre = rom.freteiros || {};
+    if (!mapa.has(p.numero)) mapa.set(p.numero, []);
+    mapa.get(p.numero).push({
+      freteiro: fre.nome || 'Sem freteiro',
+      rota: rom.codigo || '',
+      dataRota: rom.data_rota || '',
+      status: p.status || '',
+      situacao: SITUACAO[p.status] || p.status || '',
+      entregueEm: p.entregue_em || null,
+      recebedor: p.recebedor || '',
+      assistencia: p.tipo === 'assistencia'
+    });
+  }
+  return mapa;
 }
 
 /** Como o vendedor foi preenchido — o gerente precisa saber no que confiar. */
@@ -82,6 +146,9 @@ exports.handler = async event => {
     .range(de, de + POR_PAGINA - 1);
   if (error) return json(500, { erro: error.message });
 
+  const numeros = [...new Set((data || []).map(l => l.numero_pedido).filter(Boolean))];
+  const entregas = await entregasPorNumero(sb, numeros);
+
   const pedidos = (data || []).map(l => ({
     pedidoId: l.pedido_id,
     numero: l.numero_pedido || '',
@@ -93,7 +160,10 @@ exports.handler = async event => {
     semVendedor: rotuloVendedor(l) === 'Vendido pela loja',
     comoFoi: comoFoi(l.status_parse),
     corrigidoNaMao: !!l.corrigido_manual,
-    obsBruta: l.obs_bruta || ''
+    // A observação crua, que é de onde o vendedor saiu. Fica visível na lista, e não
+    // só num balãozinho: quando o vendedor está errado, é ela que explica por quê.
+    obsBruta: l.obs_bruta || '',
+    entregas: entregas.get(l.numero_pedido) || []
   }));
 
   const total = typeof count === 'number' ? count : pedidos.length;
