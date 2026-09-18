@@ -3,7 +3,7 @@
 // o resultado direto na parada. O navegador não pode chamar o Nominatim direto porque
 // precisa de um User-Agent identificando a aplicação — por isso passa por aqui.
 // Chame no máximo 1x por segundo (o cliente é quem espaça as chamadas entre paradas).
-const { requireAdmin } = require('./lib/auth');
+const { requirePainel } = require('./lib/auth');
 const { json, lerCorpo } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 
@@ -54,7 +54,7 @@ function candidatos(c) {
 
 exports.handler = async event => {
   if (event.httpMethod !== 'POST') return json(405, { erro: 'método não permitido' });
-  const user = await requireAdmin(event);
+  const user = await requirePainel(event);
   if (!user) return json(401, { erro: 'não autenticado' });
 
   const { ok: corpoOk, corpo: b } = lerCorpo(event);

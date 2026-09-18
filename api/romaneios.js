@@ -4,7 +4,7 @@
 // do celular, sem precisar esperar o gerente montar. Freteiro só cria/edita rota dele
 // mesmo (o freteiro_id é sempre travado nele, nunca vem do que o app mandar). Estoquista
 // escolhe o freteiro na hora. Nenhum dos dois mexe em valor_frete (isso é só do gerente).
-const { requireAdmin, identificar } = require('./lib/auth');
+const { requireAdmin, requirePainel, identificar } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 const { hojeBR } = require('./lib/datas');
@@ -46,7 +46,10 @@ exports.handler = async event => {
   const sb = admin();
 
   if (event.httpMethod === 'GET') {
-    const user = await requireAdmin(event);
+    // Vendedor vê TODAS as rotas, igual ao gerente: na loja qualquer um pode
+    // precisar socorrer a rota que outro montou, e uma lista por pessoa faria
+    // ele não achar a rota que precisa consertar.
+    const user = await requirePainel(event);
     if (!user) return json(401, { erro: 'não autenticado' });
     const { data, error } = await sb
       .from('romaneios')
@@ -62,8 +65,10 @@ exports.handler = async event => {
   }
 
   if (event.httpMethod === 'DELETE') {
+    // Excluir rota é só do gerente. É a única coisa aqui que não tem volta: some
+    // a rota, as paradas e as fotos de entrega junto.
     const user = await requireAdmin(event);
-    if (!user) return json(401, { erro: 'não autenticado' });
+    if (!user) return json(401, { erro: 'apenas o gerente pode excluir uma rota' });
     if (!q.id) return json(400, { erro: 'informe id' });
     const { error } = await sb.from('romaneios').delete().eq('id', q.id);
     if (error) return json(500, { erro: error.message });
@@ -73,6 +78,11 @@ exports.handler = async event => {
   if (event.httpMethod === 'POST') {
     const quem = await identificar(event);
     if (!quem) return json(401, { erro: 'não autenticado' });
+
+    // Gerente e vendedor montam e ajustam a rota inteira. Freteiro e estoquista só
+    // ACRESCENTAM parada — trocar freteiro, data e frete continua fora do alcance
+    // deles, que é o que sempre foi.
+    const podeGerir = quem.role === 'admin' || quem.role === 'vendedor';
 
     let b;
     try { b = JSON.parse(event.body || '{}'); } catch (e) { return json(400, { erro: 'JSON inválido' }); }
@@ -150,16 +160,16 @@ exports.handler = async event => {
       if (!existente) return json(404, { erro: 'romaneio não encontrado' });
 
       // Freteiro só mexe na rota dele mesmo; estoquista pode adicionar em qualquer uma
-      // (não é dona de rota nenhuma). Os dois só podem ADICIONAR parada — trocar
-      // freteiro/data/frete continua exclusivo do gerente.
+      // (não é dono de rota nenhuma). Os dois só podem ADICIONAR parada — trocar
+      // freteiro/data/frete é de quem gere o painel.
       if (quem.role === 'freteiro' && existente.freteiro_id !== quem.freteiroId) {
         return json(403, { erro: 'essa rota não é sua' });
       }
-      if (quem.role !== 'admin' && !paradas.length) {
+      if (!podeGerir && !paradas.length) {
         return json(400, { erro: 'informe ao menos uma parada pra adicionar' });
       }
 
-      if (quem.role === 'admin') {
+      if (podeGerir) {
         // Um romaneio sempre tem que ter freteiro — não deixa tirar/zerar por engano.
         if (b.freteiroId !== undefined && !b.freteiroId) return json(400, { erro: 'romaneio sempre precisa de um freteiro' });
 
@@ -207,7 +217,7 @@ exports.handler = async event => {
     // Estoquista precisa escolher um freteiro. Só o gerente define valor de frete.
     const freteiroId = quem.role === 'freteiro' ? quem.freteiroId : b.freteiroId;
     if (!freteiroId) return json(400, { erro: 'selecione um freteiro' });
-    const valorFrete = quem.role === 'admin' ? (Number(b.valorFrete) || 0) : 0;
+    const valorFrete = podeGerir ? (Number(b.valorFrete) || 0) : 0;
 
     const { data: rom, error: e1 } = await sb
       .from('romaneios')

@@ -1,12 +1,12 @@
 // POST /api/reordenar-paradas  { romaneioId, ordem: [paradaId, paradaId, ...] }
 // Grava a nova ordem das paradas depois que o gerente confirma (nunca reordena sozinho).
-const { requireAdmin } = require('./lib/auth');
+const { requirePainel } = require('./lib/auth');
 const { json, lerCorpo } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 
 exports.handler = async event => {
   if (event.httpMethod !== 'POST') return json(405, { erro: 'método não permitido' });
-  const user = await requireAdmin(event);
+  const user = await requirePainel(event);
   if (!user) return json(401, { erro: 'não autenticado' });
 
   const { ok: corpoOk, corpo: b } = lerCorpo(event);

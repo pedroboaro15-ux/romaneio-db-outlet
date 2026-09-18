@@ -133,9 +133,26 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
   <div class="card">
   <h2>Entrar no painel</h2>
   <div id="erroLogin"></div>
-  <div style="margin-bottom:10px"><label>E-mail</label><input id="lEmail" type="email" autocomplete="username"></div>
-  <div style="margin-bottom:12px"><label>Senha</label><input id="lSenha" type="password" autocomplete="current-password"></div>
-  <button class="btn cta" id="btnLogin" style="width:100%">Entrar</button>
+
+  <div class="subnav" id="tipoLogin" style="margin-bottom:12px">
+    <button data-modo="gerente" class="on">Sou o gerente</button>
+    <button data-modo="vendedor">Sou vendedor</button>
+  </div>
+
+  <div id="loginGerente">
+    <div style="margin-bottom:10px"><label>E-mail</label><input id="lEmail" type="email" autocomplete="username"></div>
+    <div style="margin-bottom:12px"><label>Senha</label><input id="lSenha" type="password" autocomplete="current-password"></div>
+    <button class="btn cta" id="btnLogin" style="width:100%">Entrar</button>
+  </div>
+
+  <div id="loginVendedor" hidden>
+    <div style="margin-bottom:12px">
+      <label>Seu celular</label>
+      <input id="lTelefone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="83 9 9999-9999">
+    </div>
+    <button class="btn cta" id="btnLoginVendedor" style="width:100%">Entrar</button>
+    <p class="mut" style="font-size:12px;margin:10px 0 0">É o mesmo celular que o gerente cadastrou. Sem senha.</p>
+  </div>
   </div>
 </div>
 
@@ -291,6 +308,21 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
     </div>
     <div class="card" style="padding:0"><div style="overflow-x:auto"><table id="tabEs">
       <thead><tr><th>Nome</th><th>Telefone</th><th></th></tr></thead>
+      <tbody></tbody></table></div></div>
+
+    <div class="card">
+      <h2 id="tituloVe">Cadastrar vendedor</h2>
+      <p class="mut" style="margin-top:-6px">O vendedor entra <strong>neste mesmo painel</strong>, escolhendo "Sou vendedor" e digitando o celular. Ele vê o Painel, Buscar pedido e Romaneios — monta e ajusta rota, mas não exclui, e não vê estoque, relatórios nem vendas. Não confundir com os vendedores da aba Vendas, que saem da observação do pedido e não têm login.</p>
+      <input type="hidden" id="veId">
+      <div class="row">
+        <div><label>Nome</label><input id="veNome" placeholder="Amanda"></div>
+        <div><label>Celular (login) *</label><input id="veTel" placeholder="(83) 99999-0000"></div>
+        <div class="auto"><button class="btn" id="addVe">Adicionar</button></div>
+        <div class="auto"><button class="btn ghost" id="cancelarVe" hidden>Cancelar edição</button></div>
+      </div>
+    </div>
+    <div class="card" style="padding:0"><div style="overflow-x:auto"><table id="tabVe">
+      <thead><tr><th>Nome</th><th>Celular</th><th></th></tr></thead>
       <tbody></tbody></table></div></div>
   </section>
 
@@ -478,10 +510,29 @@ const dataBR = d => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Fortaleza
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
 function erro(m){$('#erro').innerHTML = m ? `<div class="err">${esc(m)}</div>` : '';}
 
+/* ---------------- quem está usando o painel ----------------
+   Duas portas de entrada, e elas não se misturam:
+
+   · gerente  — conta do Supabase Auth (e-mail e senha). O token é o JWT.
+   · vendedor — o mesmo login por telefone do freteiro e do estoquista. O token é
+                opaco, guardado aqui no navegador.
+
+   O servidor já sabia distinguir os dois (api/lib/auth.js), então aqui é só
+   mandar o que tiver. O papel vem do servidor no login, nunca é decidido pelo
+   navegador: esconder aba é conforto, quem barra de verdade é o endpoint. */
+const CHAVE_EQUIPE = 'painelEquipeToken';
+let papel = 'admin';   // 'admin' | 'vendedor'
+const tokenDeEquipe = () => { try { return localStorage.getItem(CHAVE_EQUIPE); } catch { return null; } };
+
 /* ---------------- chamadas às Functions ---------------- */
 async function api(url, opt){
-  const { data } = await sb.auth.getSession();
-  const token = data.session ? data.session.access_token : null;
+  // O token de equipe ganha: quem entrou por telefone não tem sessão do Supabase,
+  // e olhar o Supabase primeiro custaria uma ida ao servidor em toda chamada.
+  let token = tokenDeEquipe();
+  if(!token){
+    const { data } = await sb.auth.getSession();
+    token = data.session ? data.session.access_token : null;
+  }
   opt = opt || {};
   opt.headers = Object.assign({}, opt.headers, token ? { Authorization: 'Bearer ' + token } : {});
   const r = await fetch(url, opt);
@@ -498,26 +549,113 @@ async function api(url, opt){
 
 /* ---------------- login ---------------- */
 async function checarSessao(){
+  if(tokenDeEquipe()){
+    // Confere de verdade em vez de confiar no que está guardado: o gerente pode ter
+    // tirado a pessoa do cadastro, e aí o token no celular dela não vale mais.
+    try{
+      const eu = await api('/api/quem-sou');
+      papel = eu.role;
+      mostrarApp();
+      return;
+    }catch(e){
+      try{ localStorage.removeItem(CHAVE_EQUIPE); }catch{}
+    }
+  }
   const { data } = await sb.auth.getSession();
-  if(data.session){ mostrarApp(); } else { mostrarLogin(); }
+  if(data.session){ papel = 'admin'; mostrarApp(); } else { mostrarLogin(); }
 }
 function mostrarLogin(){ $('#tela-login').hidden = false; $('#tela-app').hidden = true; }
+
+/* As abas que cada papel enxerga.
+
+   Vendedor monta rota: precisa do Painel, de Buscar pedido (é por onde a rota é
+   montada) e de Romaneios. Não vê Estoque, Relatórios, Vendas nem Diagnóstico.
+
+   O cadastro de Freteiros fica de fora a pedido do Pedro — ele ainda escolhe o
+   freteiro ao montar a rota, mas não vê telefone nem placa de ninguém. O servidor
+   já mandava só id e nome pra quem não é gerente, então esconder a aba não é o que
+   protege o dado; é o que tira da frente uma tela que não é dele. */
+const ABAS_DO_VENDEDOR = ['painel', 'pedido', 'rom'];
+
+function aplicarPapel(){
+  const ehVendedor = papel === 'vendedor';
+  $$('nav button').forEach(b => {
+    b.hidden = ehVendedor && !ABAS_DO_VENDEDOR.includes(b.dataset.t);
+  });
+  const linkEstoque = $('nav .navlink');
+  if(linkEstoque) linkEstoque.hidden = ehVendedor;
+
+  // Se a aba aberta sumiu, volta pro Painel em vez de deixar a tela vazia.
+  const atual = $$('nav button').find(b => b.classList.contains('on'));
+  if(ehVendedor && (!atual || atual.hidden)){
+    const painel = $$('nav button').find(b => b.dataset.t === 'painel');
+    if(painel) painel.click();
+  }
+}
+
 function mostrarApp(){
   $('#tela-login').hidden = true; $('#tela-app').hidden = false;
+  aplicarPapel();
   carregarFreteiros().catch(e=>erro(e.message));
-  carregarEstoquistas().catch(e=>erro(e.message));
+  // Cadastro de gente é coisa de gerente: nem carrega pro vendedor, pra não bater
+  // num 401 e pintar um erro vermelho na tela dele sem motivo.
+  if(papel === 'admin'){
+    carregarEstoquistas().catch(e=>erro(e.message));
+    carregarVendedoresEquipe().catch(e=>erro(e.message));
+  }
   carregarRomaneios().catch(e=>erro(e.message));
   carregarPainelDia().catch(e=>erro(e.message));
   statusHoje();
 }
+
+$$('#tipoLogin button').forEach(b => b.onclick = () => {
+  $$('#tipoLogin button').forEach(x => x.classList.toggle('on', x === b));
+  const gerente = b.dataset.modo === 'gerente';
+  $('#loginGerente').hidden = !gerente;
+  $('#loginVendedor').hidden = gerente;
+  $('#erroLogin').innerHTML = '';
+});
+
 $('#btnLogin').onclick = async () => {
   const email = $('#lEmail').value.trim(), senha = $('#lSenha').value;
   $('#erroLogin').innerHTML = '';
   const { error } = await sb.auth.signInWithPassword({ email, password: senha });
   if(error){ $('#erroLogin').innerHTML = `<div class="err">${esc(error.message)}</div>`; return; }
+  papel = 'admin';
   mostrarApp();
 };
-$('#sair').onclick = async () => { await sb.auth.signOut(); mostrarLogin(); };
+
+async function entrarComoVendedor(){
+  const telefone = $('#lTelefone').value.trim();
+  $('#erroLogin').innerHTML = '';
+  if(!telefone){ $('#erroLogin').innerHTML = '<div class="err">Digite seu celular.</div>'; return; }
+  const botao = $('#btnLoginVendedor');
+  botao.disabled = true;
+  try{
+    const r = await fetch('/api/equipe-login', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ telefone, tipo: 'vendedor' })
+    });
+    const j = await r.json().catch(()=>({erro:'resposta inválida do servidor'}));
+    if(!r.ok) throw new Error(j.erro || ('HTTP '+r.status));
+    localStorage.setItem(CHAVE_EQUIPE, j.token);
+    papel = 'vendedor';
+    mostrarApp();
+  }catch(e){
+    $('#erroLogin').innerHTML = `<div class="err">${esc(e.message)}</div>`;
+  }finally{ botao.disabled = false; }
+}
+$('#btnLoginVendedor').onclick = entrarComoVendedor;
+$('#lTelefone').addEventListener('keydown', e => { if(e.key === 'Enter') entrarComoVendedor(); });
+
+$('#sair').onclick = async () => {
+  // Limpa as DUAS portas, sempre. Sair só da que você acha que usou deixaria a
+  // outra sessão viva no aparelho.
+  try{ localStorage.removeItem(CHAVE_EQUIPE); }catch{}
+  await sb.auth.signOut();
+  papel = 'admin';
+  mostrarLogin();
+};
 
 /* ---------------- navegação ---------------- */
 $$('nav button').forEach(b => b.onclick = () => {
@@ -797,7 +935,7 @@ function renderListaRom(){
             <button class="btn ghost sm" onclick="abrirRotaCompleta('${r.id}')">Rota no Maps</button>
             <button class="btn ghost sm" onclick="toggleCarga('${r.id}')">Ver a carga</button>
             <button class="btn ghost sm" onclick="toggleEditRom('${r.id}')">Editar</button>
-            <button class="btn ghost sm danger" onclick="excluirRom('${r.id}')">Excluir</button>
+            ${papel === 'admin' ? `<button class="btn ghost sm danger" onclick="excluirRom('${r.id}')">Excluir</button>` : ''}
           </span>
         </div>
         <div id="editbox-${r.id}"></div>
@@ -1303,6 +1441,59 @@ async function delEs(id){
     carregarEstoquistas();
   }catch(e){ erro(e.message); }
 }
+
+/* ---------------- vendedores que montam rota ----------------
+   Gente, não os nomes lidos da observação do pedido (aba Vendas). São duas
+   listas com o mesmo nome e propósitos opostos — o endpoint se chama
+   "vendedores-equipe" justamente pra ninguém confundir os dois no servidor. */
+let vendedoresEquipe = [];
+
+async function carregarVendedoresEquipe(){
+  vendedoresEquipe = await api('/api/vendedores-equipe');
+  $('#tabVe tbody').innerHTML = vendedoresEquipe.length ? vendedoresEquipe.map(v=>`<tr>
+    <td><strong>${esc(v.nome)}</strong></td><td>${esc(v.telefone||'—')}</td>
+    <td class="right"><button class="btn ghost sm" onclick="editarVe('${v.id}')">Editar</button> <button class="btn ghost sm danger" onclick="delVe('${v.id}')">Remover</button></td>
+  </tr>`).join('') : '<tr><td colspan="3"><div class="empty">Nenhum vendedor cadastrado.</div></td></tr>';
+}
+function editarVe(id){
+  const v = vendedoresEquipe.find(x=>x.id===id);
+  if(!v) return;
+  $('#veId').value = v.id; $('#veNome').value = v.nome||''; $('#veTel').value = v.telefone||'';
+  $('#tituloVe').textContent = 'Editar vendedor'; $('#addVe').textContent = 'Salvar'; $('#cancelarVe').hidden = false;
+  $('#veNome').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function limparFormVe(){
+  $('#veId').value=''; ['#veNome','#veTel'].forEach(x=>$(x).value='');
+  $('#tituloVe').textContent = 'Cadastrar vendedor'; $('#addVe').textContent = 'Adicionar'; $('#cancelarVe').hidden = true;
+}
+$('#cancelarVe').onclick = limparFormVe;
+$('#addVe').onclick = async () => {
+  if(!$('#veNome').value.trim()) return toast('Informe o nome');
+  if(!$('#veTel').value.trim()) return toast('Informe o celular — é o login dele');
+  erro('');
+  try{
+    await api('/api/vendedores-equipe',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id:$('#veId').value||undefined,nome:$('#veNome').value,telefone:$('#veTel').value})});
+    const editando = !!$('#veId').value;
+    limparFormVe();
+    await carregarVendedoresEquipe();
+    toast(editando ? 'Vendedor atualizado' : 'Vendedor cadastrado');
+  }catch(e){ erro(e.message); }
+};
+async function delVe(id){
+  const v = vendedoresEquipe.find(x=>x.id===id);
+  if(!confirm(`Remover ${v?v.nome:'este vendedor'}?
+
+Ele perde o acesso ao painel na hora.`)) return;
+  erro('');
+  try{
+    await api('/api/vendedores-equipe?id='+id,{method:'DELETE'});
+    toast('Vendedor removido');
+    carregarVendedoresEquipe();
+  }catch(e){ erro(e.message); }
+}
+window.editarVe = editarVe;
+window.delVe = delVe;
 
 /* ---------------- relatórios ---------------- */
 $('#relBuscar').onclick = async () => {

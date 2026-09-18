@@ -51,6 +51,21 @@ alter table public.estoquistas enable row level security;
 alter table public.estoquistas add column if not exists telefone text default '';
 alter table public.estoquistas add column if not exists pin text default '';
 
+-- Vendedor monta romaneio. Entra pelo mesmo login de telefone do freteiro e do
+-- estoquista, e por isso ganha tabela própria em vez de virar uma coluna em
+-- "estoquistas": o login procura a pessoa NA TABELA DO TIPO, e misturar os dois
+-- faria um estoquista entrar como vendedor só por escolher a outra opção.
+--
+-- Ele NÃO tem conta no Supabase Auth. É de propósito: conta de verdade daria
+-- acesso ao app de estoque, que divide o mesmo projeto.
+create table if not exists public.vendedores (
+  id uuid primary key default gen_random_uuid(),
+  nome text not null,
+  telefone text default '',
+  criado_em timestamptz default now()
+);
+alter table public.vendedores enable row level security;
+
 -- Sessão criada no login por telefone (token opaco, sem relação com Supabase Auth).
 create table if not exists public.sessoes_equipe (
   token text primary key,

@@ -1,13 +1,13 @@
 // GET /api/painel-dia
 // Resumo do dia: rotas de hoje, entregas que falharam, problemas recentes.
-const { requireAdmin } = require('./lib/auth');
+const { requirePainel } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 const { hojeBR } = require('./lib/datas');
 
 exports.handler = async event => {
   if (event.httpMethod !== 'GET') return json(405, { erro: 'método não permitido' });
-  const user = await requireAdmin(event);
+  const user = await requirePainel(event);
   if (!user) return json(401, { erro: 'não autenticado' });
 
   const sb = admin();

@@ -81,10 +81,31 @@ export function criarSupabaseFalso() {
    *   - lá aponta pra cá (parada_fotos.parada_id)   -> devolve uma LISTA.
    */
   function juntar(tabela, linha, cols) {
-    const { juncoes } = separarSelect(cols);
-    if (!juncoes.length) return { ...linha };
+    const { campos, juncoes } = separarSelect(cols);
 
-    const saida = { ...linha };
+    // Projeta as colunas de verdade, em vez de devolver a linha inteira.
+    //
+    // Isto já foi frouxo e escondia a classe de bug mais fácil de cometer aqui:
+    // um endpoint que pede 'id, nome' pra não vazar telefone continuava vazando
+    // no teste, porque o falso devolvia tudo. Teste verde, dado vazando em
+    // produção — o pior dos dois mundos.
+    //
+    // '*' e o select vazio continuam trazendo tudo, como no PostgREST.
+    const pediuTudo = !campos.length || campos.some(c => c === '*');
+    const saida = {};
+    if (pediuTudo) {
+      Object.assign(saida, linha);
+    } else {
+      for (const campo of campos) {
+        // "nome:coluna" renomeia; aqui só o que importa é a coluna de origem.
+        const [esquerda, direita] = campo.split(':').map(x => x.trim());
+        const coluna = direita || esquerda;
+        const apelido = direita ? esquerda : esquerda;
+        if (Object.prototype.hasOwnProperty.call(linha, coluna)) saida[apelido] = linha[coluna];
+      }
+    }
+
+    if (!juncoes.length) return saida;
     for (const j of juncoes) {
       const chaveDaqui = singular(j.nome) + '_id';
 

@@ -1,12 +1,12 @@
 // GET /api/historico-cliente?codigo=123
 // Antes de montar a rota: esse cliente já teve problema em entregas/assistências passadas?
-const { requireAdmin } = require('./lib/auth');
+const { requirePainel } = require('./lib/auth');
 const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 
 exports.handler = async event => {
   if (event.httpMethod !== 'GET') return json(405, { erro: 'método não permitido' });
-  const user = await requireAdmin(event);
+  const user = await requirePainel(event);
   if (!user) return json(401, { erro: 'não autenticado' });
 
   const codigo = (event.queryStringParameters || {}).codigo;

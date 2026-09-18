@@ -67,4 +67,21 @@ async function identificar(event) {
   return identificarSessao(token);
 }
 
-module.exports = { requireAdmin, identificar, ehGerente };
+/**
+ * Gerente OU vendedor — quem pode montar e mexer em romaneio pelo painel.
+ *
+ * Existe pra não espalhar `quem.role === 'admin' || quem.role === 'vendedor'` por
+ * seis endpoints. Espalhado, bastava esquecer um "|| vendedor" pra ele perder uma
+ * tela, ou esquecer um "=== admin" pra ele ganhar uma que não é dele.
+ *
+ * Devolve o mesmo formato do identificar(), pra quem chama poder olhar o role
+ * quando a diferença importar (excluir rota, mexer no valor do frete).
+ */
+async function requirePainel(event) {
+  const quem = await identificar(event);
+  if (!quem) return null;
+  if (quem.role !== 'admin' && quem.role !== 'vendedor') return null;
+  return quem;
+}
+
+module.exports = { requireAdmin, requirePainel, identificar, ehGerente };

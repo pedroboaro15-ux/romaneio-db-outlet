@@ -1,4 +1,4 @@
-// POST /api/equipe-login  { telefone, tipo: 'freteiro'|'estoquista' }
+// POST /api/equipe-login  { telefone, tipo: 'freteiro'|'estoquista'|'vendedor' }
 //
 // Sem senha/PIN de propósito: só o telefone cadastrado por você já identifica a
 // pessoa. Como o telefone é um número curto e adivinhável, o freio de tentativas
@@ -15,7 +15,10 @@ exports.handler = async event => {
   if (!corpoOk) return json(400, { erro: 'JSON inválido' });
 
   const telefone = soDigitos(b.telefone);
-  const tipo = b.tipo === 'estoquista' ? 'estoquista' : 'freteiro';
+  // Lista fechada: qualquer outro valor vira freteiro, que é o de menos poder.
+  // Um tipo inventado no corpo da requisição nunca pode virar um papel novo.
+  const TABELAS = { freteiro: 'freteiros', estoquista: 'estoquistas', vendedor: 'vendedores' };
+  const tipo = TABELAS[b.tipo] ? b.tipo : 'freteiro';
   if (!telefone) return json(400, { erro: 'informe o telefone' });
 
   const chaves = ['tel:' + telefone, 'ip:' + ipDe(event)];
@@ -27,7 +30,7 @@ exports.handler = async event => {
   }
 
   const sb = admin();
-  const tabela = tipo === 'estoquista' ? 'estoquistas' : 'freteiros';
+  const tabela = TABELAS[tipo];
   const { data: pessoas } = await sb.from(tabela).select('id, nome, telefone');
   const pessoa = (pessoas || []).find(p => soDigitos(p.telefone) === telefone && telefone);
   if (!pessoa) {

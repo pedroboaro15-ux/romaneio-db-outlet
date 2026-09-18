@@ -16,6 +16,8 @@
 import conferenciaFinal from '../api/conferencia-final.js';
 import equipeLogin from '../api/equipe-login.js';
 import estoquistas from '../api/estoquistas.js';
+import vendedoresEquipe from '../api/vendedores-equipe.js';
+import quemSou from '../api/quem-sou.js';
 import fotoUpload from '../api/foto-upload.js';
 import freteiros from '../api/freteiros.js';
 import geocode from '../api/geocode.js';
@@ -47,6 +49,8 @@ const FUNCOES = {
   'conferencia-final': conferenciaFinal,
   'equipe-login': equipeLogin,
   'estoquistas': estoquistas,
+  'vendedores-equipe': vendedoresEquipe,
+  'quem-sou': quemSou,
   'foto-upload': fotoUpload,
   'freteiros': freteiros,
   'geocode': geocode,

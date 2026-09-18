@@ -1,4 +1,5 @@
-// Sessão própria pro login de freteiro/estoquista por telefone (não usa Supabase Auth).
+// Sessão própria pro login por telefone de freteiro, estoquista e vendedor (não usa
+// Supabase Auth).
 const crypto = require('crypto');
 const { admin } = require('./supabase');
 
@@ -29,13 +30,16 @@ async function identificarSessao(token) {
   if (!data) return null;
   if (new Date(data.expira_em).getTime() < Date.now()) return null;
 
-  const tabela = data.tipo === 'freteiro' ? 'freteiros' : data.tipo === 'estoquista' ? 'estoquistas' : null;
+  // A tabela sai do TIPO da sessão, e um tipo desconhecido devolve null em vez de
+  // cair num padrão. Se amanhã alguém gravar tipo 'gerente' aqui, ele não entra.
+  const TABELAS = { freteiro: 'freteiros', estoquista: 'estoquistas', vendedor: 'vendedores' };
+  const tabela = TABELAS[data.tipo];
   if (!tabela) return null;
   const { data: pessoa } = await sb.from(tabela).select('id').eq('id', data.pessoa_id).maybeSingle();
   if (!pessoa) return null;
 
   if (data.tipo === 'freteiro') return { role: 'freteiro', freteiroId: data.pessoa_id, pessoaId: data.pessoa_id, nome: data.nome };
-  return { role: 'estoquista', freteiroId: null, pessoaId: data.pessoa_id, nome: data.nome };
+  return { role: data.tipo, freteiroId: null, pessoaId: data.pessoa_id, nome: data.nome };
 }
 
 // Apaga todas as sessões ativas de uma pessoa — usado quando você remove ela do cadastro.
