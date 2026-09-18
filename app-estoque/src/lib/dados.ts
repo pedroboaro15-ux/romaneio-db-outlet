@@ -38,6 +38,9 @@ export async function carregarProdutos(): Promise<Produto[]> {
   return (data ?? []).map((p: any) => ({
     ...p,
     preco: Number(p.preco),
+    // Numeric do Postgres chega como TEXTO no supabase-js. Sem o Number aqui,
+    // custo viraria "480.00" e qualquer conta com ele daria string concatenada.
+    custo: Number(p.custo ?? 0),
     giro: Number(p.giro),
     giro_semanal: Number(p.giro_semanal),
     giro_semanal_recente: Number(p.giro_semanal_recente),
@@ -56,7 +59,9 @@ export async function salvarMostruario(produtoId: string, qtd: number): Promise<
 }
 
 export async function salvarProduto(
-  id: string, campos: Partial<Pick<Produto, 'nome' | 'variacao' | 'preco' | 'estoque'>>
+  id: string,
+  campos: Partial<Pick<Produto,
+    'nome' | 'variacao' | 'medidas' | 'preco' | 'custo' | 'estoque' | 'fabrica_id' | 'categoria_id'>>
 ): Promise<void> {
   const { error } = await supabase.from('produtos').update(campos).eq('id', id);
   if (error) erro(error, 'Não consegui salvar o produto.');

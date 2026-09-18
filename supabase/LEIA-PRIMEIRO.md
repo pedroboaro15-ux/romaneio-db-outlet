@@ -5,7 +5,8 @@ Cole cada um no **SQL Editor → New query → Run**, nesta ordem.
 | # | Arquivo | Quando rodar | Pode repetir? |
 |---|---|---|---|
 | 1 | `schema.sql` | Sempre que eu avisar que tem coluna nova | **Sim**, é feito pra isso |
-| 2 | `schema-estoque.sql` | Idem | **Sim** |
+| 2 | `schema-estoque.sql` | **Uma vez só**, na instalação | **Não.** Ele usa `create table` sem guarda e dá erro na segunda vez |
+| 2b | `migracao-produtos-detalhes.sql` | Agora, uma vez (e pode repetir) | **Sim** |
 | 3 | `seed-estoque.sql` | **Uma vez só**, na instalação | **Não.** Ele se recusa se já tiver rodado |
 | 4 | `adicionar-dono.sql` | Quando entrar um novo dono | Sim |
 

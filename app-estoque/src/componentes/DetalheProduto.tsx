@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { MovimentoProduto, Produto } from '../lib/tipos';
+import type { Fabrica, MovimentoProduto, Produto } from '../lib/tipos';
 import { ROTULO_SITUACAO, CLASSE_SITUACAO, AJUDA_SITUACAO } from '../lib/tipos';
 import { moeda, num, dataHora, quandoFoi } from '../lib/formato';
 import {
   carregarMovimentosProduto, salvarMostruario, salvarReservado, salvarPreco, salvarProduto,
+  carregarFabricas,
 } from '../lib/dados';
+import {
+  calcular, comRedutores, redutorUniforme, fatiaDaVenda, OPCOES_REDUTOR,
+  ALIQUOTAS_PADRAO, type Aliquotas,
+} from '../lib/precificacao';
 import { IcMais, IcMenos, IcAlerta, IcVitrine, IcCheck } from './Icones';
 
 /**
@@ -32,6 +37,58 @@ export function DetalheProduto({
   const [preco, setPreco] = useState(String(produto.preco).replace('.', ','));
   const [nome, setNome] = useState(produto.nome);
   const [variacao, setVariacao] = useState(produto.variacao ?? '');
+  const [medidas, setMedidas] = useState(produto.medidas ?? '');
+  const [custo, setCusto] = useState(produto.custo ? String(produto.custo).replace('.', ',') : '');
+  const [fabricaId, setFabricaId] = useState(produto.fabrica_id);
+  const [fabricas, setFabricas] = useState<Fabrica[]>([]);
+  // Redutor de imposto da peça, igual ao da calculadora: um valor pra todos.
+  const [redutor, setRedutor] = useState(1);
+
+  // As alíquotas são as mesmas da calculadora, guardadas no navegador. Ler daqui
+  // em vez de ter uma cópia própria evita a loja ter dois impostos diferentes
+  // dependendo da tela que a pessoa abriu.
+  const aliquotas = useMemo<Aliquotas>(() => {
+    try {
+      const cru = localStorage.getItem('aliquotas.v1');
+      if (!cru) return ALIQUOTAS_PADRAO;
+      const lido = JSON.parse(cru);
+      const limpa = { ...ALIQUOTAS_PADRAO };
+      for (const k of Object.keys(ALIQUOTAS_PADRAO) as (keyof Aliquotas)[]) {
+        if (typeof lido[k] === 'number' && Number.isFinite(lido[k]) && lido[k] >= 0 && lido[k] < 1) {
+          limpa[k] = lido[k];
+        }
+      }
+      return limpa;
+    } catch { return ALIQUOTAS_PADRAO; }
+  }, []);
+
+  const efetivas = useMemo(
+    () => comRedutores(aliquotas, redutorUniforme(redutor)), [aliquotas, redutor]);
+
+  /**
+   * Quanto sobra desta peça, com o custo e o preço que já estão cadastrados.
+   *
+   * Diferença da calculadora: lá a pessoa digita um multiplicador e descobre o
+   * preço. Aqui o preço JÁ existe — a pergunta é a inversa, "com o que eu cobro
+   * hoje, sobra quanto?". Por isso o multiplicador sai de preço ÷ custo em vez de
+   * ser digitado.
+   *
+   * Frete 0: o que está no banco é o custo da peça posta aqui. Somar um frete
+   * chutado faria a margem parecer pior do que é, e ninguém saberia de onde veio.
+   *
+   * Sem custo informado não há conta — e mostrar margem de 100% pra custo zero
+   * seria pior que não mostrar nada.
+   */
+  const conta = useMemo(() => {
+    if (!produto.custo || produto.custo <= 0 || !produto.preco || produto.preco <= 0) return null;
+    return calcular({
+      precoCompra: produto.custo,
+      fretePercent: 0,
+      multiplicador: produto.preco / produto.custo,
+      aliquotas,
+      redutores: redutorUniforme(redutor),
+    });
+  }, [produto.custo, produto.preco, aliquotas, redutor]);
 
   useEffect(() => {
     let vivo = true;
@@ -41,6 +98,16 @@ export function DetalheProduto({
       .finally(() => vivo && setCarregando(false));
     return () => { vivo = false; };
   }, [produto.id]);
+
+  // Só o dono muda a fábrica, então só pra ele vale buscar a lista.
+  useEffect(() => {
+    if (!podeEscrever) return;
+    let vivo = true;
+    carregarFabricas()
+      .then((f) => vivo && setFabricas(f))
+      .catch(() => { /* sem a lista, o seletor não aparece e o resto da tela segue */ });
+    return () => { vivo = false; };
+  }, [podeEscrever]);
 
   useEffect(() => {
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') aoFechar(); };
@@ -88,12 +155,55 @@ export function DetalheProduto({
   }
 
   async function gravarIdentificacao() {
-    if (nome.trim() === produto.nome && (variacao.trim() || null) === produto.variacao) return;
+    const mudou = nome.trim() !== produto.nome
+      || (variacao.trim() || null) !== produto.variacao
+      || (medidas.trim() || null) !== (produto.medidas ?? null);
+    if (!mudou) return;
     if (!nome.trim()) { setErro('O produto precisa de um nome.'); return; }
     try {
-      await salvarProduto(produto.id, { nome: nome.trim(), variacao: variacao.trim() || null });
+      await salvarProduto(produto.id, {
+        nome: nome.trim(),
+        variacao: variacao.trim() || null,
+        medidas: medidas.trim() || null,
+      });
       aoMudar();
       avisa('salvo');
+      setErro('');
+    } catch (e) { setErro((e as Error).message); }
+  }
+
+  /** Tira o produto do "Sem fábrica definida" — ou troca pra outra, se foi engano. */
+  async function gravarFabrica(novaId: string) {
+    const antes = fabricaId;
+    setFabricaId(novaId);
+    try {
+      await salvarProduto(produto.id, { fabrica_id: novaId });
+      aoMudar();
+      avisa('fábrica trocada');
+      setErro('');
+    } catch (e) {
+      // Volta o seletor pro que está no banco: deixar a tela mostrando uma fábrica
+      // que não foi gravada é pior que não deixar trocar.
+      setFabricaId(antes);
+      setErro((e as Error).message);
+    }
+  }
+
+  async function gravarCusto() {
+    // "1.399,50" -> 1399.5: tira o ponto de milhar e troca a vírgula decimal.
+    const n = Number(custo.replace(/\./g, '').replace(',', '.'));
+    if (custo.trim() === '' ) {
+      if (produto.custo === 0) return;
+    } else if (!Number.isFinite(n) || n < 0) {
+      setErro('O custo precisa ser um número, e não pode ser negativo.');
+      return;
+    }
+    const valor = custo.trim() === '' ? 0 : n;
+    if (valor === produto.custo) return;
+    try {
+      await salvarProduto(produto.id, { custo: valor });
+      aoMudar();
+      avisa('custo salvo');
       setErro('');
     } catch (e) { setErro((e as Error).message); }
   }
@@ -156,21 +266,41 @@ export function DetalheProduto({
                      onChange={(e) => setNome(e.target.value)} onBlur={gravarIdentificacao}
                      style={{ fontSize: 16, fontWeight: 600, border: '1px solid transparent',
                               padding: '3px 6px', marginLeft: -6 }} />
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
                 <input className="campo" value={variacao} placeholder="cor / variação"
                        onChange={(e) => setVariacao(e.target.value)} onBlur={gravarIdentificacao}
-                       style={{ fontSize: 12.5, padding: '2px 6px', width: 150,
+                       title="A cor ou o código dela. Na poltrona Polo, o 228 é a cor."
+                       style={{ fontSize: 12.5, padding: '2px 6px', width: 130,
                                 border: '1px solid transparent', marginLeft: -6 }} />
-                <span className="dim" style={{ fontSize: 12.5 }}>
-                  {produto.fabrica} · {produto.categoria}
-                </span>
+                <input className="campo" value={medidas} placeholder="medidas"
+                       onChange={(e) => setMedidas(e.target.value)} onBlur={gravarIdentificacao}
+                       title="Do jeito que for útil: 1,80 x 2,00, ou 188X88."
+                       style={{ fontSize: 12.5, padding: '2px 6px', width: 130,
+                                border: '1px solid transparent' }} />
+
+                {/* A fábrica é um seletor porque "Sem fábrica definida" é uma fábrica
+                    de verdade no banco, onde cai tudo que a planilha importou sem
+                    dizer de quem era. Sem isso não havia como tirar o produto de lá. */}
+                {fabricas.length ? (
+                  <select className="campo" value={fabricaId}
+                          onChange={(e) => gravarFabrica((e.target as HTMLSelectElement).value)}
+                          style={{ fontSize: 12.5, padding: '2px 6px', width: 'auto' }}>
+                    {fabricas.map((f) => (
+                      <option key={f.id} value={f.id}>{f.nome}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="dim" style={{ fontSize: 12.5 }}>{produto.fabrica}</span>
+                )}
+                <span className="dim" style={{ fontSize: 12.5 }}>{produto.categoria}</span>
               </div>
             </>
           ) : (
             <>
               <h2 id="tit-prod">{produto.nome}</h2>
               <p>{produto.fabrica} · {produto.categoria}
-                 {produto.variacao ? ` · ${produto.variacao}` : ''}</p>
+                 {produto.variacao ? ` · ${produto.variacao}` : ''}
+                 {produto.medidas ? ` · ${produto.medidas}` : ''}</p>
             </>
           )}
         </header>
@@ -276,6 +406,23 @@ export function DetalheProduto({
                   )}
                 </div>
                 <div>
+                  <Rotulo>Preço de custo</Rotulo>
+                  {podeEscrever ? (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span className="dim">R$</span>
+                      <input className="campo num" value={custo} inputMode="decimal" placeholder="0,00"
+                             onChange={(e) => setCusto(e.target.value)}
+                             onBlur={gravarCusto}
+                             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                             style={{ width: 108, fontSize: 16, fontWeight: 600, textAlign: 'right' }} />
+                    </div>
+                  ) : (
+                    <div className="num" style={{ fontSize: 18, fontWeight: 650 }}>
+                      {produto.custo ? moeda(produto.custo) : '—'}
+                    </div>
+                  )}
+                </div>
+                <div>
                   <Rotulo>Valor parado aqui</Rotulo>
                   <div className="num" style={{ fontSize: 18, fontWeight: 650 }}>
                     {moeda(produto.estoque * produto.preco)}
@@ -288,6 +435,46 @@ export function DetalheProduto({
                       +{produto.sugestao_compra}
                     </div>
                   </div>
+                )}
+              </div>
+
+              {/* ---------- o que sobra desta peça ----------
+                  A conta é a MESMA da calculadora (lib/precificacao), com as mesmas
+                  alíquotas guardadas no navegador. Duplicar a fórmula aqui daria,
+                  um dia, dois lucros diferentes pra mesma peça — e nenhum jeito de
+                  saber qual valia. */}
+              <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--borda)' }}>
+                <Rotulo>Imposto desta peça</Rotulo>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                  {OPCOES_REDUTOR.map((o) => (
+                    <button key={o.rotulo} type="button"
+                            className={Math.abs(redutor - o.valor) < 1e-9 ? 'btn btn-p' : 'btn btn-fantasma btn-p'}
+                            onClick={() => setRedutor(o.valor)}>
+                      {o.rotulo}
+                    </button>
+                  ))}
+                </div>
+
+                {conta ? (
+                  <>
+                    <div className="grade g-4" style={{ marginTop: 12 }}>
+                      <Numero rotulo="Custo total" valor={moeda(conta.custoTotal)} pequeno />
+                      <Numero rotulo="Imposto e taxa" valor={moeda(conta.custosSaida)} pequeno />
+                      <Numero rotulo="Sobra por peça" valor={moeda(conta.lucro)}
+                              cor={conta.lucro <= 0 ? 'var(--ruptura)' : 'var(--ok)'} />
+                      <Numero rotulo="Margem" valor={`${(conta.margem * 100).toFixed(1).replace('.', ',')}%`}
+                              cor={conta.margem <= 0 ? 'var(--ruptura)' : undefined} pequeno />
+                    </div>
+                    <p className="dim" style={{ fontSize: 12, margin: '8px 0 0' }}>
+                      Vendendo por {moeda(produto.preco)} com custo de {moeda(produto.custo)}:
+                      {' '}os impostos levam {(fatiaDaVenda(efetivas) * 100).toFixed(1).replace('.', ',')}% da venda.
+                      {conta.lucro <= 0 && <strong> Nesse preço a peça dá prejuízo.</strong>}
+                    </p>
+                  </>
+                ) : (
+                  <p className="dim" style={{ fontSize: 12, margin: '8px 0 0' }}>
+                    Preencha o preço de custo aí em cima pra ver quanto sobra desta peça.
+                  </p>
                 )}
               </div>
 
@@ -372,14 +559,16 @@ function Rotulo({ children }: { children: React.ReactNode }) {
 }
 
 function Numero({
-  rotulo, valor, destaque, pequeno,
-}: { rotulo: string; valor: string; destaque?: boolean; pequeno?: boolean }) {
+  rotulo, valor, destaque, pequeno, cor,
+}: { rotulo: string; valor: string; destaque?: boolean; pequeno?: boolean; cor?: string }) {
   return (
     <div className="cartao kpi">
       <span className="rotulo">{rotulo}</span>
       <b className="valor num" style={{
         fontSize: pequeno ? 15 : 26,
-        color: destaque ? 'var(--acento)' : undefined,
+        // "cor" ganha do "destaque": quem passa cor está dizendo algo mais
+        // específico (verde de lucro, vermelho de prejuízo) que o realce genérico.
+        color: cor ?? (destaque ? 'var(--acento)' : undefined),
       }}>{valor}</b>
     </div>
   );

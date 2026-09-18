@@ -16,7 +16,11 @@ export interface Produto {
   id: string;
   nome: string;
   variacao: string | null;
+  /** Medidas da peça, em texto livre: móvel não tem formato fixo de medida. */
+  medidas: string | null;
   preco: number;
+  /** O que se paga na peça. 0 = ainda não informado. */
+  custo: number;
   estoque: number;
   mostruario: number;
   /** vendido, aguardando entrega: está na loja mas já tem dono */
