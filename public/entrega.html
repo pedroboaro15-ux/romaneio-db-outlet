@@ -22,6 +22,7 @@ main{padding:12px}
 .p .n.dest{background:#F2F250;color:#14140F}
 .p h3{margin:10px 0 4px;font-size:24px;line-height:1.2}
 .p .end{color:#57574e;font-size:15px}
+.p .end .regiao{color:#14140F;font-weight:800;font-size:16.5px}
 .p .itens{margin:10px 0;padding:10px 12px;background:#fafaf4;border:1px solid #eaeadf;border-radius:9px;font-size:14px}
 .acoes{display:flex;gap:8px;margin-top:12px}
 button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:700;cursor:pointer;font-size:15px}
@@ -135,6 +136,7 @@ button.ok:disabled{background:#e2e2d9;color:#9a9a8e}
 </div>
 <div class="toast" id="toast"></div>
 
+<script src="/endereco.js"></script>
 <script>
 const ESTOQUE = { nome: 'Estoque', endereco: 'R. Márcia Travassos, 660 - Jardim Jerico, Cabedelo - PB, 58103-718' };
 
@@ -371,7 +373,7 @@ async function buscarPedidoRota(){
       <div class="pedidoencontrado">
         <div style="font-weight:800;font-size:17px">Pedido ${esc(p.numero)}</div>
         <div style="font-weight:700;margin-top:6px">${esc(c.nome||'(sem cliente)')}</div>
-        <div class="mut">${esc([c.endereco,c.bairro,c.cidade].filter(Boolean).join(' - '))}</div>
+        <div class="mut">${esc(Endereco.enderecoEmLinha(c))}</div>
         ${itensHtml}
         <button class="ok" style="margin-top:10px" onclick="adicionarNaNovaRota()">✓ Adicionar essa rota</button>
       </div>`;
@@ -422,10 +424,7 @@ async function carregar(){
 }
 
 function linkRotaCompleta(){
-  const enderecos = rom.paradas.map(p => {
-    const c = p.cliente || {};
-    return [c.endereco, c.complemento, c.bairro, c.cidade, c.estado, c.cep].filter(Boolean).join(', ');
-  }).filter(Boolean);
+  const enderecos = rom.paradas.map(p => Endereco.enderecoParaMapa(p.cliente)).filter(Boolean);
   if(!enderecos.length) return '';
   const destino = enderecos[enderecos.length-1];
   const waypoints = enderecos.slice(0, -1).map(encodeURIComponent).join('|');
@@ -453,9 +452,10 @@ function render(){
 
   document.getElementById('lista').innerHTML = rom.paradas.map((p,i)=>{
     const c = p.cliente || {};
-    const end = [c.endereco, c.complemento, c.bairro].filter(Boolean).join(', ');
-    const cid = [c.cidade, c.estado].filter(Boolean).join('/');
-    const q = encodeURIComponent([end, cid, c.cep].filter(Boolean).join(', '));
+    // A ordem vem do endereco.js, que as três páginas dividem. O mapa continua
+    // recebendo a ordem dos Correios: ele não lê ordem de motorista.
+    const partes = Endereco.partesDoEndereco(c);
+    const q = encodeURIComponent(Endereco.enderecoParaMapa(c));
     const telLimpo = (c.telefone||'').replace(/\D/g,'');
     const itens = (p.itens||[]).map(it=>`<div>${it.cor?`<span class="sw" style="background:${corParaSwatch(it.cor)}"></span>`:''}${esc(it.quantidade)}x ${esc(it.descricao)}${it.cor?` — <b>${esc(it.cor)}</b>`:''}${it.fragil?' <b style="color:#b91c1c">🔴 VIDRO</b>':''}</div>`).join('');
     const comVidro = (p.itens||[]).filter(it=>it.fragil);
@@ -472,12 +472,14 @@ function render(){
       <span class="n">${rotulo}${p.numero?' '+esc(p.numero):''} · ${p.volumes||0} vol.</span>
       ${p.status==='em_rota'?'<span class="n">Em rota</span>':''}
       <h3>${esc(c.nome||'(sem cliente)')}</h3>
-      <div class="end">${esc(end||'endereço não informado')}${cid?' · '+esc(cid):''}${c.cep?' · '+esc(c.cep):''}</div>
+      <div class="end">${partes.length
+        ? partes.map(x => x.destaque ? `<b class="regiao">${esc(x.valor)}</b>` : esc(x.valor)).join(' · ')
+        : 'endereço não informado'}${c.cep?' · '+esc(c.cep):''}</div>
       ${comVidro.length?`<div class="avisovidro">🔴 VAI COM VIDRO — cuidado no transporte e na descida<div class="quais">${comVidro.map(it=>esc(it.descricao)).join(' · ')}</div></div>`:''}
       ${itens?`<div class="itens">${itens}</div>`:''}
       ${p.observacao?`<div class="obsfreteiro">📌 Recado do gerente: ${esc(p.observacao)}</div>`:''}
       <div class="contatos">
-        ${end?`<a class="botaogrande bmapa" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${q}"><span class="emoji">📍</span>Mapa</a>`:''}
+        ${q?`<a class="botaogrande bmapa" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${q}"><span class="emoji">📍</span>Mapa</a>`:''}
         ${telLimpo?`<a class="botaogrande btel" href="tel:${telLimpo}"><span class="emoji">📞</span>Ligar</a>`:''}
         ${telLimpo?`<a class="botaogrande bwpp" target="_blank" href="https://wa.me/55${telLimpo}"><span class="emoji">💬</span>WhatsApp</a>`:''}
       </div>
@@ -526,7 +528,9 @@ function falar(texto){
 }
 function ouvirEndereco(i){
   const c = rom.paradas[i].cliente || {};
-  falar([c.endereco, c.complemento, c.bairro, c.cidade, c.estado].filter(Boolean).join(', ') || 'Endereço não informado');
+  // Falado na ordem de quem dirige, igual ao que está escrito na tela: ouvir uma
+  // ordem e ler outra é o tipo de coisa que faz errar de quadra.
+  falar(Endereco.enderecoEmLinha(c, ', ') || 'Endereço não informado');
 }
 function ouvirTelefone(i){
   const tel = ((rom.paradas[i].cliente||{}).telefone||'').replace(/\D/g,'');

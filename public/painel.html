@@ -447,6 +447,7 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
 </datalist>
 <div class="toast" id="toast"></div>
 
+<script src="/endereco.js"></script>
 <script>
 /* ================= CONFIGURAÇÃO ================= */
 const SUPABASE_URL = 'https://teaymabvqynopsbnnuwp.supabase.co';
@@ -593,8 +594,10 @@ function alternarEdicaoDesc(i){
 
 function renderResultado(){
   const p = pedidoAtual, c = p.cliente || {};
-  const end = [c.endereco, c.complemento, c.bairro].filter(Boolean).join(' - ');
-  const cid = [c.cidade, c.estado].filter(Boolean).join('/');
+  // Ordem de quem dirige, do endereco.js: em João Pessoa o bairro abre a linha;
+  // fora dela, a cidade. É a informação que mais muda o trajeto em cada caso.
+  const end = Endereco.enderecoEmLinha(c);
+  const uf = (c.estado || '').trim();
   const itens = (p.itens||[]).map((it,i)=>`<div class="row" style="align-items:center;gap:6px;margin-top:6px">
     <span class="swatch" id="swatch-${i}" style="width:20px;height:20px;border-radius:5px;border:1px solid var(--line);flex:0 0 auto;background:${corParaSwatch(it.cor)}"></span>
     <span style="flex:2" id="descTxt-${i}">${esc(it.quantidade)}x ${esc(it.codigo?it.codigo+' — ':'')}${esc(it.descricao)}</span>
@@ -617,7 +620,7 @@ function renderResultado(){
       Vendido por <strong>${esc(p.venda.rotulo)}</strong>${p.venda.canal?` <span class="tag">${esc(p.venda.canal)}</span>`:''}${p.venda.certeza?'':' <span class="tag alt">confira, não deu pra ler direito</span>'}
     </div>` : ''}
     <div style="margin-top:8px"><strong>${esc(c.nome||'(sem cliente)')}</strong>${c.doc?` <span class="mut">${esc(c.doc)}</span>`:''}</div>
-    <div class="mut">${esc(end||'(endereço não informado)')}${cid?' · '+esc(cid):''}${c.cep?' · CEP '+esc(c.cep):''}</div>
+    <div class="mut">${esc(end||'(endereço não informado)')}${uf?' · '+esc(uf):''}${c.cep?' · CEP '+esc(c.cep):''}</div>
     ${c.telefone?`<div class="mut">Tel: ${esc(c.telefone)}</div>`:''}
     ${itens?`<div class="itens">${itens}<div class="mut" style="margin-top:4px">Cor e volumes de cada item — clique no lápis ✏️ pra deixar o nome do produto mais claro pro estoquista.</div></div>`:''}
     <div class="mut" style="margin-top:6px">Valor: ${money(p.valor)}${p.peso?` · ${p.peso} kg`:''}${p.volumesOmie?` · Omie indica ${p.volumesOmie} volume(s) no total — confira item a item`:''}</div>
@@ -688,15 +691,15 @@ function renderRascunho(){
   $('#contagem').textContent = rascunho.length ? rascunho.length + ' documento(s)' : '';
   $('#tabRascunho').innerHTML = rascunho.map((d,i) => {
     const c = d.cliente || {};
-    const dest = [c.endereco, c.bairro].filter(Boolean).join(' - ');
-    const cid = [c.cidade, c.estado].filter(Boolean).join('/');
+    const dest = Endereco.enderecoEmLinha(c);
+    const uf = (c.estado || '').trim();
     const tagTipo = d.tipo==='assistencia' ? '<span class="tag alt">assist.</span> ' : (d.tipo==='nf' ? '<span class="tag">NF</span> ' : '');
     const totalVol = (d.itens||[]).reduce((s,it)=>s+(Number(it.volumes)||0), 0) || d.volumes || 0;
     const coresLista = (d.itens||[]).filter(it=>it.cor).map(it=>esc(it.cor)).join(', ') || '—';
     return `<tr>
       <td>${tagTipo}<strong>${esc(d.numero||'—')}</strong></td>
       <td>${esc(c.nome||'(sem cliente)')}</td>
-      <td class="mut">${esc(dest||'—')}${cid?`<div>${esc(cid)}</div>`:''}</td>
+      <td class="mut">${esc(dest||'—')}${uf?`<div>${esc(uf)}</div>`:''}</td>
       <td class="center">${totalVol}</td>
       <td class="mut">${coresLista}</td>
       <td class="right">${money(d.valor)}</td>
@@ -815,7 +818,7 @@ function renderListaRom(){
                 <button class="btn ghost sm" style="padding:2px 6px" title="Descer" ${i===r.paradas.length-1?'disabled':''} onclick="moverParada('${r.id}',${i},1)">▼</button>
               </div>
             </td>
-              <td>${esc(c.nome||'—')}<div class="mut">${esc([c.endereco,c.cidade].filter(Boolean).join(' - '))}</div></td>
+              <td>${esc(c.nome||'—')}<div class="mut">${esc(Endereco.enderecoEmLinha(c))}</div></td>
               <td>${tipoLabel} ${esc(p.numero||'')}
                 ${p.vendedor
                   ? `<div class="mut">Vendido por <strong>${esc(p.vendedor)}</strong>${p.canal_venda?' · '+esc(p.canal_venda):''}</div>`
@@ -938,7 +941,7 @@ function abrirRotaCompleta(id){
   if(!r) return;
   const enderecos = r.paradas.map(p => {
     const c = p.cliente || {};
-    return [c.endereco, c.complemento, c.bairro, c.cidade, c.estado, c.cep].filter(Boolean).join(', ');
+    return Endereco.enderecoParaMapa(c);
   }).filter(Boolean);
   if(!enderecos.length) return toast('Nenhuma parada com endereço');
   const destino = enderecos[enderecos.length-1];
