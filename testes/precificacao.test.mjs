@@ -9,7 +9,7 @@
  */
 import {
   calcular, precoParaMargem, margemDoPreco, lucroDoPreco, precoDeEmpate,
-  fatiaDaVenda, ALIQUOTAS_PADRAO, comRedutores, OPCOES_REDUTOR,
+  fatiaDaVenda, ALIQUOTAS_PADRAO, comRedutores, redutorUniforme, OPCOES_REDUTOR,
 } from '../app-estoque/src/lib/precificacao.ts';
 
 let ok = 0, falhas = 0;
@@ -157,6 +157,32 @@ titulo('7. IMPOSTO REDUZIDO: METADE, UM TERÇO, ISENTO');
     && ruim.pisCofins === ALIQUOTAS_PADRAO.pisCofins && ruim.maquininha === ALIQUOTAS_PADRAO.maquininha);
   checa('sem redutor nenhum, nada muda',
     comRedutores(ALIQUOTAS_PADRAO) === ALIQUOTAS_PADRAO);
+}
+
+{
+  // A tela aplica UM valor a todos os impostos. Seis controles separados eram seis
+  // chances de reduzir um e esquecer o outro, com o erro aparecendo so no preco.
+  const u = redutorUniforme(1 / 2);
+  const chaves = Object.keys(ALIQUOTAS_PADRAO);
+  checa('redutorUniforme cobre TODOS os impostos, sem faltar nenhum',
+    chaves.every(k => u[k] === 1 / 2) && Object.keys(u).length === chaves.length,
+    Object.keys(u).join(','));
+
+  const meio = calcular({ precoCompra: 359, fretePercent: 0.10, multiplicador: 2.9,
+                          redutores: redutorUniforme(1 / 2) });
+  comp('metade em tudo: IPI cai pela metade', meio.ipi, r.ipi / 2, 0.005);
+  comp('e o ICMS tambem', meio.icms, r.icms / 2, 0.005);
+  comp('e a fatia da venda vira metade', fatiaDaVenda(meio.aliquotasEfetivas), fatiaDaVenda() / 2, 1e-9);
+
+  const nada = calcular({ precoCompra: 359, fretePercent: 0.10, multiplicador: 2.9,
+                          redutores: redutorUniforme(0) });
+  comp('isento em tudo: custo vira compra + frete', nada.custoTotal, 359 + 35.9, 0.005);
+  comp('e nao sobra imposto nenhum na venda', fatiaDaVenda(nada.aliquotasEfetivas), 0, 1e-9);
+
+  const cheio = calcular({ precoCompra: 359, fretePercent: 0.10, multiplicador: 2.9,
+                           redutores: redutorUniforme(1) });
+  checa('cheio em tudo e igual a nao ter redutor',
+    perto(cheio.lucro, r.lucro) && perto(cheio.custoTotal, r.custoTotal));
 }
 
 checa('as quatro opções da tela são cheio, metade, um terço e isento',

@@ -56,8 +56,30 @@ export const ALIQUOTAS_PADRAO: Aliquotas = {
  *
  * 1 = cheio · 0,5 = metade · 1/3 = um terço · 0 = isento. Qualquer fração entre 0 e 1
  * vale, pra caso apareça uma redução que não é nenhuma dessas.
+ *
+ * O tipo continua por imposto, mas a TELA aplica um valor só a todos: na prática a
+ * redução vem no pedido inteiro, não num imposto sozinho, e seis controles eram seis
+ * chances de reduzir um e esquecer o outro. Ver redutorUniforme().
  */
 export type Redutores = Partial<Record<keyof Aliquotas, number>>;
+
+/**
+ * A mesma fração valendo pra todos os impostos.
+ *
+ * É o que a calculadora usa. A forma por imposto continua existindo no tipo porque
+ * a conta não custa nada a mais e um dia pode aparecer um caso de um só — mas o que
+ * o Pedro pediu, e o que acontece na loja, é reduzir tudo junto.
+ */
+export function redutorUniforme(fracao: number): Redutores {
+  return {
+    ipi: fracao,
+    entradaFronteira: fracao,
+    icms: fracao,
+    pisCofins: fracao,
+    maquininha: fracao,
+    custoFixo: fracao,
+  };
+}
 
 /** As quatro que aparecem na prática, que viram os botões da tela. */
 export const OPCOES_REDUTOR: { valor: number; rotulo: string }[] = [

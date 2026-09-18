@@ -1,8 +1,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
   calcular, precoParaMargem, margemDoPreco, lucroDoPreco,
-  fatiaDaVenda, ALIQUOTAS_PADRAO, comRedutores, OPCOES_REDUTOR,
-  type Aliquotas, type Redutores,
+  fatiaDaVenda, ALIQUOTAS_PADRAO, comRedutores, redutorUniforme, OPCOES_REDUTOR,
+  type Aliquotas,
 } from '../lib/precificacao';
 import { moedaCent } from '../lib/formato';
 import { IcAlerta, IcInfo } from './Icones';
@@ -22,10 +22,14 @@ import { IcAlerta, IcInfo } from './Icones';
 
 const CHAVE = 'aliquotas.v1';
 
-// Os redutores são por PEÇA, não da loja: o IPI cai pela metade neste roupeiro e vem
-// cheio no próximo. Por isso não ficam salvos — cada conta começa com tudo cheio, que
-// é o caso comum. Salvar seria pior: o Pedro isentaria um item e o seguinte sairia
-// isento sem ele perceber, com preço abaixo do que deveria.
+// O redutor é por PEÇA, não da loja: o imposto cai pela metade neste roupeiro e vem
+// cheio no próximo. Por isso não fica salvo — cada conta começa no cheio, que é o
+// caso comum. Salvar seria pior: o Pedro isentaria um item e o seguinte sairia isento
+// sem ele perceber, com preço abaixo do que deveria.
+//
+// É UM valor pra todos os impostos, não um por imposto. A redução vem no pedido
+// inteiro, e seis controles separados eram seis chances de reduzir um e esquecer o
+// outro — com o erro aparecendo só no preço, depois de vendido.
 
 function lerSalvas(): Aliquotas {
   try {
@@ -79,13 +83,14 @@ const NOMES: { chave: keyof Aliquotas; rotulo: string; base: string }[] = [
 
 export default function PrecoComImposto({ ehDono }: { ehDono: boolean }) {
   const [aliquotas, setAliquotas] = useState<Aliquotas>(lerSalvas);
-  const [redutores, setRedutores] = useState<Redutores>({});
+  const [redutor, setRedutor] = useState(1);
   const [abrirAliquotas, setAbrirAliquotas] = useState(false);
 
   // As alíquotas que valem NESTA peça. Tudo na tela lê daqui, nunca de "aliquotas"
   // cru — senão o detalhamento mostraria IPI de 3,5% enquanto a conta usou 1,75%.
+  const redutores = useMemo(() => redutorUniforme(redutor), [redutor]);
   const efetivas = useMemo(() => comRedutores(aliquotas, redutores), [aliquotas, redutores]);
-  const temReducao = Object.values(redutores).some((f) => typeof f === 'number' && f !== 1);
+  const temReducao = redutor !== 1;
 
   const [compra, setCompra] = useState('');
   const [fretePct, setFretePct] = useState('10');
@@ -157,6 +162,28 @@ export default function PrecoComImposto({ ehDono }: { ehDono: boolean }) {
               <span className="dim" style={{ fontSize: 15 }}>×</span>
             </div>
           </div>
+        </div>
+
+        {/* ---------- quanto de imposto esta peça paga ---------- */}
+        <div style={{ marginTop: 14 }}>
+          <Rotulo>Imposto desta peça</Rotulo>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+            {OPCOES_REDUTOR.map((o) => {
+              const ligado = Math.abs(redutor - o.valor) < 1e-9;
+              return (
+                <button key={o.rotulo} type="button"
+                        className={ligado ? 'btn btn-p' : 'btn btn-fantasma btn-p'}
+                        onClick={() => setRedutor(o.valor)}>
+                  {o.rotulo}
+                </button>
+              );
+            })}
+          </div>
+          <span className="dim" style={{ fontSize: 12 }}>
+            {temReducao
+              ? `Vale pra todos os impostos: eles somam ${pct(fatiaDaVenda(efetivas))} da venda em vez de ${pct(fatiaDaVenda(aliquotas))}.`
+              : 'Vale pra todos os impostos de uma vez. Volta pro cheio a cada conta nova.'}
+          </span>
         </div>
 
         {r && (
@@ -282,29 +309,10 @@ export default function PrecoComImposto({ ehDono }: { ehDono: boolean }) {
                       <span className="dim" style={{ fontSize: 13 }}>%</span>
                     </div>
                     <span className="dim" style={{ fontSize: 11 }}>{base}</span>
-
-                    {/* Quanto DESTE imposto é cobrado nesta peça. O rótulo mostra o
-                        percentual que sobrou, pra não precisar fazer a conta de
-                        cabeça pra saber no que 3,5% pela metade dá. */}
-                    <div style={{ display: 'flex', gap: 3, marginTop: 5, flexWrap: 'wrap' }}>
-                      {OPCOES_REDUTOR.map((o) => {
-                        const atual = redutores[chave] ?? 1;
-                        const ligado = Math.abs(atual - o.valor) < 1e-9;
-                        return (
-                          <button key={o.rotulo} type="button"
-                                  className={ligado ? 'btn btn-p' : 'btn btn-fantasma btn-p'}
-                                  style={{ fontSize: 11, padding: '3px 7px' }}
-                                  title={`${o.rotulo}: ${pct(aliquotas[chave] * o.valor)}`}
-                                  onClick={() => setRedutores({ ...redutores, [chave]: o.valor })}>
-                            {o.rotulo}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {(redutores[chave] ?? 1) !== 1 && (
-                      <span style={{ fontSize: 11, color: 'var(--aviso, #7a5a12)', fontWeight: 700 }}>
-                        vale {pct(efetivas[chave])}
-                      </span>
+                    {temReducao && (
+                      <div style={{ fontSize: 11, color: 'var(--aviso, #7a5a12)', fontWeight: 700 }}>
+                        nesta peça vale {pct(efetivas[chave])}
+                      </div>
                     )}
                   </div>
                 ))}
@@ -316,11 +324,7 @@ export default function PrecoComImposto({ ehDono }: { ehDono: boolean }) {
                     Voltar aos valores da planilha
                   </button>
                 )}
-                {temReducao && (
-                  <button className="btn btn-p" onClick={() => setRedutores({})}>
-                    Cobrar todos os impostos cheios
-                  </button>
-                )}
+
                 <span className="dim" style={{ fontSize: 12 }}>
                   {ehDono
                     ? 'Ficam guardadas neste computador. Em outro aparelho, é preciso digitar de novo.'
