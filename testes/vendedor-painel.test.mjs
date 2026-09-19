@@ -23,7 +23,6 @@ const exigir = Module.createRequire(import.meta.url);
 const equipeLogin = exigir('../api/equipe-login.js');
 const quemSou = exigir('../api/quem-sou.js');
 const romaneios = exigir('../api/romaneios.js');
-const painelDia = exigir('../api/painel-dia.js');
 const freteiros = exigir('../api/freteiros.js');
 const relatorio = exigir('../api/relatorio.js');
 const relatorioVendas = exigir('../api/relatorio-vendas.js');
@@ -153,11 +152,6 @@ cenario();
   checa('vê a lista de romaneios — todas as rotas, não só as dele',
     r.status === 200 && Array.isArray(r.corpo) && r.corpo.length === 1,
     `status ${r.status}`);
-}
-cenario();
-{
-  const r = await chamar(painelDia, comoVendedor());
-  checa('vê o painel do dia', r.status === 200, `status ${r.status}`);
 }
 cenario();
 {

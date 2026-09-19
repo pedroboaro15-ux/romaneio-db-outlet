@@ -107,6 +107,11 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
 .fragilcheck input{width:auto;margin:0}
 .tag.fragil{background:#fdeaea;color:var(--bad)}
 .pequenacheck{color:#7a5a12}
+.grade2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:760px){.grade2{grid-template-columns:1fr}}
+.linhaavaria{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;cursor:pointer;font-size:13.5px}
+.linhaavaria:has(input:checked){background:#fdeaea;border-color:#f0b9b9}
+.linhaavaria input{width:auto;margin:0;flex:0 0 auto}
 .tag.pequena{background:#fdf1d6;color:#7a5a12}
 @media(max-width:640px){
   .grid2{grid-template-columns:1fr}
@@ -164,9 +169,8 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
     <div class="logo">Romaneio<span>Outlet dos Móveis DB</span></div>
   </div>
   <nav>
-    <button data-t="painel" class="on">Painel</button>
-    <button data-t="pedido">Buscar pedido</button>
-    <button data-t="rom">Romaneios</button>
+    <button data-t="pedido">Iniciar fretes</button>
+    <button data-t="rom" class="on">Romaneios</button>
     <button data-t="fret">Freteiros</button>
     <button data-t="rel">Relatórios</button>
     <button data-t="vendas">Vendas</button>
@@ -182,18 +186,7 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
   <div id="erro"></div>
 
   <!-- ===================== PAINEL DO DIA ===================== -->
-  <section id="t-painel">
-    <div class="card">
-      <h2>Como está o dia de hoje</h2>
-      <div id="painelResumo"></div>
-    </div>
-    <div class="card">
-      <h2>Rotas de hoje</h2>
-      <div id="painelRotas"></div>
-    </div>
-  </section>
-
-  <!-- ===================== BUSCAR PEDIDO ===================== -->
+  <!-- ===================== INICIAR FRETES ===================== -->
   <section id="t-pedido" hidden>
     <div class="card">
       <div class="subnav">
@@ -203,7 +196,7 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
 
       <!-- --- por número --- -->
       <div id="modo-numero">
-        <h2>Buscar 1 pedido de venda na Omie</h2>
+        <h2>Buscar o pedido na Omie pra começar a rota</h2>
         <div class="row">
           <div><label>Número do pedido</label><input id="numPedido" placeholder="Ex: 1234"></div>
           <div class="auto"><button class="btn" id="buscarPedido">Buscar</button></div>
@@ -225,15 +218,32 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
       <h2 id="tituloResultado">Pedido encontrado</h2>
       <div id="historicoCliente"></div>
       <div id="resultado"></div>
-      <div class="row" style="margin-top:12px">
-        <div id="wTipoProblema" hidden><label>Tipo de problema</label>
-          <select id="rTipoProblema">
-            <option value="cor">Cor</option>
-            <option value="defeito">Defeito na peça</option>
-            <option value="esquecimento">Esquecimento</option>
-          </select>
+      <!-- Só na assistência. Volume não entra aqui: a pergunta é QUAL PEÇA deu
+           defeito e de quem foi, não quantas caixas voltam. -->
+      <div id="blocoAvaria" hidden style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+        <h3 style="margin:0 0 2px;font-size:15px">Qual peça deu avaria?</h3>
+        <p class="mut" style="margin:0 0 8px;font-size:12.5px">Marque a peça com problema. Se mais de uma avariou, marque todas — cada uma vira um registro, porque podem ter causas diferentes.</p>
+        <div id="listaAvaria"></div>
+
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>De quem foi o erro *</label>
+            <select id="avResponsavel">
+              <option value="">Escolha…</option>
+              <option value="vendedores">Vendedor</option>
+              <option value="estoque">Estoquista</option>
+              <option value="freteiro">Freteiro</option>
+            </select>
+          </div>
+          <div>
+            <label>Motivo</label>
+            <select id="avMotivo"><option value="">Escolha o responsável primeiro</option></select>
+          </div>
         </div>
-        <div><label>Total de volumes</label><input id="rVolumesTotal" disabled value="0" style="background:#f4f6f8;font-weight:700"></div>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <div id="wVolumes"><label>Total de volumes</label><input id="rVolumesTotal" disabled value="0" style="background:#f4f6f8;font-weight:700"></div>
         <div style="flex:2"><label>Observação (opcional)</label><input id="rObs"></div>
         <div class="auto"><button class="btn cta" id="addRascunho">Adicionar ao romaneio</button></div>
       </div>
@@ -342,6 +352,43 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
       <div style="overflow-x:auto;margin-top:12px"><table>
         <thead><tr><th>Freteiro</th><th class="center">Entregas</th><th class="center">Assistências</th><th class="center">Paradas</th><th class="center">Entregues</th><th class="center">Falharam</th><th class="center">Com problema</th><th class="center">% problema do freteiro</th></tr></thead>
         <tbody id="tabRel"><tr><td colspan="8"><div class="empty">Escolha um período e clique em Buscar.</div></td></tr></tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <h2>Banco de avarias</h2>
+      <p class="mut" style="margin-top:-6px">Toda assistência registrada vira linha aqui, uma por peça avariada. Serve pra responder três coisas: onde o erro nasce, qual móvel vive dando defeito, e se está melhorando.</p>
+      <div class="row">
+        <div><label>De</label><input type="date" id="avDe"></div>
+        <div><label>Até</label><input type="date" id="avAte"></div>
+        <div><label>Agrupar por</label>
+          <select id="avAgrupar">
+            <option value="semana">Semana</option>
+            <option value="mes">Mês</option>
+          </select>
+        </div>
+        <div class="auto"><button class="btn" id="avBuscar">Buscar</button></div>
+      </div>
+      <div id="avResumo" class="mut" style="margin-top:12px"></div>
+
+      <div class="grade2" style="margin-top:14px">
+        <div>
+          <h3 style="font-size:14px;margin:0 0 8px">De quem foi</h3>
+          <div id="avPorResponsavel"></div>
+          <h3 style="font-size:14px;margin:14px 0 8px">Quem, por nome</h3>
+          <div id="avPorPessoa"></div>
+        </div>
+        <div>
+          <h3 style="font-size:14px;margin:0 0 8px">Qual móvel mais avaria</h3>
+          <div id="avPorProduto"></div>
+          <h3 style="font-size:14px;margin:14px 0 8px">Ao longo do tempo</h3>
+          <div id="avPorPeriodo"></div>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto;margin-top:14px"><table>
+        <thead><tr><th>Quando</th><th>Peça</th><th>Pedido</th><th>De quem</th><th>Motivo</th><th class="right">Valor</th><th>Observação</th></tr></thead>
+        <tbody id="tabAvarias"><tr><td colspan="7"><div class="empty">Escolha um período e clique em Buscar.</div></td></tr></tbody>
       </table></div>
     </div>
   </section>
@@ -575,7 +622,7 @@ function mostrarLogin(){ $('#tela-login').hidden = false; $('#tela-app').hidden 
    freteiro ao montar a rota, mas não vê telefone nem placa de ninguém. O servidor
    já mandava só id e nome pra quem não é gerente, então esconder a aba não é o que
    protege o dado; é o que tira da frente uma tela que não é dele. */
-const ABAS_DO_VENDEDOR = ['painel', 'pedido', 'rom'];
+const ABAS_DO_VENDEDOR = ['pedido', 'rom'];
 
 function aplicarPapel(){
   const ehVendedor = papel === 'vendedor';
@@ -585,11 +632,11 @@ function aplicarPapel(){
   const linkEstoque = $('nav .navlink');
   if(linkEstoque) linkEstoque.hidden = ehVendedor;
 
-  // Se a aba aberta sumiu, volta pro Painel em vez de deixar a tela vazia.
+  // Se a aba aberta sumiu, volta pra Romaneios em vez de deixar a tela vazia.
   const atual = $$('nav button').find(b => b.classList.contains('on'));
   if(ehVendedor && (!atual || atual.hidden)){
-    const painel = $$('nav button').find(b => b.dataset.t === 'painel');
-    if(painel) painel.click();
+    const rom = $$('nav button').find(b => b.dataset.t === 'rom');
+    if(rom) rom.click();
   }
 }
 
@@ -604,7 +651,6 @@ function mostrarApp(){
     carregarVendedoresEquipe().catch(e=>erro(e.message));
   }
   carregarRomaneios().catch(e=>erro(e.message));
-  carregarPainelDia().catch(e=>erro(e.message));
   statusHoje();
 }
 
@@ -660,9 +706,8 @@ $('#sair').onclick = async () => {
 /* ---------------- navegação ---------------- */
 $$('nav button').forEach(b => b.onclick = () => {
   $$('nav button').forEach(x=>x.classList.toggle('on', x===b));
-  ['painel','pedido','rom','fret','rel','vendas','diag'].forEach(t => $('#t-'+t).hidden = t !== b.dataset.t);
+  ['pedido','rom','fret','rel','vendas','diag'].forEach(t => $('#t-'+t).hidden = t !== b.dataset.t);
   erro('');
-  if(b.dataset.t==='painel') carregarPainelDia();
   if(b.dataset.t==='rom') carregarRomaneios();
   if(b.dataset.t==='rel') $('#relBuscar').click();
   if(b.dataset.t==='vendas') abrirVendas();
@@ -765,9 +810,13 @@ function renderResultado(){
   `;
   const assist = modoBusca === 'assistencia';
   $('#tituloResultado').textContent = assist ? 'Pedido encontrado — registrar assistência' : 'Pedido encontrado';
-  $('#wTipoProblema').hidden = !assist;
+  // Na assistência some o volume e aparece a escolha da peça avariada. Volume aqui
+  // não responde nada: o que importa é QUAL móvel deu defeito e de quem foi.
+  $('#blocoAvaria').hidden = !assist;
+  $('#wVolumes').hidden = assist;
   $('#rObs').value = assist ? '' : (p.observacao || '');
   $('#addRascunho').textContent = assist ? 'Adicionar como assistência' : 'Adicionar ao romaneio';
+  if(assist) montarEscolhaDeAvaria(p);
   atualizarTotalVolumes();
   $('#cardResultado').hidden = false;
   $('#historicoCliente').innerHTML = '';
@@ -807,12 +856,25 @@ $('#addRascunho').onclick = () => {
   const dadosDaVenda = { vendedor: venda.vendedor || '', canalVenda: venda.canal || '' };
 
   if(modoBusca === 'assistencia'){
-    const motivos = { cor: 'Cor', defeito: 'Defeito na peça', esquecimento: 'Esquecimento' };
-    const motivo = motivos[$('#rTipoProblema').value] || '';
+    const responsavel = $('#avResponsavel').value;
+    const motivo = $('#avMotivo').value;
+    const avariados = itensAvariados();
+    if(!avariados.length) return toast('Marque qual peça deu avaria');
+    if(!responsavel) return toast('Diga de quem foi o erro');
+
     const obsExtra = $('#rObs').value.trim();
-    rascunho.push({ ...pedidoAtual, ...dadosDaVenda, tipo: 'assistencia', itens: itensComCorEVolume,
-      observacao: 'Assistência — ' + motivo + (obsExtra ? ': ' + obsExtra : '') });
+    const quem = { vendedores: 'Vendedor', estoque: 'Estoquista', freteiro: 'Freteiro' }[responsavel] || '';
+    const pecas = avariados.map(a => a.descricao).join(', ');
+
+    rascunho.push({
+      ...pedidoAtual, ...dadosDaVenda, tipo: 'assistencia', itens: itensComCorEVolume,
+      observacao: `Assistência — ${pecas}${motivo ? ' · ' + motivo : ''} · erro do ${quem.toLowerCase()}${obsExtra ? ': ' + obsExtra : ''}`,
+      // Viaja junto com o rascunho e é gravado no banco de avarias quando a rota
+      // é criada — ali a parada já existe, e sem ela a avaria ficaria solta.
+      avaria: { responsavel, motivo, obs: obsExtra, itens: avariados }
+    });
     $('#numAssist').value = '';
+    limparAvaria();
   } else {
     rascunho.push({ ...pedidoAtual, ...dadosDaVenda, itens: itensComCorEVolume, observacao: $('#rObs').value || '' });
     $('#numPedido').value = '';
@@ -823,7 +885,97 @@ $('#addRascunho').onclick = () => {
   toast('Adicionado ao romaneio em montagem');
 };
 
+/* ---------------- a peça que deu avaria ----------------
+   Lista fechada de motivos, e por RESPONSÁVEL: "não ligou pra cliente" não é erro
+   de estoque. A mesma lista existe no servidor (api/lib/motivos.js) e é ele quem
+   manda — aqui é só pra não oferecer combinação que vai ser recusada. */
+const MOTIVOS_POR_RESPONSAVEL = {
+  vendedores: ['Errou a cor', 'Errou o móvel', 'Esqueceu de avisar algo'],
+  estoque: ['Cor errada', 'Móvel errado', 'Volume faltando', 'Móvel quebrado'],
+  freteiro: ['Móvel quebrado', 'Não ligou pra cliente', 'Não cobrou o valor certo', 'Não entregou pra pessoa certa']
+};
+
+function montarEscolhaDeAvaria(p){
+  const itens = p.itens || [];
+  if(!itens.length){
+    $('#listaAvaria').innerHTML = '<div class="empty">Esse pedido não tem item cadastrado na Omie. Descreva na observação o que avariou.</div>';
+    return;
+  }
+  // Um item só já vem marcado: não faz sentido pedir pra escolher entre um.
+  const soUm = itens.length === 1;
+  $('#listaAvaria').innerHTML = itens.map((it,i)=>`
+    <label class="linhaavaria">
+      <input type="checkbox" class="chkAvaria" data-i="${i}" ${soUm?'checked':''}>
+      <span class="swatch" style="width:16px;height:16px;border-radius:4px;border:1px solid var(--line);flex:0 0 auto;background:${corParaSwatch(it.cor)}"></span>
+      <span><strong>${esc(it.descricao||'(sem descrição)')}</strong>${it.cor?` · ${esc(it.cor)}`:''}${it.codigo?` <span class="mut">${esc(it.codigo)}</span>`:''}</span>
+    </label>`).join('');
+}
+
+/** As peças marcadas, já no formato que o banco de avarias espera. */
+function itensAvariados(){
+  const itens = (pedidoAtual && pedidoAtual.itens) || [];
+  return [...document.querySelectorAll('.chkAvaria')]
+    .filter(c => c.checked)
+    .map(c => itens[Number(c.dataset.i)])
+    .filter(Boolean)
+    .map(it => ({
+      descricao: it.descricao || '', codigo: it.codigo || '',
+      cor: it.cor || '', valor: Number(it.valorTotal) || 0
+    }));
+}
+
+function limparAvaria(){
+  $('#avResponsavel').value = '';
+  $('#avMotivo').innerHTML = '<option value="">Escolha o responsável primeiro</option>';
+  $('#listaAvaria').innerHTML = '';
+}
+
+$('#avResponsavel').onchange = () => {
+  const lista = MOTIVOS_POR_RESPONSAVEL[$('#avResponsavel').value] || [];
+  $('#avMotivo').innerHTML = lista.length
+    ? '<option value="">Sem motivo específico</option>' + lista.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('')
+    : '<option value="">Escolha o responsável primeiro</option>';
+};
+
+/**
+ * Grava no banco de erros as avarias que vieram no rascunho.
+ *
+ * Casa cada uma com a parada criada pelo NÚMERO do pedido, que é o que existe nos
+ * dois lados. A rota devolvida pelo servidor traz as paradas já com id.
+ *
+ * Se falhar, o romaneio NÃO é desfeito: a rota é o que precisa sair hoje, e a
+ * avaria é registro. Perder a rota por causa do registro seria trocar o urgente
+ * pelo importante. O aviso aparece pra você saber que precisa lançar na mão.
+ */
+async function registrarAvarias(itensDoRascunho, romaneio){
+  const comAvaria = itensDoRascunho.filter(d => d.avaria && d.avaria.itens && d.avaria.itens.length);
+  if(!comAvaria.length) return;
+
+  const paradas = (romaneio && romaneio.paradas) || [];
+  let falharam = 0;
+
+  for(const d of comAvaria){
+    const parada = paradas.find(x => String(x.numero) === String(d.numero) && x.tipo === 'assistencia');
+    try{
+      await api('/api/avarias', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          paradaId: parada ? parada.id : null,
+          romaneioId: romaneio.id,
+          numeroPedido: d.numero || '',
+          clienteNome: (d.cliente && d.cliente.nome) || '',
+          responsavel: d.avaria.responsavel,
+          motivo: d.avaria.motivo,
+          obs: d.avaria.obs,
+          itens: d.avaria.itens
+        }) });
+    }catch(e){ falharam++; }
+  }
+
+  if(falharam) erro(`A rota foi criada, mas ${falharam} avaria(s) não foram registradas no banco de erros. Lance na mão pela aba Relatórios.`);
+}
+
 /* ---------------- rascunho ---------------- */
+
 function renderRascunho(){
   $('#cardRascunho').hidden = rascunho.length === 0;
   $('#contagem').textContent = rascunho.length ? rascunho.length + ' documento(s)' : '';
@@ -870,6 +1022,11 @@ $('#gerar').onclick = async () => {
       ? { paradas: rascunho }
       : { freteiroId: $('#frSel').value, dataRota: $('#dataRota').value || null, valorFrete: $('#valorFrete').value || 0, paradas: rascunho };
     const r = await api(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+
+    // As avarias vao DEPOIS, porque so agora a parada existe e tem id. Sem o id a
+    // avaria ficaria solta, sem como voltar pro pedido que a originou.
+    await registrarAvarias(rascunho, r);
+
     rascunho = []; renderRascunho();
     $('#valorFrete').value = '';
     toast(destino ? 'Adicionado ao romaneio ' + r.codigo : 'Romaneio ' + r.codigo + ' criado');
@@ -1033,27 +1190,6 @@ function etiquetaConferencia(r){
 }
 
 /* ---------------- painel do dia ---------------- */
-async function carregarPainelDia(){
-  try{
-    const p = await api('/api/painel-dia');
-    const partes = [];
-    if(p.totalFalhasHoje) partes.push(`<span class="tag falhou">⚠️ ${p.totalFalhasHoje} entrega(s) não realizada(s) hoje</span>`);
-    partes.push(`<span class="tag">${p.problemas30dias} problema(s) nos últimos 30 dias</span>`);
-    $('#painelResumo').innerHTML = partes.join(' ') || '<div class="empty">Tudo tranquilo.</div>';
-
-    $('#painelRotas').innerHTML = p.rotasHoje.length ? p.rotasHoje.map(r => `
-      <div class="rm">
-        <div class="top">
-          <span class="cod">${esc(r.codigo)}</span>
-          <span class="tag">${esc(r.freteiroNome||'sem freteiro')}</span>
-          <span class="mut">${r.entregues}/${r.total} entregues · ${r.pendentes} pendente(s)</span>
-          ${r.falharam?`<span class="tag falhou">⚠️ ${r.falharam} não realizada(s)</span>`:''}
-          ${r.carregado?'<span class="tag ok">✓ carregado</span>':'<span class="tag pend">carregamento pendente</span>'}
-        </div>
-      </div>`).join('') : '<div class="empty">Nenhuma rota criada pra hoje ainda.</div>';
-  }catch(e){ erro(e.message); }
-}
-
 async function excluirRom(id){
   const r = romaneios.find(x=>x.id===id);
   const aviso = r ? `Excluir o romaneio ${r.codigo} (${r.paradas.length} parada(s))?\n\nIsso apaga também o histórico das entregas dele.` : 'Excluir este romaneio?';
@@ -1441,6 +1577,56 @@ async function delEs(id){
     carregarEstoquistas();
   }catch(e){ erro(e.message); }
 }
+
+/* ---------------- banco de avarias ----------------
+   Três perguntas, três recortes. Nenhuma delas se responde com lista crua:
+     · quem erra      -> onde o problema nasce
+     · qual móvel     -> o que muda decisão de compra
+     · semana a semana -> está melhorando ou piorando */
+const ROTULO_RESP = { vendedores: 'Vendedor', estoque: 'Estoquista', freteiro: 'Freteiro' };
+
+function barras(lista, destino, rotular){
+  const el = $(destino);
+  if(!lista.length){ el.innerHTML = '<div class="empty">Nada no período.</div>'; return; }
+  const maior = Math.max(1, ...lista.map(x => x.avarias));
+  el.innerHTML = lista.map(x => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="flex:0 0 150px;font-size:13px">${esc(rotular ? rotular(x.chave) : x.chave)}</span>
+      <span style="flex:1;background:#f0efe8;border-radius:5px;height:18px;position:relative">
+        <span style="display:block;height:100%;border-radius:5px;background:var(--bad);width:${Math.round(x.avarias/maior*100)}%"></span>
+      </span>
+      <strong style="flex:0 0 40px;text-align:right;font-size:13px">${x.avarias}</strong>
+      <span class="mut" style="flex:0 0 90px;text-align:right;font-size:12px">${money(x.valor)}</span>
+    </div>`).join('');
+}
+
+async function buscarAvarias(){
+  const de = $('#avDe').value, ate = $('#avAte').value;
+  if(!de || !ate) return toast('Escolha o período');
+  const agrupar = $('#avAgrupar').value;
+  try{
+    const r = await api(`/api/avarias?de=${de}&ate=${ate}&agrupar=${agrupar}`);
+    $('#avResumo').innerHTML = r.total
+      ? `<strong>${r.total}</strong> avaria(s) no período, somando <strong>${money(r.valorTotal)}</strong> em peça.`
+      : 'Nenhuma avaria registrada no período. Isso é boa notícia.';
+
+    barras(r.porResponsavel, '#avPorResponsavel', c => ROTULO_RESP[c] || c);
+    barras(r.porProduto.slice(0, 10), '#avPorProduto');
+    barras(r.porPessoa, '#avPorPessoa');
+    barras(r.porPeriodo, '#avPorPeriodo');
+
+    $('#tabAvarias').innerHTML = r.lista.length ? r.lista.map(a => `<tr>
+      <td>${esc(dataCurta((a.criado_em||'').slice(0,10)))}</td>
+      <td><strong>${esc(a.produto_descricao)}</strong>${a.produto_cor?`<div class="mut">${esc(a.produto_cor)}</div>`:''}</td>
+      <td>${esc(a.numero_pedido||'—')}<div class="mut">${esc(a.cliente_nome||'')}</div></td>
+      <td>${esc(ROTULO_RESP[a.responsavel]||a.responsavel||'—')}${a.responsavel_nome?`<div class="mut">${esc(a.responsavel_nome)}</div>`:''}</td>
+      <td>${esc(a.motivo||'—')}</td>
+      <td class="right">${money(a.produto_valor)}</td>
+      <td class="mut">${esc(a.obs||'')}</td>
+    </tr>`).join('') : '<tr><td colspan="7"><div class="empty">Nada no período.</div></td></tr>';
+  }catch(e){ erro(e.message); }
+}
+$('#avBuscar').onclick = buscarAvarias;
 
 /* ---------------- vendedores que montam rota ----------------
    Gente, não os nomes lidos da observação do pedido (aba Vendas). São duas
@@ -2014,6 +2200,7 @@ function statusHoje(){
   $('#dataRota').value = dataBR(hoje);
   const trintaDiasAtras = new Date(hoje); trintaDiasAtras.setDate(hoje.getDate()-30);
   $('#relDe').value = dataBR(trintaDiasAtras); $('#relAte').value = dataBR(hoje);
+  $('#avDe').value = dataBR(trintaDiasAtras); $('#avAte').value = dataBR(hoje);
 }
 window.removerRascunho = removerRascunho;
 window.atualizarSwatch = atualizarSwatch;

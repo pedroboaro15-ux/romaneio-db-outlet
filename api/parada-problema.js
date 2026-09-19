@@ -7,12 +7,9 @@ const { identificar } = require('./lib/auth');
 const { json, lerCorpo } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 
-const MOTIVOS = {
-  vendedores: ['Errou a cor', 'Errou o móvel', 'Esqueceu de avisar algo'],
-  estoque: ['Cor errada', 'Móvel errado', 'Volume faltando', 'Móvel quebrado'],
-  freteiro: ['Móvel quebrado', 'Não ligou pra cliente', 'Não cobrou o valor certo', 'Não entregou pra pessoa certa']
-};
-const RESPONSAVEIS_VALIDOS = ['', 'vendedores', 'estoque', 'freteiro'];
+// A lista mora em lib/motivos.js: o banco de avarias lê a MESMA.
+const { MOTIVOS, RESPONSAVEIS } = require('./lib/motivos');
+const RESPONSAVEIS_VALIDOS = ['', ...RESPONSAVEIS];
 
 exports.handler = async event => {
   if (event.httpMethod !== 'POST') return json(405, { erro: 'método não permitido' });

@@ -18,6 +18,7 @@ import equipeLogin from '../api/equipe-login.js';
 import estoquistas from '../api/estoquistas.js';
 import vendedoresEquipe from '../api/vendedores-equipe.js';
 import quemSou from '../api/quem-sou.js';
+import avarias from '../api/avarias.js';
 import fotoUpload from '../api/foto-upload.js';
 import freteiros from '../api/freteiros.js';
 import geocode from '../api/geocode.js';
@@ -25,7 +26,6 @@ import historicoCliente from '../api/historico-cliente.js';
 import ingerirPedidosOmie from '../api/ingerir-pedidos-omie.js';
 import minhasRotas from '../api/minhas-rotas.js';
 import omieRaw from '../api/omie-raw.js';
-import painelDia from '../api/painel-dia.js';
 import paradaItemCarregado from '../api/parada-item-carregado.js';
 import paradaProblema from '../api/parada-problema.js';
 import paradaSeparar from '../api/parada-separar.js';
@@ -51,6 +51,7 @@ const FUNCOES = {
   'estoquistas': estoquistas,
   'vendedores-equipe': vendedoresEquipe,
   'quem-sou': quemSou,
+  'avarias': avarias,
   'foto-upload': fotoUpload,
   'freteiros': freteiros,
   'geocode': geocode,
@@ -58,7 +59,6 @@ const FUNCOES = {
   'ingerir-pedidos-omie': ingerirPedidosOmie,
   'minhas-rotas': minhasRotas,
   'omie-raw': omieRaw,
-  'painel-dia': painelDia,
   'parada-item-carregado': paradaItemCarregado,
   'parada-problema': paradaProblema,
   'parada-separar': paradaSeparar,
