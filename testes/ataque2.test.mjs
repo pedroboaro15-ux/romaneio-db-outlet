@@ -204,13 +204,20 @@ cenario();
 }
 cenario();
 {
+  // Volume saiu do sistema; o que ainda entra em número na parada é valor, peso e
+  // a quantidade de cada item. Um "-5000" no valor sumiria da conta do estoque
+  // parado e faria a rota parecer mais barata do que é.
   const r = await chamar(romaneios, comoJoao({
-    paradas: [{ numero: '1', valor: -5000, peso: -10, itens: [{ volumes: -3 }] }]
+    paradas: [{ numero: '1', valor: -5000, peso: -10, itens: [{ descricao: 'X', quantidade: -3, valorTotal: -99 }] }]
   }));
   const p = (banco.tabelas.paradas || []).find(x => x.numero === '1' && x.id !== 'pjoao');
-  checa('valor e volume negativos não entram',
-    !p || (p.valor >= 0 && p.volumes >= 0),
-    p ? `valor ${p.valor}, volumes ${p.volumes}` : '');
+  const item = p && (p.itens || [])[0];
+  checa('valor e peso negativos não entram',
+    !p || (p.valor >= 0 && p.peso >= 0),
+    p ? `valor ${p.valor}, peso ${p.peso}` : '');
+  checa('nem quantidade e valor negativos no item',
+    !item || (item.quantidade >= 0 && item.valorTotal >= 0),
+    item ? `qtd ${item.quantidade}, valor ${item.valorTotal}` : '');
 }
 
 /* ================================================================== */

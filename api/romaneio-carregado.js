@@ -1,15 +1,15 @@
 // POST /api/romaneio-carregado  { romaneioId, desfazer? }
-//   { romaneioId, mesmoComDivergencia: true, motivo: '...' } fecha mesmo com a
-//   conferência final não batendo — e registra por quê.
+//   { romaneioId, motivo: '...' } fecha registrando que alguma coisa não bateu.
 //
-// Estoquista confirma que o caminhão está carregado. Só passa depois da
-// conferência final bater (conferencia-final.js): sem isso, "confirmar
-// carregamento" voltaria a ser um botão que se aperta sem olhar, e a conferência
-// inteira viraria enfeite.
+// Estoquista confirma que o caminhão está carregado.
 //
-// A saída pela divergência existe porque a vida tem exceção — o móvel quebrou no
-// galpão e vai faltar mesmo. Mas ela exige um motivo escrito e fica marcada no
-// romaneio, então é uma decisão registrada, não um atalho silencioso.
+// Antes isto exigia a conferência cega (contar produto por produto no app) antes
+// de deixar fechar. A conferência saiu: virou papel, a pedido do Pedro, e com ela
+// saiu a contagem de volume que a alimentava.
+//
+// O motivo continua, e continua opcional. Serve pro caso em que o caminhão fecha
+// sabendo que falta peça — o móvel quebrou no galpão e vai faltar mesmo. Escrito,
+// fica marcado no romaneio: é decisão registrada, não some no silêncio.
 //
 // { romaneioId, desfazer: true } reabre a conferência (pra corrigir um volume
 // marcado sem querer, por exemplo) — volta pra "carregamento_confirmado: false".
@@ -33,38 +33,28 @@ exports.handler = async event => {
   // "nenhuma linha encontrada" — e o app mostrava isso como erro 500 do servidor,
   // que não diz nada pra quem está com o celular na mão no meio do galpão.
   const { data: existe } = await sb
-    .from('romaneios').select('id, conferencia_ok').eq('id', b.romaneioId).maybeSingle();
+    .from('romaneios').select('id').eq('id', b.romaneioId).maybeSingle();
   if (!existe) return json(404, { erro: 'romaneio não encontrado' });
 
   let patch;
   if (b.desfazer) {
-    // Reabrir também reabre a conferência: se o carregamento mudou, a contagem
-    // de antes não vale mais. Deixar o "conferido" de pé aqui seria guardar um
-    // carimbo de um caminhão que não é mais aquele.
     patch = {
       carregamento_confirmado: false,
       carregamento_confirmado_em: null,
-      conferencia_ok: false,
       carregado_com_divergencia: false,
       divergencia_motivo: ''
     };
   } else {
+    // A conferência cega saiu: ela virou papel, e era ela que exigia contar
+    // volume. O que sobra é o motivo opcional, pra registrar quando o caminhão
+    // fecha sabendo que falta alguma coisa.
     const motivo = String(b.motivo || '').trim().slice(0, 500);
-
-    if (!existe.conferencia_ok) {
-      if (!b.mesmoComDivergencia) {
-        return json(400, { erro: 'faça a conferência final antes de fechar o carregamento' });
-      }
-      if (motivo.length < 5) {
-        return json(400, { erro: 'escreva o que está faltando ou sobrando antes de fechar assim' });
-      }
-    }
 
     patch = {
       carregamento_confirmado: true,
       carregamento_confirmado_em: new Date().toISOString(),
-      carregado_com_divergencia: !existe.conferencia_ok,
-      divergencia_motivo: existe.conferencia_ok ? '' : motivo
+      carregado_com_divergencia: !!motivo,
+      divergencia_motivo: motivo
     };
   }
 

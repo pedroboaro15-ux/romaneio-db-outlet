@@ -21,7 +21,9 @@ const MAX_PARADAS = 200;
 const MAX_ITENS = 100;
 const MAX_TEXTO = 500;        // descrição de item, cor, número do pedido
 const MAX_OBSERVACAO = 4000;  // a observação do pedido é o campo mais longo que existe
-const MAX_VOLUMES = 999;
+// Antes se chamava MAX_VOLUMES. Volume saiu do fluxo inteiro; o teto continua
+// valendo pra quantidade de peças, que é o que sobrou de contagem no item.
+const MAX_QTD = 999;
 const MAX_VALOR = 10000000;   // dez milhões: nenhum pedido de móvel chega perto
 
 /** Corta texto no tamanho e tira espaço das pontas. */
@@ -106,9 +108,8 @@ exports.handler = async event => {
       descricao: texto(it && it.descricao, MAX_TEXTO),
       codigo: texto(it && it.codigo, MAX_TEXTO),
       cor: texto(it && it.cor, MAX_TEXTO),
-      quantidade: numeroPositivo(it && it.quantidade, MAX_VOLUMES),
+      quantidade: numeroPositivo(it && it.quantidade, MAX_QTD),
       valorTotal: numeroPositivo(it && it.valorTotal, MAX_VALOR),
-      volumes: numeroPositivo(it && it.volumes, MAX_VOLUMES),
       fragil: !!(it && it.fragil),
       // Peça pequena: quem marca é o gerente, no painel. Cabe na mão e some fácil
       // no fundo do caminhão, então o estoquista precisa ver isso na separação.
@@ -125,9 +126,6 @@ exports.handler = async event => {
       // aceitaria qualquer coisa que chegasse, inclusive campos que ninguém lê e
       // que só ocupam espaço.
       const itens = (Array.isArray(p.itens) ? p.itens : []).slice(0, MAX_ITENS).map(limparItem);
-      // O total de volumes é sempre a soma dos volumes de cada item — nunca um número
-      // digitado à parte, pra nunca ficar destoante do que tem item por item.
-      const somaVolumes = itens.reduce((s, it) => s + it.volumes, 0);
       return {
         romaneio_id: romaneioId,
         ordem,
@@ -139,7 +137,6 @@ exports.handler = async event => {
           ? { ...p.cliente, codigo: p.codigoCliente != null ? texto(p.codigoCliente, 40) : null }
           : null,
         itens,
-        volumes: somaVolumes || numeroPositivo(p.volumes, MAX_VOLUMES),
         peso: numeroPositivo(p.peso, 100000),
         valor: numeroPositivo(p.valor, MAX_VALOR),
         observacao: texto(p.observacao, MAX_OBSERVACAO),

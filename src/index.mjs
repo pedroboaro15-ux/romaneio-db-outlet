@@ -13,7 +13,6 @@
 //      netlify.toml.
 //   3. Roda a carga diária dos pedidos no horário do cron (ver wrangler.toml).
 
-import conferenciaFinal from '../api/conferencia-final.js';
 import equipeLogin from '../api/equipe-login.js';
 import estoquistas from '../api/estoquistas.js';
 import vendedoresEquipe from '../api/vendedores-equipe.js';
@@ -46,7 +45,6 @@ import { buscarPlanilha } from './planilha.mjs';
 
 // O nome na URL continua igual ao de antes, então nada muda no HTML das páginas.
 const FUNCOES = {
-  'conferencia-final': conferenciaFinal,
   'equipe-login': equipeLogin,
   'estoquistas': estoquistas,
   'vendedores-equipe': vendedoresEquipe,

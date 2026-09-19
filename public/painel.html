@@ -243,7 +243,6 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
       </div>
 
       <div class="row" style="margin-top:12px">
-        <div id="wVolumes"><label>Total de volumes</label><input id="rVolumesTotal" disabled value="0" style="background:#f4f6f8;font-weight:700"></div>
         <div style="flex:2"><label>Observação (opcional)</label><input id="rObs"></div>
         <div class="auto"><button class="btn cta" id="addRascunho">Adicionar ao romaneio</button></div>
       </div>
@@ -255,7 +254,7 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
         <span class="mut" id="contagem" style="margin-left:auto"></span>
       </div>
       <div style="overflow-x:auto"><table>
-        <thead><tr><th>Doc.</th><th>Cliente</th><th>Destino</th><th class="center">Vol.</th><th>Cor</th><th class="right">Valor</th><th></th></tr></thead>
+        <thead><tr><th>Doc.</th><th>Cliente</th><th>Destino</th><th>Cor</th><th class="right">Valor</th><th></th></tr></thead>
         <tbody id="tabRascunho"></tbody>
       </table></div>
       <div style="padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
@@ -757,12 +756,6 @@ function atualizarSwatch(i){
   const sw = document.getElementById('swatch-'+i);
   if(cor && sw) sw.style.background = corParaSwatch(cor.value);
 }
-function atualizarTotalVolumes(){
-  const itens = (pedidoAtual && pedidoAtual.itens) || [];
-  let total = 0;
-  itens.forEach((it,i) => { const v = document.getElementById('itemVol-'+i); total += v ? (Number(v.value)||0) : 0; });
-  $('#rVolumesTotal').value = total;
-}
 function alternarEdicaoDesc(i){
   const txt = document.getElementById('descTxt-'+i), edit = document.getElementById('descEdit-'+i);
   const entrando = edit.hidden;
@@ -787,7 +780,6 @@ function renderResultado(){
     <input id="descEdit-${i}" hidden style="flex:2" value="${esc(it.descricao||'')}">
     <button type="button" class="btn ghost sm" style="flex:0 0 auto" title="Editar nome do produto" onclick="alternarEdicaoDesc(${i})">✏️</button>
     <input list="coresPadrao" placeholder="cor" style="max-width:110px" id="itemCor-${i}" value="${esc(it.cor||'')}" oninput="atualizarSwatch(${i})">
-    <input type="number" min="0" placeholder="vol" style="max-width:64px" id="itemVol-${i}" value="${it.volumes!=null?it.volumes:''}" oninput="atualizarTotalVolumes()">
     <label class="fragilcheck" title="Tem vidro/espelho ou é frágil — avisa o freteiro e o estoquista, e manda ir por cima">
       <input type="checkbox" id="itemFragil-${i}" ${it.fragil?'checked':''}> 🔴 vidro
     </label>
@@ -805,19 +797,17 @@ function renderResultado(){
     <div style="margin-top:8px"><strong>${esc(c.nome||'(sem cliente)')}</strong>${c.doc?` <span class="mut">${esc(c.doc)}</span>`:''}</div>
     <div class="mut">${esc(end||'(endereço não informado)')}${uf?' · '+esc(uf):''}${c.cep?' · CEP '+esc(c.cep):''}</div>
     ${c.telefone?`<div class="mut">Tel: ${esc(c.telefone)}</div>`:''}
-    ${itens?`<div class="itens">${itens}<div class="mut" style="margin-top:4px">Cor e volumes de cada item — clique no lápis ✏️ pra deixar o nome do produto mais claro pro estoquista.</div></div>`:''}
-    <div class="mut" style="margin-top:6px">Valor: ${money(p.valor)}${p.peso?` · ${p.peso} kg`:''}${p.volumesOmie?` · Omie indica ${p.volumesOmie} volume(s) no total — confira item a item`:''}</div>
+    ${itens?`<div class="itens">${itens}<div class="mut" style="margin-top:4px">Cor de cada item — clique no lápis ✏️ pra deixar o nome do produto mais claro pro estoquista.</div></div>`:''}
+    <div class="mut" style="margin-top:6px">Valor: ${money(p.valor)}${p.peso?` · ${p.peso} kg`:''}</div>
   `;
   const assist = modoBusca === 'assistencia';
   $('#tituloResultado').textContent = assist ? 'Pedido encontrado — registrar assistência' : 'Pedido encontrado';
   // Na assistência some o volume e aparece a escolha da peça avariada. Volume aqui
   // não responde nada: o que importa é QUAL móvel deu defeito e de quem foi.
   $('#blocoAvaria').hidden = !assist;
-  $('#wVolumes').hidden = assist;
   $('#rObs').value = assist ? '' : (p.observacao || '');
   $('#addRascunho').textContent = assist ? 'Adicionar como assistência' : 'Adicionar ao romaneio';
   if(assist) montarEscolhaDeAvaria(p);
-  atualizarTotalVolumes();
   $('#cardResultado').hidden = false;
   $('#historicoCliente').innerHTML = '';
   if(c.codigo) carregarHistoricoCliente(c.codigo);
@@ -837,7 +827,6 @@ $('#addRascunho').onclick = () => {
   if(!pedidoAtual) return;
   const itensComCorEVolume = (pedidoAtual.itens||[]).map((it,i)=>{
     const campoCor = document.getElementById('itemCor-'+i);
-    const campoVol = document.getElementById('itemVol-'+i);
     const campoDesc = document.getElementById('descEdit-'+i);
     const campoFragil = document.getElementById('itemFragil-'+i);
     const campoPequena = document.getElementById('itemPequena-'+i);
@@ -845,7 +834,6 @@ $('#addRascunho').onclick = () => {
       ...it,
       descricao: campoDesc ? (campoDesc.value.trim() || it.descricao) : it.descricao,
       cor: campoCor ? campoCor.value.trim() : (it.cor||''),
-      volumes: campoVol ? (Number(campoVol.value)||0) : (it.volumes||0),
       fragil: campoFragil ? campoFragil.checked : !!it.fragil,
       pequena: campoPequena ? campoPequena.checked : !!it.pequena
     };
@@ -984,13 +972,11 @@ function renderRascunho(){
     const dest = Endereco.enderecoEmLinha(c);
     const uf = (c.estado || '').trim();
     const tagTipo = d.tipo==='assistencia' ? '<span class="tag alt">assist.</span> ' : (d.tipo==='nf' ? '<span class="tag">NF</span> ' : '');
-    const totalVol = (d.itens||[]).reduce((s,it)=>s+(Number(it.volumes)||0), 0) || d.volumes || 0;
     const coresLista = (d.itens||[]).filter(it=>it.cor).map(it=>esc(it.cor)).join(', ') || '—';
     return `<tr>
       <td>${tagTipo}<strong>${esc(d.numero||'—')}</strong></td>
       <td>${esc(c.nome||'(sem cliente)')}</td>
       <td class="mut">${esc(dest||'—')}${uf?`<div>${esc(uf)}</div>`:''}</td>
-      <td class="center">${totalVol}</td>
       <td class="mut">${coresLista}</td>
       <td class="right">${money(d.valor)}</td>
       <td class="right"><button class="btn ghost sm danger" onclick="removerRascunho(${i})">Remover</button></td>
@@ -1098,7 +1084,7 @@ function renderListaRom(){
         <div id="editbox-${r.id}"></div>
         <div id="cargabox-${r.id}"></div>
         <details ${detalhesAbertos.has(r.id)?'open':''} ontoggle="onToggleDetalhes('${r.id}', this.open)"><summary>Ver paradas</summary>
-          <table style="margin-top:8px"><thead><tr><th>#</th><th>Cliente</th><th>Pedido</th><th class="center">Vol.</th><th>Status</th><th>Confirmação</th><th>Problema</th><th></th></tr></thead><tbody>
+          <table style="margin-top:8px"><thead><tr><th>#</th><th>Cliente</th><th>Pedido</th><th>Status</th><th>Confirmação</th><th>Problema</th><th></th></tr></thead><tbody>
           ${r.paradas.map((p,i)=>{
             const c=p.cliente||{};
             const cls = p.status==='entregue'?'ok':p.status==='falhou'?'falhou':p.status==='em_rota'?'alt':'pend';
@@ -1118,11 +1104,10 @@ function renderListaRom(){
                 ${p.vendedor
                   ? `<div class="mut">Vendido por <strong>${esc(p.vendedor)}</strong>${p.canal_venda?' · '+esc(p.canal_venda):''}</div>`
                   : (ehAssist ? '' : '<div class="mut">Vendido pela loja</div>')}${(p.itens||[]).some(it=>it.fragil)?' <span class="tag fragil">🔴 vidro</span>':''}${(p.itens||[]).some(it=>it.pequena)?' <span class="tag pequena">🤏 peça pequena</span>':''}
-                ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut" style="display:flex;align-items:center;gap:5px"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span>${esc(it.descricao||'')}${it.volumes?' ('+it.volumes+' vol.)':''}: <strong>${esc(it.cor)}</strong></div>`).join('')}
+                ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut" style="display:flex;align-items:center;gap:5px"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span>${esc(it.descricao||'')}: <strong>${esc(it.cor)}</strong></div>`).join('')}
                 ${(!((p.itens||[]).some(it=>it.cor)) && p.cor)?`<div class="mut">Cor: ${esc(p.cor)}</div>`:''}
                 ${(p.fotos&&p.fotos.length)?`<div class="galeriafotos">${p.fotos.map(f=>`<a href="${f.url}" target="_blank" class="fotoadm"><img src="${f.url}"><span>${f.tipo==='carro'?'carro':f.tipo==='vidro'?'vidro':f.tipo==='assinatura'?'assinatura':f.tipo==='pagamento'?'pagamento':'entrega'}</span></a>`).join('')}</div>`:''}
               </td>
-              <td class="center">${p.volumes||0}</td>
               <td>
                 <span class="tag ${cls}">${esc(p.status)}</span>${p.entregue_em?`<div class="mut">${new Date(p.entregue_em).toLocaleString('pt-BR')}</div>`:''}
                 ${p.status==='pendente'?`<div style="margin-top:4px"><button class="btn ghost sm" style="padding:3px 8px;font-size:11px" onclick="marcarEmRota('${p.id}')">Marcar em rota</button></div>`:''}
@@ -1161,35 +1146,16 @@ function renderListaRom(){
   window.scrollTo(0, scroll);
 }
 
-/* ---------------- conferência final do estoquista ----------------
-   O estoquista conta o caminhão carregado, produto por produto, sem ver quanto
-   deveria ter (contagem cega — ver api/conferencia-final.js).
-   Aqui o resultado vira uma etiqueta no cartão do romaneio, porque três coisas
-   diferentes precisam saltar aos olhos:
-
-     · bateu de primeira      -> tudo certo, nem precisa olhar
-     · bateu na 2ª ou 3ª      -> tinha erro e foi achado. O caminhão saiu certo,
-                                 mas alguma coisa no galpão está confundindo.
-     · fechou com ressalva    -> saiu faltando móvel, de propósito e registrado.
-                                 É o que você precisa ver ANTES do cliente ligar. */
+/* A etiqueta da conferência cega saiu junto com ela. O que ficou é o aviso de
+   caminhão que fechou com falta — esse continua importando, e é o que você
+   precisa ver ANTES do cliente ligar. */
 function etiquetaConferencia(r){
   if(r.carregado_com_divergencia){
     return `<span class="tag falhou" title="${esc(r.divergencia_motivo||'')}">🚨 saiu com falta: ${esc(r.divergencia_motivo||'sem motivo escrito')}</span>`;
   }
-  if(r.conferencia_ok){
-    const t = Number(r.conferencia_tentativas||1);
-    const quem = r.conferencia_por ? ' por ' + esc(r.conferencia_por) : '';
-    return t > 1
-      ? `<span class="tag pend" title="Contou ${t} vezes até bater${quem}">🔁 conferido na ${t}ª contagem${quem}</span>`
-      : `<span class="tag ok" title="Bateu de primeira${quem}">📦 conferido${quem}</span>`;
-  }
-  if(r.conferencia_tentativas > 0){
-    return `<span class="tag pend">⏳ conferência não bateu ainda</span>`;
-  }
   return '';
 }
 
-/* ---------------- painel do dia ---------------- */
 async function excluirRom(id){
   const r = romaneios.find(x=>x.id===id);
   const aviso = r ? `Excluir o romaneio ${r.codigo} (${r.paradas.length} parada(s))?\n\nIsso apaga também o histórico das entregas dele.` : 'Excluir este romaneio?';
@@ -1337,11 +1303,6 @@ function ondeVai(item){
   return '';
 }
 
-function volumesEfetivos(p){
-  const jaNoFrete = (p.itens||[]).reduce((s,it)=>s+(it.jaNoFrete?(Number(it.volumes)||0):0), 0);
-  return Math.max((Number(p.volumes)||0) - jaNoFrete, 0);
-}
-
 function toggleCarga(id){
   const box = document.getElementById('cargabox-'+id);
   if(!box) return;
@@ -1361,31 +1322,29 @@ function renderCargaBox(id){
   r.paradas.forEach((p, i) => (p.itens||[]).forEach((it, idx) => itens.push({
     paradaId: p.id, indice: idx,
     descricao: it.descricao||'(sem descrição)', cor: it.cor||'',
-    volumes: Number(it.volumes)||0, valor: Number(it.valorTotal)||0,
+    valor: Number(it.valorTotal)||0,
     pedido: p.numero||'', entrega: i+1, onde: ondeVai(it), fragil: !!it.fragil, jaNoFrete: !!it.jaNoFrete
   })));
   itens.sort((a,b)=>b.valor-a.valor);
 
   // "Vai por cima" numa entrega que não é a primeira = entra cedo no caminhão e fica embaixo.
   const conflitos = itens.filter(it => it.onde==='cima' && it.entrega > 1 && !it.jaNoFrete);
-  const totalVol = r.paradas.reduce((s,p)=>s+volumesEfetivos(p),0);
   const totalValor = itens.reduce((s,it)=>s+it.valor,0);
 
   box.innerHTML = `
     <div class="editrom">
       <h3 style="margin-bottom:6px">Visão geral da carga</h3>
-      <div class="mut" style="margin-bottom:8px">${total} pedido(s) · ${totalVol} volume(s)${totalValor?' · '+money(totalValor):''}</div>
-      <p class="mut" style="margin:0 0 8px">Já separou algum desses num outro estoque? Marque "já no frete" — some da conferência do estoquista.</p>
+      <div class="mut" style="margin-bottom:8px">${total} pedido(s)${totalValor?' · '+money(totalValor):''}</div>
+      <p class="mut" style="margin:0 0 8px">Já separou algum desses num outro estoque? Marque "já no frete" — some da separação do estoquista.</p>
       ${conflitos.length ? `<div class="semgeo" style="background:#fdeaea;border-color:#eba9a9;color:#7f1d1d">
         <strong>⚠️ Cuidado ao empilhar</strong>
         ${conflitos.map(c=>`<div style="margin-top:5px">${esc(c.descricao)} (pedido ${esc(c.pedido)}) vai por cima, mas é a entrega ${c.entrega} de ${total} — entra cedo no caminhão e fica embaixo.</div>`).join('')}
       </div>` : ''}
-      <table style="margin-top:8px"><thead><tr><th>Produto</th><th>Cor</th><th>Pedido</th><th class="center">Vol.</th><th class="right">Valor</th><th>No caminhão</th><th></th></tr></thead><tbody>
+      <table style="margin-top:8px"><thead><tr><th>Produto</th><th>Cor</th><th>Pedido</th><th class="right">Valor</th><th>No caminhão</th><th></th></tr></thead><tbody>
       ${itens.length ? itens.map(it=>`<tr style="${it.jaNoFrete?'opacity:.5':''}">
         <td><strong>${esc(it.descricao)}</strong>${it.fragil?' <span class="tag fragil">🔴 vidro</span>':''}<div class="mut">entrega ${it.entrega} de ${total}</div></td>
         <td class="mut"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span> ${esc(it.cor||'—')}</td>
         <td class="mut">${esc(it.pedido)}</td>
-        <td class="center">${it.volumes||'—'}</td>
         <td class="right">${it.valor?money(it.valor):'—'}</td>
         <td class="mut">${it.onde==='cima'?'⬆ por cima':it.onde==='baixo'?'⬇ embaixo':'—'}</td>
         <td><button class="btn ghost sm ${it.jaNoFrete?'':''}" onclick="marcarJaNoFreteAdmin('${it.paradaId}',${it.indice},${!it.jaNoFrete})">${it.jaNoFrete?'✓ já no frete':'já no frete?'}</button></td>
@@ -2204,7 +2163,6 @@ function statusHoje(){
 }
 window.removerRascunho = removerRascunho;
 window.atualizarSwatch = atualizarSwatch;
-window.atualizarTotalVolumes = atualizarTotalVolumes;
 window.alternarEdicaoDesc = alternarEdicaoDesc;
 window.excluirRom = excluirRom;
 window.delFr = delFr;
