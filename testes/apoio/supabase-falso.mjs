@@ -178,6 +178,8 @@ export function criarSupabaseFalso() {
       in(campo, lista) { filtros.push(l => lista.some(v => igual(valorDoCampo(l, campo), v))); return api; },
       gte(campo, valor) { filtros.push(l => String(valorDoCampo(l, campo)) >= String(valor)); return api; },
       lte(campo, valor) { filtros.push(l => String(valorDoCampo(l, campo)) <= String(valor)); return api; },
+      gt(campo, valor) { filtros.push(l => String(valorDoCampo(l, campo)) > String(valor)); return api; },
+      lt(campo, valor) { filtros.push(l => String(valorDoCampo(l, campo)) < String(valor)); return api; },
       order() { return api; },
       limit(n) { limite = n; return api; },
       range(de, ate) { fatia = [de, ate]; return api; },

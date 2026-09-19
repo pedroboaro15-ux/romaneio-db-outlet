@@ -61,10 +61,37 @@ exports.handler = async event => {
   if (!quem) return json(401, { erro: 'não autenticado' });
 
   if (event.httpMethod === 'DELETE') {
-    if (quem.role !== 'admin') return json(403, { erro: 'só o gerente remove uma parada' });
     const id = (event.queryStringParameters || {}).id;
     if (!id) return json(400, { erro: 'informe id' });
     const sb = admin();
+
+    // O freteiro tira pedido da rota DELE — o cliente desmarcou, o móvel não
+    // ficou pronto. Antes era só o gerente, e na prática isso virava ligação no
+    // meio da rua pra alguém mexer no painel.
+    //
+    // Duas travas, e as duas são sobre não apagar história:
+    //   · parada já entregue ou já dada como não entregue NÃO sai. Ela é registro
+    //     do que aconteceu; apagar seria perder a prova da entrega, inclusive as
+    //     fotos e a assinatura.
+    //   · rota de outro freteiro não se mexe.
+    if (quem.role !== 'admin') {
+      if (quem.role !== 'freteiro') return json(403, { erro: 'só o gerente ou o freteiro da rota remove uma parada' });
+
+      const { data: parada } = await sb
+        .from('paradas')
+        .select('id, status, romaneios(freteiro_id)')
+        .eq('id', id)
+        .maybeSingle();
+      if (!parada) return json(404, { erro: 'parada não encontrada' });
+
+      const dono = parada.romaneios ? parada.romaneios.freteiro_id : null;
+      if (dono !== quem.freteiroId) return json(403, { erro: 'essa parada não é da sua rota' });
+
+      if (parada.status === 'entregue' || parada.status === 'falhou') {
+        return json(400, { erro: 'essa parada já foi finalizada — ela é o registro do que aconteceu e não pode ser apagada' });
+      }
+    }
+
     const { error } = await sb.from('paradas').delete().eq('id', id);
     if (error) return json(500, { erro: error.message });
     return json(200, { ok: true });

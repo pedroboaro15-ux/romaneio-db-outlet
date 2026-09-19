@@ -76,6 +76,15 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 .itemrota:last-child{border-bottom:0}
 .itemrota .desc{flex:1;min-width:120px;font-size:13px}
 .itemrota input{flex:0 0 auto;width:70px;padding:8px;border:1px solid #ddd;border-radius:7px;font:inherit;font-size:13px}
+/* O cabecalho e sticky: sem esta margem, o scrollIntoView poe o formulario
+   debaixo dele e a pessoa ve o titulo cortado. */
+#addbox{scroll-margin-top:96px}
+.btnsec{width:100%;padding:13px;border-radius:12px;font:inherit;font-weight:800;font-size:14.5px;margin-top:9px;background:#fff;border:2px solid #d8d8cf;color:#57574e}
+.btntirar{width:100%;padding:11px;border-radius:11px;font:inherit;font-weight:800;font-size:13.5px;margin-top:9px;background:#fff;border:2px solid #e6b8b8;color:#8a2020}
+.btntirar[data-confirmando="1"]{background:#b91c1c;border-color:#b91c1c;color:#fff}
+.mut{color:#6f6f66;font-size:13px}
+.acoesrota{display:flex;gap:8px;margin-top:12px}
+.acoesrota button{flex:1;padding:12px;border-radius:12px;font:inherit;font-weight:800;font-size:13.5px;background:#fff;border:2px solid #d8d8cf;color:#14140F}
 .pedidoadicionado{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eeeee4}
 .pedidoadicionado .desc{flex:1;font-size:14px}
 .removeritem{flex:0 0 auto;width:auto;padding:6px 10px;font-size:12px;background:#fff;border:1px solid #ddd;color:#b91c1c}
@@ -132,6 +141,7 @@ button.ok:disabled{background:#e2e2d9;color:#9a9a8e}
 </div>
 <div id="avisoNotif" class="avisoOffline" hidden></div>
 <div id="rotaCompleta"></div>
+<div id="addbox"></div>
 <main id="lista"></main>
 </div>
 <div class="toast" id="toast"></div>
@@ -293,8 +303,10 @@ async function iniciar(){
     rotasDisponiveis = rotas;
     atualizarBadgeNotif(rotas.reduce((s,r)=>s+(r.totalParadas||0), 0));
     document.getElementById('rotaCompleta').innerHTML = '';
+    document.getElementById('addbox').innerHTML = '';
     document.getElementById('bar').style.width = '0%';
-    const btnNovaRota = '<button class="amarelo" onclick="abrirNovaRota()">➕ Começar uma rota agora</button>';
+    const btnNovaRota = '<button class="amarelo" onclick="abrirNovaRota()">➕ Começar uma rota agora</button>'
+      + '<button class="btnsec" onclick="verHistorico()">📜 Ver rotas que já passaram</button>';
     if(!rotas.length){
       document.getElementById('titulo').textContent = 'Sem rota';
       document.getElementById('sub').textContent = '';
@@ -315,6 +327,150 @@ async function iniciar(){
   }
 }
 function abrirRota(id){ idAtual = id; carregar(); }
+
+/* ---------------- mexer na rota que já existe ----------------
+   O freteiro montava rota nova e podia tirar pedido ANTES de gerar. Depois de
+   gerada, não tinha como acrescentar nem remover — e é aí que a vida acontece:
+   o cliente desmarca, o móvel não ficou pronto, entra um pedido de última hora.
+   Sem isso, virava ligação no meio da rua pra alguém mexer no painel. */
+
+let pedidoParaAdicionar = null;
+
+function abrirAdicionarNaRota(){
+  pedidoParaAdicionar = null;
+  document.getElementById('addbox').innerHTML = `
+    <div class="p">
+      <h3 style="margin:0 0 8px">Acrescentar pedido nesta rota</h3>
+      <div class="buscapedido">
+        <input id="numAddRota" inputmode="numeric" placeholder="Número do pedido">
+        <button class="ok" onclick="buscarPedidoParaAdicionar()">Buscar</button>
+      </div>
+      <div id="resAddRota"></div>
+      <button class="btnsec" onclick="fecharAdicionarNaRota()">Cancelar</button>
+    </div>`;
+  document.getElementById('addbox').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function fecharAdicionarNaRota(){
+  pedidoParaAdicionar = null;
+  document.getElementById('addbox').innerHTML = '';
+}
+
+async function buscarPedidoParaAdicionar(){
+  const numero = document.getElementById('numAddRota').value.trim();
+  const caixa = document.getElementById('resAddRota');
+  if(!numero){ caixa.innerHTML = '<div class="err">Digite o número do pedido.</div>'; return; }
+  caixa.innerHTML = '<div class="mut">Buscando...</div>';
+  try{
+    const p = await api('/api/pedido?numero=' + encodeURIComponent(numero));
+    pedidoParaAdicionar = p;
+    const c = p.cliente || {};
+    const itens = (p.itens||[]).map(it =>
+      `<div>${esc(it.quantidade)}x ${esc(it.descricao)}${it.cor?' — '+esc(it.cor):''}</div>`).join('');
+    caixa.innerHTML = `
+      <div class="pedidoencontrado">
+        <div style="font-weight:800;font-size:17px">Pedido ${esc(p.numero)}</div>
+        <div style="font-weight:700;margin-top:6px">${esc(c.nome||'(sem cliente)')}</div>
+        <div class="mut">${esc(Endereco.enderecoEmLinha(c))}</div>
+        ${itens?`<div class="itens">${itens}</div>`:''}
+        <button class="ok" style="margin-top:10px" onclick="confirmarAdicionarNaRota()">✓ Acrescentar nesta rota</button>
+      </div>`;
+  }catch(e){
+    caixa.innerHTML = `<div class="err">${esc(e.message)}</div>`;
+  }
+}
+
+async function confirmarAdicionarNaRota(){
+  if(!pedidoParaAdicionar || !idAtual) return;
+  try{
+    await api('/api/romaneios?id=' + encodeURIComponent(idAtual), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ paradas: [pedidoParaAdicionar] })
+    });
+    fecharAdicionarNaRota();
+    toast('Pedido acrescentado na rota');
+    await carregar();
+  }catch(e){ alert('Não deu pra acrescentar: ' + e.message); }
+}
+
+/**
+ * Tira um pedido da rota.
+ *
+ * Só some o que ainda não foi finalizado — parada entregue ou dada como não
+ * entregue é o registro do que aconteceu, com foto e assinatura junto. O
+ * servidor recusa de novo; aqui o botão nem aparece, pra não oferecer o que vai
+ * dar erro.
+ *
+ * Dois toques pra confirmar, no próprio botão. Alert de confirmação no celular
+ * some atrás do teclado e é fácil de aceitar sem ler.
+ */
+async function removerParada(i, botao){
+  const p = rom.paradas[i];
+  if(!p) return;
+  if(botao.dataset.confirmando !== '1'){
+    botao.dataset.confirmando = '1';
+    botao.textContent = 'Tem certeza? Toque de novo';
+    setTimeout(() => {
+      if(botao.dataset.confirmando === '1'){
+        botao.dataset.confirmando = '0';
+        botao.textContent = '🗑️ Tirar da rota';
+      }
+    }, 4000);
+    return;
+  }
+  botao.disabled = true;
+  try{
+    await api('/api/parada-status?id=' + encodeURIComponent(p.id), { method:'DELETE' });
+    toast('Pedido tirado da rota');
+    await carregar();
+  }catch(e){
+    botao.disabled = false;
+    botao.dataset.confirmando = '0';
+    botao.textContent = '🗑️ Tirar da rota';
+    alert('Não deu pra tirar: ' + e.message);
+  }
+}
+
+/* ---------------- histórico de rotas ----------------
+   Vem de uma consulta separada (?historico=1), não junto com as rotas do dia: o
+   freteiro abre este app na rua, e a tela de hoje não pode ficar pesada por causa
+   de algo que ele olha uma vez por semana. */
+async function verHistorico(){
+  document.getElementById('titulo').textContent = 'Rotas que já passaram';
+  document.getElementById('sub').textContent = '';
+  // Os botoes da rota aberta (Maps, Acrescentar) e o formulario de acrescentar
+  // pertencem AQUELA rota. Deixados na tela, ficavam flutuando em cima de uma
+  // lista de rotas antigas, oferecendo acao numa rota que nao esta mais aberta.
+  document.getElementById('rotaCompleta').innerHTML = '';
+  document.getElementById('addbox').innerHTML = '';
+  document.getElementById('bar').style.width = '0%';
+  document.getElementById('lista').innerHTML = '<div class="empty">Buscando...</div>';
+  try{
+    const rotas = await api('/api/minhas-rotas?historico=1');
+    if(!rotas.length){
+      document.getElementById('lista').innerHTML =
+        '<div class="empty">Você ainda não tem rota encerrada.</div>'
+        + '<button class="btnsec" onclick="iniciar()">◀ Voltar</button>';
+      return;
+    }
+    document.getElementById('lista').innerHTML = rotas.map(r => {
+      const pendentes = (r.totalParadas||0) - (r.entregues||0) - (r.falharam||0);
+      return `<a class="rota" href="#" onclick="abrirRota('${r.id}');return false;">
+        <span class="n">${esc(r.codigo)}</span>
+        <div class="end">${esc(dataCurtaBR(r.data))} · ${r.entregues}/${r.totalParadas} entregues${r.falharam?' · '+r.falharam+' não entregue(s)':''}${pendentes>0?' · '+pendentes+' sem fechar':''}</div>
+      </a>`;
+    }).join('') + '<button class="btnsec" onclick="iniciar()">◀ Voltar</button>';
+  }catch(e){
+    document.getElementById('lista').innerHTML =
+      `<div class="empty">Não deu pra buscar o histórico: ${esc(e.message)}</div>`
+      + '<button class="btnsec" onclick="iniciar()">◀ Voltar</button>';
+  }
+}
+
+/** "2026-09-14" -> "14/09". Sem passar por Date: data pura vira o dia anterior no nosso fuso. */
+function dataCurtaBR(d){
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d||''));
+  return m ? `${m[3]}/${m[2]}` : (d || '');
+}
 
 /* ---------------- começar uma rota nova (freteiro monta a dele mesmo) ---------------- */
 let rascunhoNovaRota = [], pedidoBuscadoRota = null;
@@ -446,7 +602,8 @@ function render(){
     : '';
   document.getElementById('rotaCompleta').innerHTML = voltar + (rotaLink
     ? `<a class="maprota" target="_blank" href="${rotaLink}">Abrir rotas no Maps</a>`
-    : '');
+    : '')
+    + '<div class="acoesrota"><button onclick="abrirAdicionarNaRota()">➕ Acrescentar pedido</button></div>';
 
   document.getElementById('lista').innerHTML = rom.paradas.map((p,i)=>{
     const c = p.cliente || {};
@@ -512,6 +669,7 @@ function render(){
              <button class="no" id="btnno-${i}" onclick="abrirMotivos(${i})">✕ Não entreguei</button>
            </div>
            <button class="btndepois" id="btndepois-${i}" onclick="abrirReagendar(${i})">🕐 ${p.status==='reagendada'?'Mudar quando eu volto':'Deu problema, fica pra depois'}</button>
+           <button type="button" class="btntirar" data-confirmando="0" onclick="removerParada(${i}, this)">🗑️ Tirar da rota</button>
            <div id="motivos-${i}"></div>`}
     </div>`;
   }).join('') || '<div class="empty">Sem paradas.</div>';
@@ -800,6 +958,13 @@ window.voltarParaRotas = voltarParaRotas;
 window.ouvirEndereco = ouvirEndereco;
 window.ouvirTelefone = ouvirTelefone;
 window.abrirNovaRota = abrirNovaRota;
+window.abrirAdicionarNaRota = abrirAdicionarNaRota;
+window.fecharAdicionarNaRota = fecharAdicionarNaRota;
+window.buscarPedidoParaAdicionar = buscarPedidoParaAdicionar;
+window.confirmarAdicionarNaRota = confirmarAdicionarNaRota;
+window.removerParada = removerParada;
+window.verHistorico = verHistorico;
+window.iniciar = iniciar;
 window.fecharNovaRota = fecharNovaRota;
 window.buscarPedidoRota = buscarPedidoRota;
 window.adicionarNaNovaRota = adicionarNaNovaRota;

@@ -1,6 +1,14 @@
 // GET /api/minhas-rotas
-// Exige login. Freteiro e estoquista veem a(s) rota(s) de HOJE em diante (fuso da loja) —
-// assim dá pra achar uma rota que já foi criada pra amanhã ou depois, não só a de hoje.
+// GET /api/minhas-rotas?historico=1
+//
+// Exige login. Sem "historico", freteiro e estoquista veem a(s) rota(s) de HOJE em
+// diante (fuso da loja) — assim dá pra achar uma rota criada pra amanhã, não só a
+// de hoje. Com "historico=1", o que já passou, do mais recente pro mais antigo.
+//
+// São duas consultas e não uma com tudo junto porque o freteiro abre este app na
+// rua, no celular dele: a tela do dia não pode ficar pesada por causa de um
+// histórico que ele olha uma vez por semana.
+//
 // Gerente (não usa essa tela, mas por segurança) vê tudo.
 const { identificar } = require('./lib/auth');
 const { json } = require('./lib/http');
@@ -12,10 +20,23 @@ exports.handler = async event => {
   const quem = await identificar(event);
   if (!quem) return json(401, { erro: 'não autenticado' });
 
+  const q = event.queryStringParameters || {};
+  const historico = q.historico === '1';
+
   const sb = admin();
-  let query = sb.from('romaneios').select('id, codigo, data_rota, status, carregamento_confirmado, freteiros(nome), paradas(status)').order('data_rota', { ascending: true });
+  let query = sb.from('romaneios')
+    .select('id, codigo, data_rota, status, carregamento_confirmado, freteiros(nome), paradas(status)');
+
   if (quem.role === 'freteiro') query = query.eq('freteiro_id', quem.freteiroId);
-  if (quem.role === 'freteiro' || quem.role === 'estoquista') query = query.gte('data_rota', hojeBR());
+
+  if (historico) {
+    // Só o que já passou, do mais recente pro mais antigo, e com teto: ninguém
+    // rola 400 rotas no celular, e buscar tudo num plano de graça é desperdício.
+    query = query.lt('data_rota', hojeBR()).order('data_rota', { ascending: false }).limit(60);
+  } else {
+    query = query.order('data_rota', { ascending: true });
+    if (quem.role === 'freteiro' || quem.role === 'estoquista') query = query.gte('data_rota', hojeBR());
+  }
 
   const { data, error } = await query;
   if (error) return json(500, { erro: error.message });
