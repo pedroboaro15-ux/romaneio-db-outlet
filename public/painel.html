@@ -581,12 +581,25 @@ const tokenDeEquipe = () => { try { return localStorage.getItem(CHAVE_EQUIPE); }
 
 /* ---------------- chamadas às Functions ---------------- */
 async function api(url, opt){
-  // O token de equipe ganha: quem entrou por telefone não tem sessão do Supabase,
-  // e olhar o Supabase primeiro custaria uma ida ao servidor em toda chamada.
-  let token = tokenDeEquipe();
-  if(!token){
-    const { data } = await sb.auth.getSession();
-    token = data.session ? data.session.access_token : null;
+  /* Qual token vai na chamada.
+
+     A SESSÃO DO SUPABASE GANHA, e a ordem importa. Antes era o contrário, e
+     dava isto: o vendedor usava o computador da loja e não saía; o gerente
+     entrava com e-mail e senha; o painel mostrava todas as abas (o papel vem do
+     servidor, e o servidor dizia "admin") mas TODA chamada continuava indo com
+     o token do vendedor. Relatórios e Vendas davam 401 e ninguém entendia.
+
+     Quem entra por e-mail e senha é a pessoa que está na frente do computador
+     agora. O token de equipe que sobrou é resto. */
+  let token = null;
+  const { data } = await sb.auth.getSession();
+  if(data.session){
+    token = data.session.access_token;
+    // Limpa o resto: com os dois guardados, a próxima recarga escolheria o de
+    // equipe de novo, porque checarSessao olha pra ele primeiro.
+    try{ localStorage.removeItem(CHAVE_EQUIPE); }catch{}
+  } else {
+    token = tokenDeEquipe();
   }
   opt = opt || {};
   opt.headers = Object.assign({}, opt.headers, token ? { Authorization: 'Bearer ' + token } : {});

@@ -162,6 +162,35 @@ button.ok:disabled{background:#e2e2d9;color:#9a9a8e}
 const ESTOQUE = { nome: 'Estoque', endereco: 'R. Márcia Travassos, 660 - Jardim Jerico, Cabedelo - PB, 58103-718' };
 
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/**
+ * APAGA TUDO QUE ESTA PESSOA DEIXOU NO CELULAR.
+ *
+ * Sair apagava só o token. Ficavam pra trás:
+ *
+ *   · o cache da rota — nome, telefone e endereço dos clientes. Num celular
+ *     dividido entre dois freteiros, o segundo abria e via a rota do primeiro
+ *     enquanto o servidor não respondia.
+ *   · a fila de ações pendentes, com o token do PRIMEIRO gravado dentro. Elas
+ *     disparavam depois, em nome de quem já tinha saído.
+ *
+ * Varre por prefixo em vez de apagar uma lista de chaves conhecidas: uma chave
+ * nova aparece a cada funcionalidade, e a lista escrita à mão sempre ficaria
+ * uma atrás.
+ */
+function limparSessaoLocal(){
+  const PREFIXOS = ['romCache_', 'romCacheSep_'];
+  const CHAVES = ['equipeToken', 'equipeTipo', 'equipeNome',
+                  'filaOffline', 'filaOfflineSep', 'ultimaContagemParadas'];
+  try{
+    for(const k of CHAVES) localStorage.removeItem(k);
+    // Copia as chaves antes de apagar: mexer no localStorage enquanto se percorre
+    // ele pula item.
+    for(const k of Object.keys(localStorage)){
+      if(PREFIXOS.some(p => k.startsWith(p))) localStorage.removeItem(k);
+    }
+  }catch(e){ /* modo privado: não dá pra apagar o que não dá pra guardar */ }
+}
 let rom = null, idAtual = null;
 
 function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3200); }
@@ -187,7 +216,7 @@ async function api(url, opt){
   // Sessão morreu (login removido do cadastro, por ex.): volta pro início em vez de
   // deixar a pessoa presa numa tela de erro que ela não sabe resolver.
   if(r.status === 401){
-    localStorage.removeItem('equipeToken'); localStorage.removeItem('equipeTipo'); localStorage.removeItem('equipeNome');
+    limparSessaoLocal();
     location.href = '/';
     throw new Error('sessão expirada');
   }
@@ -206,16 +235,80 @@ function atualizarAvisoOffline(){
   el.hidden = n === 0;
   if(n) el.textContent = `📶 Sem internet — ${n} ação(ões) salva(s) no celular, serão enviadas quando o sinal voltar`;
 }
+/**
+ * MANDA AS AÇÕES QUE FICARAM PRESAS SEM SINAL.
+ *
+ * O QUE ESTAVA ERRADO: o código antigo era
+ *
+ *     try{ await fetch(...) } catch(e){ restam.push(acao); }
+ *
+ * e isso guarda a ação SÓ quando não há rede. O fetch não estoura quando o
+ * servidor responde 401 ou 400 — ele resolve normalmente. Então uma entrega
+ * recusada pelo servidor era descartada como se tivesse dado certo.
+ *
+ * Na prática: o freteiro marcava "entreguei" sem sinal, o sinal voltava, o
+ * servidor recusava (sessão expirada, por exemplo) — e a entrega SUMIA. Ele
+ * achava que tinha registrado. Ninguém ficava sabendo.
+ *
+ * Agora o destino depende da resposta:
+ *
+ *   deu certo (2xx)       -> some da fila, é isso mesmo
+ *   sem rede              -> fica, tenta no próximo sinal
+ *   servidor fora (5xx)   -> fica, é passageiro
+ *   401/403               -> fica, mas a pessoa é avisada: precisa entrar de novo
+ *   400 e afins (4xx)     -> some, MAS avisa. O servidor recusou o conteúdo;
+ *                            tentar de novo daria o mesmo erro pra sempre.
+ */
 async function processarFila(){
   const f = filaOffline();
   if(!f.length) return;
+
   const restam = [];
+  let enviadas = 0, recusadas = 0, precisaEntrarDeNovo = false;
+
   for(const acao of f){
-    try{ await fetch(acao.url, { method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+acao.token}, body: JSON.stringify(acao.body) }); }
-    catch(e){ restam.push(acao); }
+    let r;
+    try{
+      r = await fetch(acao.url, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'Authorization':'Bearer ' + acao.token },
+        body: JSON.stringify(acao.body)
+      });
+    }catch(e){
+      restam.push(acao);       // sem rede: continua devendo
+      continue;
+    }
+
+    if(r.status >= 200 && r.status < 300){ enviadas++; continue; }
+
+    if(r.status === 401 || r.status === 403){
+      // A sessão morreu enquanto isso esperava. NÃO joga fora: a entrega
+      // aconteceu de verdade, e some se ninguém guardar.
+      restam.push(acao);
+      precisaEntrarDeNovo = true;
+      continue;
+    }
+
+    if(r.status >= 500){ restam.push(acao); continue; }
+
+    // 4xx: o servidor recusou o conteúdo. Repetir daria o mesmo erro pra sempre,
+    // então sai da fila — mas ninguém perde uma entrega em silêncio.
+    recusadas++;
   }
+
   salvarFila(restam);
-  if(restam.length < f.length){ toast('Ações pendentes enviadas!'); if(idAtual) carregar(); }
+  atualizarAvisoOffline();
+
+  if(enviadas) toast(enviadas + ' ação(ões) pendente(s) enviada(s)!');
+  if(recusadas){
+    alert(recusadas + ' ação(ões) foram recusadas pelo servidor e não puderam ser salvas. '
+      + 'Confira se a entrega está marcada certo na tela e refaça se precisar.');
+  }
+  if(precisaEntrarDeNovo){
+    alert('Sua sessão expirou e ainda há entrega esperando pra ser enviada. '
+      + 'Entre de novo com seu telefone — nada foi perdido, vai sozinho assim que você entrar.');
+  }
+  if(enviadas && idAtual) carregar();
 }
 window.addEventListener('online', processarFila);
 
@@ -229,7 +322,7 @@ function checarSessao(){
 
 document.getElementById('btnSair').onclick = () => {
   if(!confirm('Sair do app?')) return;
-  localStorage.removeItem('equipeToken'); localStorage.removeItem('equipeTipo'); localStorage.removeItem('equipeNome');
+  limparSessaoLocal();
   location.href = '/';
 };
 
