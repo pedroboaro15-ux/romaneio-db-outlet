@@ -23,12 +23,24 @@ const { json } = require('./lib/http');
 const { admin } = require('./lib/supabase');
 
 const POR_PAGINA = 100;
+// 'SEM VENDEDOR' é o valor que a correção manual já gravou no banco; o rótulo
+// novo é outro. Os dois caem no mesmo balde pra não partir o histórico em duas
+// linhas que querem dizer a mesma coisa.
 const SEM_VENDEDOR = 'SEM VENDEDOR';
+const SEM_OBSERVACAO = 'PEDIDO SEM OBSERVAÇÃO';
+const ROTULO_SEM_OBS = 'Pedido sem observação';
 
-/** O rótulo que o gerente lê. Pedido sem vendedor é venda da loja, não venda de ninguém. */
+/**
+ * O rótulo que o gerente lê.
+ *
+ * Pedido em que ninguém se identificou não é erro, é categoria: ou não tem nada
+ * escrito, ou tem texto sem nome. Nos dois casos a venda aconteceu.
+ */
 function rotuloVendedor(l) {
   const nome = String(l.vendedor || '').trim();
-  if (!nome || nome === SEM_VENDEDOR) return 'Vendido pela loja';
+  if (!nome || nome === SEM_VENDEDOR || nome === SEM_OBSERVACAO) return ROTULO_SEM_OBS;
+  // Texto escrito que o parser não entendeu: cai no mesmo lugar, pelo mesmo motivo.
+  if (l.status_parse === 'nao_reconhecido' || l.status_parse === 'vazio') return ROTULO_SEM_OBS;
   return nome;
 }
 
@@ -130,10 +142,10 @@ exports.handler = async event => {
   }
 
   if (vendedor) {
-    if (vendedor === SEM_VENDEDOR) {
-      // "Vendido pela loja" junta duas situações que pro gerente são a mesma: o
-      // campo vazio e o literal SEM VENDEDOR gravado pela correção manual.
-      consulta = consulta.or(`vendedor.is.null,vendedor.eq.,vendedor.eq.${SEM_VENDEDOR}`);
+    if (vendedor === SEM_VENDEDOR || vendedor === SEM_OBSERVACAO) {
+      // "Pedido sem observação" junta três situações que pro gerente são a mesma:
+      // campo vazio, o 'SEM VENDEDOR' que a correção manual gravou, e o rótulo novo.
+      consulta = consulta.or(`vendedor.is.null,vendedor.eq.,vendedor.eq.${SEM_VENDEDOR},vendedor.eq.${SEM_OBSERVACAO}`);
     } else {
       consulta = consulta.eq('vendedor', vendedor);
     }
@@ -157,7 +169,7 @@ exports.handler = async event => {
     cliente: l.cliente_nome || '',
     canal: l.canal || '',
     vendedor: rotuloVendedor(l),
-    semVendedor: rotuloVendedor(l) === 'Vendido pela loja',
+    semVendedor: rotuloVendedor(l) === ROTULO_SEM_OBS,
     comoFoi: comoFoi(l.status_parse),
     corrigidoNaMao: !!l.corrigido_manual,
     // A observação crua, que é de onde o vendedor saiu. Fica visível na lista, e não

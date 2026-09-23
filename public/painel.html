@@ -413,13 +413,13 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
 
     <div class="card">
       <h2>Pedidos, um por um</h2>
-      <p class="mut" style="margin-top:-6px">Filtre por vendedor pra ver o que ele vendeu, do mais novo pro mais antigo. Pelo número, acha o pedido direto — e aí o período não importa. Cada linha mostra <strong>quem vendeu</strong> (lido da observação da Omie) e <strong>quem entregou</strong> (do romaneio). Pedido sem vendedor identificado aparece como <strong>Vendido pela loja</strong>.</p>
+      <p class="mut" style="margin-top:-6px">Filtre por vendedor pra ver o que ele vendeu, do mais novo pro mais antigo. Pelo número, acha o pedido direto — e aí o período não importa. Cada linha mostra <strong>quem vendeu</strong> (lido da observação da Omie) e <strong>quem entregou</strong> (do romaneio). Pedido em que ninguém se identificou aparece como <strong>Pedido sem observação</strong> — e conta no relatório, nessa categoria.</p>
       <div class="row">
         <div>
           <label>Vendedor</label>
           <select id="pvVendedor">
             <option value="">Todos</option>
-            <option value="SEM VENDEDOR">Vendido pela loja</option>
+            <option value="SEM VENDEDOR">Pedido sem observação</option>
           </select>
         </div>
         <div><label>Número do pedido</label><input id="pvNumero" placeholder="ex.: 1042" inputmode="numeric"></div>
@@ -463,13 +463,14 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
     </div>
 
     <div class="card" id="cardRevisar" hidden>
-      <h2>Pedidos que não bateram o padrão</h2>
-      <p class="mut" style="margin-top:-6px">Esses ficaram de fora da conta acima porque não deu pra saber o vendedor pela observação. Arrume aqui e eles entram no relatório. O que você corrigir na mão não é desfeito pela carga da madrugada.</p>
+      <h2>Pedidos sem observação</h2>
+      <p class="mut" style="margin-top:-6px">Pedido em que ninguém se identificou: ou não tem nada escrito, ou tem texto sem nome. Eles <strong>contam</strong> no relatório, na categoria "Pedido sem observação" — a venda aconteceu. Arrume aqui os que valer a pena, e eles passam pro vendedor certo. O que você corrigir na mão não é desfeito pela carga da madrugada.</p>
       <div style="margin-bottom:12px">
         <button class="btn ghost sm" id="vdIA">Tentar identificar com IA</button>
         <span class="mut" id="vdIAStatus" style="margin-left:8px"></span>
       </div>
-      <div id="listaRevisar"></div>
+      <button class="btn ghost" id="vdAbrirRevisar" style="width:100%;text-align:left"></button>
+      <div id="listaRevisar" hidden style="margin-top:12px"></div>
     </div>
 
     <div class="card" id="cardIA" hidden>
@@ -1103,7 +1104,7 @@ function renderListaRom(){
               <td>${tipoLabel} ${esc(p.numero||'')}
                 ${p.vendedor
                   ? `<div class="mut">Vendido por <strong>${esc(p.vendedor)}</strong>${p.canal_venda?' · '+esc(p.canal_venda):''}</div>`
-                  : (ehAssist ? '' : '<div class="mut">Vendido pela loja</div>')}${(p.itens||[]).some(it=>it.fragil)?' <span class="tag fragil">🔴 vidro</span>':''}${(p.itens||[]).some(it=>it.pequena)?' <span class="tag pequena">🤏 peça pequena</span>':''}
+                  : (ehAssist ? '' : '<div class="mut">Pedido sem observação</div>')}${(p.itens||[]).some(it=>it.fragil)?' <span class="tag fragil">🔴 vidro</span>':''}${(p.itens||[]).some(it=>it.pequena)?' <span class="tag pequena">🤏 peça pequena</span>':''}
                 ${(p.itens||[]).filter(it=>it.cor).map(it=>`<div class="mut" style="display:flex;align-items:center;gap:5px"><span class="sw" style="width:13px;height:13px;background:${corParaSwatch(it.cor)}"></span>${esc(it.descricao||'')}: <strong>${esc(it.cor)}</strong></div>`).join('')}
                 ${(!((p.itens||[]).some(it=>it.cor)) && p.cor)?`<div class="mut">Cor: ${esc(p.cor)}</div>`:''}
                 ${(p.fotos&&p.fotos.length)?`<div class="galeriafotos">${p.fotos.map(f=>`<a href="${f.url}" target="_blank" class="fotoadm"><img src="${f.url}"><span>${f.tipo==='carro'?'carro':f.tipo==='vidro'?'vidro':f.tipo==='assinatura'?'assinatura':f.tipo==='pagamento'?'pagamento':'entrega'}</span></a>`).join('')}</div>`:''}
@@ -1722,7 +1723,7 @@ function preencherVendedoresDaLista(vendedores){
   const sel = $('#pvVendedor');
   if(!sel) return;
   const antes = sel.value;
-  sel.innerHTML = '<option value="">Todos</option><option value="SEM VENDEDOR">Vendido pela loja</option>'
+  sel.innerHTML = '<option value="">Todos</option><option value="SEM VENDEDOR">Pedido sem observação</option>'
     + (vendedores||[]).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
   sel.value = antes;
 }
@@ -1781,7 +1782,7 @@ async function buscarPedidosVendas(){
       <td>${esc(pd.cliente||'—')}</td>
       <td class="right">${money(pd.valor)}</td>
       <td>
-        ${pd.semVendedor?'<span class="tag alt">Vendido pela loja</span>':'<strong>'+esc(pd.vendedor)+'</strong>'}
+        ${pd.semVendedor?'<span class="tag alt">Pedido sem observação</span>':'<strong>'+esc(pd.vendedor)+'</strong>'}
         <div class="mut">${esc(pd.canal||'sem canal')} · ${esc(pd.comoFoi)}</div>
       </td>
       <td>${entregaEmTexto(pd.entregas)}</td>
@@ -1836,7 +1837,7 @@ function renderVendas(r){
     + (t.corrigidosNaMao ? ` · <span class="mut">${t.corrigidosNaMao} corrigido(s) na mão</span>` : '')
     + (t.porIA ? ` · <span class="mut">${t.porIA} identificado(s) pela IA</span>` : '')
     + (t.porSuposicao ? ` · <span class="mut">${t.porSuposicao} por suposição</span>` : '')
-    + (pendentes ? `<div class="err" style="margin-top:8px"><strong>${pendentes} pedido(s) sem vendedor identificado</strong> — estão fora da conta acima e fora do gráfico de vendedores. Veja o quadro abaixo.</div>` : '');
+    + (pendentes ? `<div class="aviso" style="margin-top:8px;background:#fdf1d6;border:1px solid #efd79a;color:#7a5a12;padding:8px 10px;border-radius:8px"><strong>${pendentes} pedido(s) sem observação</strong> — contam no total e aparecem na categoria "Pedido sem observação". Dá pra arrumar os que valer a pena no quadro abaixo.</div>` : '');
 
   $('#vdExportar').hidden = !r.porVendedor.length;
 
@@ -1861,22 +1862,49 @@ function renderVendas(r){
   // sugestões pro campo vendedor: quem já apareceu no período
   $('#vendedoresConhecidos').innerHTML = r.porVendedor.map(v=>`<option value="${esc(v.vendedor)}">`).join('');
 
+  /* A lista de pedidos sem observação fica FECHADA até você pedir.
+
+     São 50, 60 linhas, cada uma com dois campos de texto e dois botões — umas
+     250 elementos que o navegador tem que calcular a cada rolada de mouse. Era
+     isso que travava a página, e travava mesmo quando você não ia mexer neles.
+
+     Agora o HTML só é construído no primeiro clique. Fechar não desfaz: quem
+     abriu uma vez provavelmente vai abrir de novo, e refazer tudo a cada toque
+     seria trocar uma lentidão por outra. */
   $('#cardRevisar').hidden = !r.revisar.length;
-  $('#listaRevisar').innerHTML = r.revisar.map(p => `
-    <div class="linharevisar" data-pedido="${esc(p.pedidoId)}">
-      <div>
-        <strong>Pedido ${esc(p.numeroPedido || p.pedidoId)}</strong>
-        <span class="mut"> · ${p.dataPedido ? esc(p.dataPedido.split('-').reverse().join('/')) : 'sem data'} · ${money(p.valor)}</span>
-        <div class="mut" style="margin-top:2px">${p.obsBruta ? 'Observação: ' + esc(p.obsBruta) : 'Pedido sem observação nenhuma.'}</div>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <div><label>Canal</label><input class="vdCanal" list="canaisConhecidos" placeholder="PRESENCIAL"></div>
-        <div><label>Vendedor</label><input class="vdVendedor" list="vendedoresConhecidos" placeholder="Nome de quem vendeu"></div>
-        <div class="auto"><button class="btn sm vdSalvar">Salvar</button></div>
-        <div class="auto"><button class="btn ghost sm vdSemVendedor">Foi venda sua, sem comissão</button></div>
-      </div>
-    </div>`).join('')
-    + (r.revisarTruncado ? '<p class="mut">Mostrando os primeiros. Corrija esses e busque de novo pra ver o resto.</p>' : '');
+  const abrir = $('#vdAbrirRevisar');
+  const lista = $('#listaRevisar');
+  lista.hidden = true;
+  lista.innerHTML = '';
+  const somaRevisar = r.revisar.reduce((s, p) => s + (Number(p.valor) || 0), 0);
+  const rotuloFechado = `▸ Ver os ${r.revisar.length} pedidos sem observação (${money(somaRevisar)})`;
+  abrir.textContent = rotuloFechado;
+
+  function montarListaRevisar(){
+    lista.innerHTML = r.revisar.map(p => `
+      <div class="linharevisar" data-pedido="${esc(p.pedidoId)}">
+        <div>
+          <strong>Pedido ${esc(p.numeroPedido || p.pedidoId)}</strong>
+          <span class="mut"> · ${p.dataPedido ? esc(p.dataPedido.split('-').reverse().join('/')) : 'sem data'} · ${money(p.valor)}</span>
+          <div class="mut" style="margin-top:2px">${p.obsBruta ? 'Observação: ' + esc(p.obsBruta) : 'Pedido sem observação nenhuma.'}</div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div><label>Canal</label><input class="vdCanal" list="canaisConhecidos" placeholder="PRESENCIAL"></div>
+          <div><label>Vendedor</label><input class="vdVendedor" list="vendedoresConhecidos" placeholder="Nome de quem vendeu"></div>
+          <div class="auto"><button class="btn sm vdSalvar">Salvar</button></div>
+        </div>
+      </div>`).join('')
+      + (r.revisarTruncado ? '<p class="mut">Mostrando os primeiros. Corrija esses e busque de novo pra ver o resto.</p>' : '');
+    ligarBotoesRevisar();
+  }
+
+  abrir.onclick = () => {
+    if(!lista.innerHTML) montarListaRevisar();
+    lista.hidden = !lista.hidden;
+    abrir.textContent = lista.hidden ? rotuloFechado : '▾ Esconder a lista';
+  };
+
+
 
   // Editar um pedido que já tem vendedor preenchido (pela IA ou por suposição).
   //
@@ -1927,20 +1955,18 @@ function renderVendas(r){
     }catch(e){ botao.disabled = false; erro(e.message); }
   }
 
-  $$('#listaRevisar .vdSalvar').forEach(b => b.onclick = () => {
-    const linha = b.closest('.linharevisar');
-    const canal = linha.querySelector('.vdCanal').value.trim();
-    const vendedor = linha.querySelector('.vdVendedor').value.trim();
-    if(!canal || !vendedor) return toast('Preencha canal e vendedor');
-    corrigirPedido(b, canal, vendedor);
-  });
-
-  // Pedido que o próprio dono lançou: não teve vendedor e não gera comissão.
-  // Não é erro, é categoria — por isso sai da lista de pendências num clique só.
-  $$('#listaRevisar .vdSemVendedor').forEach(b => b.onclick = () => {
-    const linha = b.closest('.linharevisar');
-    corrigirPedido(b, linha.querySelector('.vdCanal').value.trim(), 'SEM VENDEDOR');
-  });
+  // O botão "Foi venda sua, sem comissão" saiu: esse pedido JÁ está contado como
+  // "Pedido sem observação". Apertar o botão só reescreveria no banco o que o
+  // relatório já entende sozinho.
+  function ligarBotoesRevisar(){
+    $$('#listaRevisar .vdSalvar').forEach(b => b.onclick = () => {
+      const linha = b.closest('.linharevisar');
+      const canal = linha.querySelector('.vdCanal').value.trim();
+      const vendedor = linha.querySelector('.vdVendedor').value.trim();
+      if(!canal || !vendedor) return toast('Preencha canal e vendedor');
+      corrigirPedido(b, canal, vendedor);
+    });
+  }
 
   // Sugestões dos campos de correção, vindas do servidor.
   const cad = r.cadastro || {vendedores:[],canais:[]};

@@ -93,7 +93,7 @@ function normalizarPedido(raw) {
         canal: lido.canal || '',
         // Sem vendedor identificado a venda é da loja — é o mesmo rótulo da aba
         // Vendas, de propósito.
-        rotulo: lido.vendedor || 'Vendido pela loja',
+        rotulo: lido.vendedor || 'Pedido sem observação',
         statusParse: lido.statusParse,
         certeza: lido.statusParse === 'ok'
       };

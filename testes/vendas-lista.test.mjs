@@ -23,6 +23,7 @@ instalar(Module, cliente);
 const exigir = Module.createRequire(import.meta.url);
 const pedidosVendas = exigir('../api/pedidos-vendas.js');
 const relatorio = exigir('../api/relatorio.js');
+const relatorioVendas = exigir('../api/relatorio-vendas.js');
 
 let ok = 0, falhas = 0;
 const achados = [];
@@ -37,10 +38,11 @@ const titulo = t => {
 };
 
 const EMAIL = 'pedroboaro15@gmail.com';
-const comoGerente = params => ({
+const comoGerente = (params, extra = {}) => ({
   httpMethod: 'GET',
   queryStringParameters: params,
-  headers: { authorization: 'Bearer token-do-gerente' }
+  headers: { authorization: 'Bearer token-do-gerente' },
+  ...extra
 });
 
 function cenario() {
@@ -92,8 +94,8 @@ cenario();
   const numeros = r.corpo.pedidos.map(p => p.numero).sort();
   checa('"vendido pela loja" junta o campo vazio e o SEM VENDEDOR gravado na mão',
     numeros.join(',') === '1003,1004', numeros.join(','));
-  checa('e os dois vêm marcados como venda da loja',
-    r.corpo.pedidos.every(p => p.semVendedor && p.vendedor === 'Vendido pela loja'));
+  checa('e os dois vêm marcados como pedido sem observação',
+    r.corpo.pedidos.every(p => p.semVendedor && p.vendedor === 'Pedido sem observação'));
 }
 
 cenario();
@@ -148,7 +150,7 @@ cenario();
   const r = await chamar(pedidosVendas, comoGerente(AGOSTO));
   const semVend = r.corpo.pedidos.find(p => p.numero === '1003');
   checa('pedido sem vendedor NÃO some da lista — é o que precisa de conserto',
-    !!semVend && semVend.vendedor === 'Vendido pela loja');
+    !!semVend && semVend.vendedor === 'Pedido sem observação');
   checa('e a lista diz como cada um foi preenchido',
     semVend.comoFoi === 'Não reconhecido'
     && r.corpo.pedidos.find(p => p.numero === '1002').comoFoi === 'Lido da observação',
@@ -292,6 +294,92 @@ cenarioVendaEEntrega();
   checa('entrega indisponível não derruba a lista de vendas',
     r.status === 200 && r.corpo.pedidos.length === 1,
     `status ${r.status}`);
+}
+
+/* ================================================================== */
+titulo('PEDIDO SEM OBSERVAÇÃO É CATEGORIA, NÃO ERRO');
+
+// Antes, pedido em que ninguém se identificou caía num "continue" e sumia do
+// ranking. O efeito: a soma dos vendedores não fechava com a soma do período, e
+// a diferença era justamente o dinheiro que ninguém tinha assumido.
+
+function cenarioSemObs() {
+  zerar();
+  process.env.ADMIN_EMAILS = EMAIL;
+  banco.usuarios['token-do-gerente'] = { id: 'u1', email: EMAIL };
+  banco.tabelas.vendas_observacoes = [
+    { pedido_id: 'a', numero_pedido: '1', data_pedido: '2026-08-01', valor: 1000,
+      canal: 'PRESENCIAL', vendedor: 'AMANDA', status_parse: 'ok' },
+    // Nada escrito.
+    { pedido_id: 'b', numero_pedido: '2', data_pedido: '2026-08-02', valor: 500,
+      canal: '', vendedor: '', status_parse: 'vazio', obs_bruta: '' },
+    // Escrito, mas sem nome que o parser reconheça.
+    { pedido_id: 'c', numero_pedido: '3', data_pedido: '2026-08-03', valor: 300,
+      canal: '', vendedor: '', status_parse: 'nao_reconhecido', obs_bruta: 'entregar 14h' },
+    // Corrigido na mão um dia, com o rótulo ANTIGO gravado no banco.
+    { pedido_id: 'd', numero_pedido: '4', data_pedido: '2026-08-04', valor: 200,
+      canal: '', vendedor: 'SEM VENDEDOR', status_parse: 'ok', corrigido_manual: true }
+  ];
+}
+
+cenarioSemObs();
+{
+  const r = await chamar(relatorioVendas, comoGerente(AGOSTO));
+  const soma = r.corpo.porVendedor.reduce((s, v) => s + v.valor, 0);
+  checa('a soma dos vendedores fecha com o total do período — nada some mais',
+    soma === r.corpo.totais.valor && soma === 2000,
+    `ranking ${soma}, período ${r.corpo.totais.valor}`);
+
+  const balde = r.corpo.porVendedor.find(v => v.vendedor === 'PEDIDO SEM OBSERVAÇÃO');
+  checa('existe a categoria "PEDIDO SEM OBSERVAÇÃO"', !!balde,
+    r.corpo.porVendedor.map(v => v.vendedor).join(' · '));
+  checa('e ela junta os três casos: sem texto, texto sem nome, e o rótulo antigo',
+    balde && balde.pedidos === 3 && balde.valor === 1000,
+    balde ? `${balde.pedidos} pedidos, ${balde.valor}` : '');
+  checa('não gera comissão', balde && balde.semComissao === true);
+  checa('e não vira uma segunda linha com o nome velho',
+    !r.corpo.porVendedor.some(v => v.vendedor === 'SEM VENDEDOR'),
+    r.corpo.porVendedor.map(v => v.vendedor).join(' · '));
+}
+
+cenarioSemObs();
+{
+  const r = await chamar(relatorioVendas, comoGerente(AGOSTO));
+  const amanda = r.corpo.porVendedor.find(v => v.vendedor === 'AMANDA');
+  checa('quem se identificou continua com o dele, intacto',
+    amanda && amanda.pedidos === 1 && amanda.valor === 1000,
+    amanda ? `${amanda.pedidos} · ${amanda.valor}` : '');
+}
+
+cenarioSemObs();
+{
+  const r = await chamar(relatorioVendas, comoGerente(AGOSTO));
+  // Continuam na lista de revisão: contar não é o mesmo que desistir de arrumar.
+  const numeros = (r.corpo.revisar || []).map(x => x.numeroPedido).sort();
+  checa('os que dá pra arrumar continuam na lista de revisão',
+    numeros.join(',') === '2,3', numeros.join(','));
+  checa('e o corrigido na mão NÃO volta pra lista — já foi resolvido',
+    !numeros.includes('4'), numeros.join(','));
+}
+
+cenarioSemObs();
+{
+  // A correção manual pra "sem observação" não exige canal: é justamente o caso
+  // de não ter nada escrito de onde tirar canal.
+  const r = await chamar(relatorioVendas, comoGerente({}, {
+    httpMethod: 'POST',
+    body: JSON.stringify({ pedidoId: 'b', vendedor: 'PEDIDO SEM OBSERVAÇÃO', canal: '' })
+  }));
+  checa('corrigir pra "sem observação" não exige canal', r.status === 200, r.corpo.erro);
+}
+cenarioSemObs();
+{
+  const r = await chamar(relatorioVendas, comoGerente({}, {
+    httpMethod: 'POST',
+    body: JSON.stringify({ pedidoId: 'b', vendedor: 'AMANDA', canal: '' })
+  }));
+  checa('mas corrigir pra um vendedor de verdade continua exigindo',
+    r.status === 400, r.corpo.erro);
 }
 
 /* ================================================================== */

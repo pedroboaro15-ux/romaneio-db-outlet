@@ -16,7 +16,30 @@ const MAX_REVISAR = 300;
 // Venda que não teve vendedor: normalmente é o próprio dono que lançou o pedido.
 // Não é erro nem pendência — é uma categoria de verdade, que só não gera comissão.
 // Fica no relatório com esse nome pra você enxergar o quanto disso acontece.
+/**
+ * A venda que não diz quem vendeu.
+ *
+ * Deixou de ser "erro que fica de fora do relatório" e virou CATEGORIA. São duas
+ * situações que na prática são a mesma: o pedido não tem observação nenhuma, ou
+ * tem alguma coisa escrita mas ninguém se identificou. Nos dois casos a venda
+ * aconteceu — e é um padrão, não um acidente.
+ *
+ * Antes elas caíam num "continue" e sumiam do ranking. O efeito era que a soma
+ * dos vendedores não fechava com a soma do período, e a diferença era justamente
+ * o dinheiro que ninguém tinha assumido. Agora aparece, com nome.
+ */
+const SEM_OBSERVACAO = 'PEDIDO SEM OBSERVAÇÃO';
+
+/**
+ * O rótulo antigo, que ainda existe no banco.
+ *
+ * Toda correção manual que o Pedro já fez gravou 'SEM VENDEDOR' na coluna. Se o
+ * código novo só conhecesse o nome novo, o histórico dele partiria em duas
+ * linhas no relatório — uma com o rótulo velho e outra com o novo, para a mesma
+ * coisa. As duas caem no mesmo balde.
+ */
 const SEM_VENDEDOR = 'SEM VENDEDOR';
+const ehSemObservacao = nome => !nome || nome === SEM_VENDEDOR || nome === SEM_OBSERVACAO;
 
 const mesDe = data => String(data || '').slice(0, 7);   // '2026-08-14' -> '2026-08'
 
@@ -55,7 +78,9 @@ exports.handler = async event => {
     if (!vendedor) return json(400, { erro: 'informe o vendedor' });
     // Venda do dono não tem vendedor, e muitas vezes nem canal anotado — nesse caso
     // o canal é opcional. Nos outros, exigir canal evita relatório pela metade.
-    if (!canal && vendedor !== SEM_VENDEDOR) return json(400, { erro: 'informe o canal' });
+    // Venda sem observação não tem canal pra informar — é justamente o caso de
+    // não ter nada escrito. Nos outros, exigir canal evita relatório pela metade.
+    if (!canal && !ehSemObservacao(vendedor)) return json(400, { erro: 'informe o canal' });
 
     const { error } = await sb.from('vendas_observacoes')
       .update({ canal, vendedor, status_parse: 'ok', corrigido_manual: true, atualizado_em: new Date().toISOString() })
@@ -115,13 +140,15 @@ exports.handler = async event => {
 
       if (!identificado) {
         if (l.status_parse === 'vazio') totais.vazios++; else totais.naoReconhecidos++;
+        // Continua na lista de revisão: dá pra arrumar o que valer a pena arrumar.
         if (revisar.length < MAX_REVISAR) {
           revisar.push({
             pedidoId: l.pedido_id, numeroPedido: l.numero_pedido, dataPedido: l.data_pedido,
             valor, obsBruta: l.obs_bruta || '', statusParse: l.status_parse
           });
         }
-        continue; // sem vendedor confiável, não entra no ranking
+        // Mas NÃO sai mais do ranking. Cai na categoria "pedido sem observação",
+        // que é onde ela pertence — a venda aconteceu.
       }
 
       if (l.status_parse === 'ia' || l.status_parse === 'suposicao') {
@@ -135,14 +162,18 @@ exports.handler = async event => {
         }
       }
 
-      const nome = l.vendedor || SEM_VENDEDOR;
+      // Normaliza pro nome novo ANTES de agrupar. Sem isso, o pedido que o Pedro
+      // corrigiu um dia como 'SEM VENDEDOR' virava uma segunda linha no ranking,
+      // ao lado de 'PEDIDO SEM OBSERVAÇÃO', dizendo exatamente a mesma coisa.
+      const bruto = identificado && l.vendedor ? l.vendedor : '';
+      const nome = ehSemObservacao(bruto) ? SEM_OBSERVACAO : bruto;
       if (!porVendedor.has(nome)) {
         porVendedor.set(nome, {
           vendedor: nome, pedidos: 0, valor: 0, presencial: 0, online: 0, outros: 0,
           // Venda do dono não tem vendedor; o Fernando é gerente e vende, mas não
           // entra em comissão. Os dois aparecem marcados pela mesma razão: o número
           // conta como venda da loja, só não vira pagamento pra ninguém.
-          semComissao: nome === SEM_VENDEDOR || SEM_COMISSAO.has(nome), porMes: {}
+          semComissao: ehSemObservacao(nome) || SEM_COMISSAO.has(nome), porMes: {}
         });
       }
       const acc = porVendedor.get(nome);
@@ -161,7 +192,7 @@ exports.handler = async event => {
         totaisPorMes[mes].valor += valor;
       }
 
-      if (nome === SEM_VENDEDOR) totais.semVendedor++;
+      if (ehSemObservacao(nome)) totais.semVendedor++;
 
       if (l.canal === 'PRESENCIAL') { acc.presencial++; totais.presencial++; }
       else if (l.canal === 'ONLINE') { acc.online++; totais.online++; }
