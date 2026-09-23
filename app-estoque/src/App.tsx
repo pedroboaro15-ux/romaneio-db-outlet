@@ -238,6 +238,19 @@ export default function App() {
 
       <div className="conteudo">
         <header className="topo">
+          {/* Volta pro romaneio, no celular.
+
+              No computador este link mora na barra lateral — e a lateral some
+              inteira abaixo de 760px. Sem isto, quem entrava no estoque pelo
+              celular não tinha caminho de volta nenhum: só fechando e reabrindo
+              o site, o que ninguém adivinha.
+
+              É um <a> de verdade, e não um botão com onClick: o toque e segure
+              abre em outra aba, e o navegador mostra pra onde vai. */}
+          <a className="voltar-movel so-movel" href="/painel"
+             title="Voltar pro romaneio de entregas" aria-label="Voltar pro romaneio de entregas">
+            ←
+          </a>
           <h1>{abaAtual.nome}</h1>
           <div className="direita">
             {podeEscrever && (

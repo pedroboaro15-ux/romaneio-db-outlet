@@ -339,8 +339,19 @@ tbody tr:hover { background: var(--painel-2); }
   .lateral { display: none; }
   .so-movel { display: flex; }
   .pagina { padding: 14px; padding-bottom: 84px; }
-  .topo { padding: 11px 14px; }
+  .topo { padding: 11px 14px; gap: 10px; }
   .topo h1 { font-size: 15px; }
+
+  /* Volta pro romaneio. Quadrado de 36px: o mínimo que o polegar acerta sem
+     mirar, e o mesmo tamanho dos outros toques da barra. */
+  .voltar-movel {
+    flex: 0 0 auto; width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--borda); border-radius: var(--r-sm);
+    background: var(--painel); color: var(--tinta); text-decoration: none;
+    font-size: 19px; line-height: 1; font-weight: 600;
+  }
+  .voltar-movel:active { background: var(--borda); }
   .g-4 { grid-template-columns: repeat(2, 1fr); }
   .kpi .valor { font-size: 20px; }
 
