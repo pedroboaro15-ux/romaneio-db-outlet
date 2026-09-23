@@ -104,13 +104,24 @@ button{flex:1;padding:14px;border:0;border-radius:10px;font:inherit;font-weight:
 .passovidro.feito{background:#e3f6ec;color:#0f8a4a;border-color:#0f8a4a;opacity:1}
 .passovidro:last-child{margin-bottom:0}
 button.ok:disabled{background:#e2e2d9;color:#9a9a8e}
-.painelassinatura{margin-top:10px;background:#fafaf4;border:2px solid #e2e2d9;border-radius:12px;padding:12px}
-.tituloAssinatura{font-size:14px;font-weight:700;margin-bottom:9px}
-#tela-app canvas.canvasassinatura{width:100%;height:180px;display:block;border:2px solid #14140F;border-radius:10px;background:#fff;touch-action:none}
-.botoesassinatura{display:flex;gap:8px;margin-top:10px}
+/* A assinatura ocupa a tela inteira.
+
+   Ela era uma tira de 180px dentro do cartão da parada. Assinatura de gente é
+   grande — numa faixa daquele tamanho o cliente escrevia espremido, e o que
+   ficava guardado não parecia a assinatura dele. Se um dia precisar provar que
+   a pessoa recebeu o vidro inteiro, um rabisco apertado não prova nada.
+
+   Vira sobreposição de tela cheia: o dedo tem espaço, e não tem mais nada na
+   tela pra tocar sem querer no meio do traço. */
+.painelassinatura{position:fixed;inset:0;z-index:200;background:#fafaf4;display:flex;flex-direction:column;padding:14px;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+.tituloAssinatura{font-size:15px;font-weight:700;margin-bottom:10px;flex:0 0 auto}
+#tela-app canvas.canvasassinatura{flex:1 1 auto;width:100%;min-height:0;display:block;border:2px solid #14140F;border-radius:10px;background:#fff;touch-action:none}
+.botoesassinatura{display:flex;gap:8px;margin-top:10px;flex:0 0 auto}
 .limparassinatura{background:#fff;color:#6f6f66;border:1px solid #ddd;flex:0 0 auto;width:auto;padding:12px 16px}
 .confirmarassinatura{background:#0f8a4a;color:#fff}
-.cancelarassinatura{width:100%;background:none;color:#6f6f66;border:0;padding:8px;font-size:14px;font-weight:600;margin-top:4px}
+.pedefoto{background:#fdf1d6;border:2px solid #efd79a;color:#7a5a12;border-radius:11px;padding:11px 12px;font-size:14.5px;font-weight:800;margin-top:9px}
+.pedefoto-sub{font-weight:600;font-size:13px;margin-top:5px;opacity:.85}
+.cancelarassinatura{width:100%;background:none;color:#6f6f66;border:0;padding:8px;font-size:14px;font-weight:600;margin-top:4px;flex:0 0 auto}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#14140F;color:#F2F250;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:600;z-index:99;opacity:0;transition:.2s;pointer-events:none;max-width:90%;text-align:center}
 .toast.show{opacity:1}
 /* Bolinha vermelha no sino quando chega pedido novo desde a última vez que abriu o app. */
@@ -758,10 +769,43 @@ function escolherJanela(i, indiceMotivo){
     </div>`;
 }
 
+/* Quais paradas já ouviram "tire a foto primeiro".
+
+   Vive na memória da página, de propósito. Se sobrevivesse ao recarregamento, o
+   freteiro que fechasse o app e voltasse confirmaria de primeira — que é
+   exatamente o que este pedaço existe pra impedir. */
+const insistiuSemFoto = new Set();
+
 async function marcar(i, status, indiceMotivo, janela){
   const botao = document.getElementById(status==='entregue'?'btnok-'+i:'btnno-'+i);
   if(botao && botao.disabled) return; // trava clique duplo (e também trava se faltar vidro/assinatura)
   const parada = rom.paradas[i];
+
+  /* A primeira tentativa de dar como entregue NÃO confirma: pede a foto.
+
+     A foto do produto na casa do cliente é a única prova de que a entrega saiu
+     do jeito que devia. Quando ela é só um botão opcional ao lado do "Entreguei",
+     ninguém tira — aperta o verde e segue pra próxima.
+
+     Aqui a ordem se inverte: o verde não fecha de primeira. Quem tirou a foto
+     passa direto (não é castigo, é lembrete). Quem não tirou ouve uma vez, e no
+     segundo toque passa mesmo assim — porque tem entrega que não dá pra
+     fotografar, e travar de vez deixaria o freteiro preso na rua. */
+  if (status === 'entregue') {
+    const temFoto = (parada.fotos || []).some(f => f.tipo === 'produto');
+    if (!temFoto && !insistiuSemFoto.has(parada.id)) {
+      insistiuSemFoto.add(parada.id);
+      const aviso = document.getElementById('motivos-' + i);
+      if (aviso) {
+        aviso.innerHTML = `<div class="pedefoto">
+          📷 Tire a foto do produto na casa do cliente antes de fechar.
+          <div class="pedefoto-sub">É o que prova que a entrega saiu certa. Se não der pra fotografar, toque em "Entreguei" de novo.</div>
+        </div>`;
+      }
+      if (botao) botao.textContent = '✓ Entreguei mesmo assim';
+      return;
+    }
+  }
   let body = { paradaId: parada.id, status };
   if(status === 'falhou') body.motivo = MOTIVOS_FALHA[indiceMotivo] || MOTIVOS_FALHA[0];
   if(status === 'reagendada'){
@@ -793,6 +837,12 @@ async function marcar(i, status, indiceMotivo, janela){
       render();
     }
   }
+}
+
+/* Chamado depois que a foto do produto sobe. Some o aviso e devolve o botão ao
+   normal — quem acabou de fotografar não pode continuar lendo "tire a foto". */
+function liberouPelaFoto(paradaId){
+  insistiuSemFoto.delete(paradaId);
 }
 
 async function desfazer(i){
@@ -830,6 +880,7 @@ async function enviarFoto(paradaId, file){
   try{
     const imagemBase64 = await redimensionarImagem(file, 1280);
     await api('/api/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64 }) });
+    liberouPelaFoto(paradaId);
     await carregar();
   }catch(e){
     if(e instanceof ErroOffline) toast('Sem internet — a foto não pôde ser enviada agora. Tente de novo com sinal.');
@@ -871,7 +922,11 @@ async function enviarFotoVidro(paradaId, file){
 function abrirAssinatura(i){
   const box = document.getElementById('assinaturabox-'+i);
   if(!box) return;
-  if(box.innerHTML){ box.innerHTML = ''; return; }
+  // Fechando: devolve a rolagem do fundo, que foi travada ao abrir.
+  if(box.innerHTML){ box.innerHTML = ''; document.body.style.overflow = ''; return; }
+  // Em tela cheia, o fundo rolando atrás faz o dedo arrastar a página em vez de
+  // desenhar quando o traço passa da borda do canvas.
+  document.body.style.overflow = 'hidden';
   box.innerHTML = `
     <div class="painelassinatura">
       <div class="tituloAssinatura">Peça pro cliente assinar aqui, confirmando que recebeu o vidro em bom estado:</div>
@@ -935,6 +990,9 @@ async function confirmarAssinatura(i){
   const imagemBase64 = canvas.toDataURL('image/png');
   try{
     await api('/api/foto-upload', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ paradaId, imagemBase64, tipo:'assinatura' }) });
+    // Devolve a rolagem ANTES do carregar(): ele redesenha a lista e o painel
+    // de assinatura some, levando junto o botao de cancelar que faria isso.
+    document.body.style.overflow = '';
     toast('Assinatura salva!');
     await carregar();
   }catch(e){

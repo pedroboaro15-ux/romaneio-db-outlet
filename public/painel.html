@@ -109,6 +109,7 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
 .pequenacheck{color:#7a5a12}
 .grade2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 @media(max-width:760px){.grade2{grid-template-columns:1fr}}
+.ok-aviso{background:#e6f6ea;border:1px solid #8fcfa2;color:#1d6b35;padding:9px 11px;border-radius:9px;font-size:13.5px}
 .linhaavaria{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;cursor:pointer;font-size:13.5px}
 .linhaavaria:has(input:checked){background:#fdeaea;border-color:#f0b9b9}
 .linhaavaria input{width:auto;margin:0;flex:0 0 auto}
@@ -500,6 +501,13 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
 
   <!-- ===================== DIAGNÓSTICO ===================== -->
   <section id="t-diag" hidden>
+    <div class="card">
+      <h2>Por que a notificação não chega</h2>
+      <p class="mut" style="margin-top:-6px">Notificação falha em três lugares diferentes, e os três são silenciosos: chaves não configuradas, chave do servidor diferente da das páginas, ou ninguém ativou no celular. De fora parecem iguais. Isto diz qual é.</p>
+      <button class="btn ghost" id="pushGo">Conferir notificações</button>
+      <div id="pushOut" style="margin-top:12px"></div>
+    </div>
+
     <div class="card">
       <h2>Diagnóstico da API Omie</h2>
       <p class="mut">Chama qualquer método da Omie e mostra a resposta crua. Útil se algum campo não aparecer certo na busca de pedido.</p>
@@ -1587,6 +1595,65 @@ async function buscarAvarias(){
   }catch(e){ erro(e.message); }
 }
 $('#avBuscar').onclick = buscarAvarias;
+
+/* ---------------- por que a notificação não chega ----------------
+   Três causas possíveis, e do lado de fora as três são idênticas: "não chega
+   nada". Esta tela diz qual é. */
+async function diagnosticarPush(){
+  const caixa = $('#pushOut');
+  caixa.innerHTML = '<div class="empty">Conferindo...</div>';
+  try{
+    const d = await api('/api/push-diagnostico');
+
+    const problemas = d.problemas.length
+      ? d.problemas.map(t => `<div class="err" style="margin-bottom:8px">${esc(t)}</div>`).join('')
+      : '<div class="ok-aviso">Nada errado no servidor. Se mesmo assim não chega, mande um teste abaixo — o erro real do celular aparece ali.</div>';
+
+    const linhas = d.pessoas.map(p => `<tr>
+      <td><strong>${esc(p.nome)}</strong><div class="mut">${esc(p.tipo)}</div></td>
+      <td class="center">${p.aparelhos ? `<span class="tag ok">${p.aparelhos}</span>` : '<span class="tag falhou">nenhum</span>'}</td>
+      <td class="right">${p.aparelhos
+        ? `<button class="btn ghost sm" onclick="testarPush('${p.pessoaId}','${esc(p.nome)}')">Mandar teste</button>`
+        : '<span class="mut">precisa ativar no celular dela</span>'}</td>
+    </tr>`).join('');
+
+    caixa.innerHTML = `
+      ${problemas}
+      <div class="row" style="margin-top:10px">
+        <div><label>Chaves configuradas</label><div>${d.configurado ? '✅ sim' : '❌ não'}</div></div>
+        <div><label>Chave do servidor</label><div class="mut">${esc(d.chaveDoServidor)}</div></div>
+        <div><label>Chave das páginas</label><div class="mut">${esc(d.chaveDasPaginas)}</div></div>
+        <div><label>As duas batem</label><div>${d.chaveConfere ? '✅ sim' : '❌ não'}</div></div>
+        <div><label>Aparelhos inscritos</label><div>${d.totalAparelhos}</div></div>
+      </div>
+      <div style="overflow-x:auto;margin-top:12px"><table>
+        <thead><tr><th>Pessoa</th><th class="center">Aparelhos</th><th></th></tr></thead>
+        <tbody>${linhas || '<tr><td colspan="3"><div class="empty">Ninguém cadastrado ainda.</div></td></tr>'}</tbody>
+      </table></div>
+      <div id="pushTeste" style="margin-top:10px"></div>`;
+  }catch(e){
+    caixa.innerHTML = `<div class="err">Não deu pra conferir: ${esc(e.message)}</div>`;
+  }
+}
+
+async function testarPush(pessoaId, nome){
+  const box = $('#pushTeste');
+  box.innerHTML = `<div class="mut">Mandando pra ${esc(nome)}...</div>`;
+  try{
+    const r = await api('/api/push-diagnostico', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ pessoaId }) });
+    const detalhe = r.resultados.map(x => x.ok
+      ? `<div class="mut">✅ ${esc(x.aparelho)}</div>`
+      : `<div class="err" style="margin-top:6px">❌ ${esc(x.aparelho)} — HTTP ${x.status || '?'}: ${esc(x.erro)}</div>`).join('');
+    box.innerHTML = `<div class="${r.enviadas ? 'ok-aviso' : 'err'}">
+      ${r.enviadas} de ${r.total} aparelho(s) aceitaram. ${r.enviadas ? 'Peça pra ' + esc(nome) + ' conferir o celular.' : ''}
+    </div>${detalhe}`;
+  }catch(e){
+    box.innerHTML = `<div class="err">${esc(e.message)}</div>`;
+  }
+}
+$('#pushGo').onclick = diagnosticarPush;
+window.testarPush = testarPush;
 
 /* ---------------- vendedores que montam rota ----------------
    Gente, não os nomes lidos da observação do pedido (aba Vendas). São duas

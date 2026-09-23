@@ -18,6 +18,7 @@ import estoquistas from '../api/estoquistas.js';
 import vendedoresEquipe from '../api/vendedores-equipe.js';
 import quemSou from '../api/quem-sou.js';
 import avarias from '../api/avarias.js';
+import pushDiagnostico from '../api/push-diagnostico.js';
 import fotoUpload from '../api/foto-upload.js';
 import freteiros from '../api/freteiros.js';
 import geocode from '../api/geocode.js';
@@ -50,6 +51,7 @@ const FUNCOES = {
   'vendedores-equipe': vendedoresEquipe,
   'quem-sou': quemSou,
   'avarias': avarias,
+  'push-diagnostico': pushDiagnostico,
   'foto-upload': fotoUpload,
   'freteiros': freteiros,
   'geocode': geocode,
