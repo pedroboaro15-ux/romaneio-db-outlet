@@ -11,11 +11,10 @@
     "dev:estoque": "npm --prefix app-estoque run dev",
     "build": "npm --prefix app-estoque install --no-audit --no-fund && npm --prefix app-estoque run build",
     "deploy": "npm run build && wrangler deploy",
-    "teste": "node testes/convivencia.test.mjs && node testes/sql-instalacao.test.mjs && node testes/seguranca.test.mjs && node testes/cliente-supabase.test.mjs && node testes/planilha.test.mjs && node testes/observacao.test.mjs && node testes/vendedores.test.mjs && node testes/precificacao.test.mjs && node testes/autorizacao.test.mjs && node testes/rotas.test.mjs && node testes/separacao.test.mjs && node testes/vendas-lista.test.mjs && node testes/migracao-produtos.test.mjs && node testes/endereco.test.mjs && node testes/vendedor-painel.test.mjs && node testes/avarias.test.mjs && node testes/freteiro-rota.test.mjs && node testes/push-diagnostico.test.mjs && node testes/reagendar.test.mjs && node testes/handlers.test.mjs && node testes/ataque.test.mjs && node testes/ataque2.test.mjs"
+    "teste": "node testes/convivencia.test.mjs && node testes/sql-instalacao.test.mjs && node testes/seguranca.test.mjs && node testes/cliente-supabase.test.mjs && node testes/planilha.test.mjs && node testes/observacao.test.mjs && node testes/vendedores.test.mjs && node testes/precificacao.test.mjs && node testes/autorizacao.test.mjs && node testes/rotas.test.mjs && node testes/separacao.test.mjs && node testes/vendas-lista.test.mjs && node testes/migracao-produtos.test.mjs && node testes/endereco.test.mjs && node testes/vendedor-painel.test.mjs && node testes/avarias.test.mjs && node testes/freteiro-rota.test.mjs && node testes/push-diagnostico.test.mjs && node testes/notificacao-rota.test.mjs && node testes/reagendar.test.mjs && node testes/handlers.test.mjs && node testes/ataque.test.mjs && node testes/ataque2.test.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.4",
-    "web-push": "^3.6.7"
+    "@supabase/supabase-js": "^2.45.4"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",

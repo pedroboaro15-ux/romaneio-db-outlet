@@ -4,6 +4,10 @@
 // Notificação é a coisa mais difícil de depurar deste app, porque ela falha em
 // TRÊS lugares diferentes e os três são silenciosos:
 //
+//   0. (RESOLVIDO) A biblioteca de envio nem rodava no Cloudflare. Durante muito
+//      tempo essa foi a causa real de TUDO: o require('web-push') falhava de
+//      propósito e nenhuma notificação saía, nem com as chaves certas nem com o
+//      celular inscrito. O envio foi reescrito em lib/webpush.js, com WebCrypto.
 //   1. As chaves VAPID não estão configuradas no servidor. lib/push.js faz
 //      "return" e pronto — sem erro, sem log, sem nada.
 //   2. A chave pública do servidor é diferente da que está escrita nas páginas
@@ -17,6 +21,7 @@
 const { requireAdmin } = require('./lib/auth');
 const { json, lerCorpo } = require('./lib/http');
 const { admin } = require('./lib/supabase');
+const { enviarPush } = require('./lib/webpush');
 
 // A MESMA chave que está escrita em public/entrega.html e public/separacao.html.
 // Duplicar aqui é de propósito: é exatamente essa duplicação que o diagnóstico
@@ -48,33 +53,26 @@ exports.handler = async event => {
       return json(400, { erro: 'essa pessoa não ativou notificações em nenhum aparelho' });
     }
 
-    // Aqui o erro NÃO é engolido, ao contrário do envio normal. No envio normal
-    // engolir é certo (notificação não pode derrubar a criação de uma rota);
-    // aqui o erro É a resposta.
-    let wp;
-    try {
-      wp = require('web-push');
-    } catch (e) {
-      return json(500, { erro: 'a biblioteca web-push não carregou no servidor: ' + e.message });
-    }
-    wp.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:contato@exemplo.com', publica, privada);
+    // Usa o MESMO enviador do envio normal (lib/webpush.js). Testar por um
+    // caminho diferente do de verdade seria testar outra coisa: o teste passaria
+    // e a notificação de rota continuaria sem sair.
+    //
+    // A diferença é o que se faz com a falha. No envio normal ela é engolida, e
+    // isso é certo — notificação não pode derrubar a criação de uma rota. Aqui a
+    // falha É a resposta.
+    const conteudo = JSON.stringify({
+      titulo: 'Teste do Romaneio',
+      corpo: 'Se você está lendo isto, as notificações funcionam.',
+      url: '/'
+    });
 
     const resultados = [];
     for (const s of subs) {
-      try {
-        await wp.sendNotification(
-          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          JSON.stringify({ titulo: 'Teste do Romaneio', corpo: 'Se você está lendo isto, as notificações funcionam.', url: '/' })
-        );
-        resultados.push({ aparelho: String(s.endpoint || '').slice(0, 40) + '…', ok: true });
-      } catch (e) {
-        resultados.push({
-          aparelho: String(s.endpoint || '').slice(0, 40) + '…',
-          ok: false,
-          status: e && e.statusCode,
-          erro: (e && (e.body || e.message) || 'erro desconhecido').toString().slice(0, 300)
-        });
-      }
+      const r = await enviarPush({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth }, conteudo);
+      resultados.push({
+        aparelho: String(s.endpoint || '').slice(0, 40) + '…',
+        ok: r.ok, status: r.status, erro: r.erro
+      });
     }
 
     const enviadas = resultados.filter(r => r.ok).length;
