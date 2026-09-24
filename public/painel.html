@@ -129,6 +129,12 @@ code{background:#efefe6;padding:1px 5px;border-radius:4px;font-size:12px}
   .hrow{height:auto;padding:8px 0;flex-wrap:nowrap}
   .logo span{display:none}
 }
+.avisohist{margin-top:10px;background:#fdf1d6;border:2px solid #efd79a;border-radius:11px;padding:11px 12px;font-size:13.5px}
+.avisohist.forte{background:#fdeaea;border-color:#eba9a9}
+.avisohist-titulo{font-weight:800;margin-bottom:7px}
+.linhahist{padding:5px 0;border-top:1px solid rgba(0,0,0,.08)}
+.linhahist:first-of-type{border-top:0}
+.linhahist.assist{opacity:.9}
 </style>
 </head>
 <body>
@@ -558,6 +564,54 @@ function onToggleDetalhes(id, aberto){ if(aberto) detalhesAbertos.add(id); else 
 
 const money = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/**
+ * O AVISO DE "ESTE PEDIDO JÁ SAIU".
+ *
+ * Pôr numa rota um pedido que já foi entregue manda o caminhão de novo pro mesmo
+ * cliente. Pôr um que já está em OUTRA rota faz dois freteiros irem ao mesmo
+ * lugar. Os dois já aconteceram, e nenhum aparecia na tela: a busca mostrava o
+ * pedido da Omie como se ele fosse novo em folha.
+ *
+ * Não bloqueia. Às vezes é de propósito — o cliente devolveu, a entrega falhou e
+ * vai de novo. Quem decide é quem está olhando; o que faltava era ter o que
+ * olhar.
+ */
+function avisoDeHistorico(h){
+  if(!h) return '';
+  const linhas = [];
+
+  for(const e of (h.entregas || [])){
+    const quando = e.quandoFoi || (e.dataRota ? 'rota de ' + e.dataRota : '');
+    linhas.push(`<div class="linhahist">
+      <strong>${esc(e.situacao)}</strong> por ${esc(e.freteiro)}${quando ? ' · ' + esc(quando) : ''}
+      ${e.recebedor ? '<div class="mut">Recebeu: ' + esc(e.recebedor) + '</div>' : ''}
+      ${e.motivo ? '<div class="mut">Motivo: ' + esc(e.motivo) + '</div>' : ''}
+    </div>`);
+  }
+
+  for(const a of (h.assistencias || [])){
+    const quando = a.quandoFoi || (a.dataRota ? 'rota de ' + a.dataRota : '');
+    linhas.push(`<div class="linhahist assist">
+      <strong>Assistência</strong> — ${esc(a.situacao)} por ${esc(a.freteiro)}${quando ? ' · ' + esc(quando) : ''}
+      ${a.motivo ? '<div class="mut">Motivo: ' + esc(a.motivo) + '</div>' : ''}
+    </div>`);
+  }
+
+  if(!linhas.length) return '';
+
+  // O título diz a coisa mais grave primeiro: já entregue pesa mais que em rota,
+  // e em rota pesa mais que só ter tido assistência.
+  const titulo = h.jaEntregue ? '⚠️ Este pedido JÁ FOI ENTREGUE'
+    : h.emRota ? '⚠️ Este pedido já está em outra rota'
+    : '📋 Este pedido tem histórico';
+
+  return `<div class="avisohist ${h.jaEntregue || h.emRota ? 'forte' : ''}">
+    <div class="avisohist-titulo">${titulo}</div>
+    ${linhas.join('')}
+    <div class="mut" style="margin-top:6px">Confira antes de pôr na rota. Se for reenvio, pode seguir.</div>
+  </div>`;
+}
 // 'AAAA-MM-DD' no fuso da Paraíba. Com toISOString() (que é UTC), depois das 21h o
 // campo de data já vinha preenchido com o dia seguinte — e a rota nascia com data errada.
 const dataBR = d => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Fortaleza'}).format(d||new Date());
@@ -831,7 +885,11 @@ function renderResultado(){
   $('#addRascunho').textContent = assist ? 'Adicionar como assistência' : 'Adicionar ao romaneio';
   if(assist) montarEscolhaDeAvaria(p);
   $('#cardResultado').hidden = false;
-  $('#historicoCliente').innerHTML = '';
+  // O histórico DESTE pedido (já foi entregue? está em outra rota? teve
+  // assistência?) vem primeiro, e o do cliente é acrescentado depois, quando
+  // chegar. São duas perguntas diferentes: "este pedido já saiu" e "este cliente
+  // já deu trabalho antes".
+  $('#historicoCliente').innerHTML = avisoDeHistorico(p.historico);
   if(c.codigo) carregarHistoricoCliente(c.codigo);
 }
 
@@ -839,9 +897,11 @@ async function carregarHistoricoCliente(codigo){
   try{
     const h = await api('/api/historico-cliente?codigo=' + encodeURIComponent(codigo));
     if(!h.totalProblemas) return;
-    $('#historicoCliente').innerHTML = `<div class="err" style="background:#fef3e2;border-color:#fbe0b0;color:#7a5416">
+    // ACRESCENTA, não substitui: o aviso de "este pedido já saiu" já está aí, e
+    // ele importa mais. Trocar um pelo outro escondia o que acabou de ser posto.
+    $('#historicoCliente').insertAdjacentHTML('beforeend', `<div class="err" style="background:#fef3e2;border-color:#fbe0b0;color:#7a5416;margin-top:8px">
       ⚠️ Esse cliente já teve ${h.totalProblemas} problema(s) registrado(s) antes${h.historico[0]&&h.historico[0].motivo?': "'+esc(h.historico[0].motivo)+'"':''}.
-    </div>`;
+    </div>`);
   }catch(e){ /* não trava a busca por causa disso */ }
 }
 

@@ -214,13 +214,19 @@ function parsear(bruta) {
   // dentro e seriam partidos ao meio. Por isso só corta quando OS DOIS lados são
   // conhecidos: canal de um lado, vendedor do outro.
   const expandidas = [];
+  // Quem apareceu GRUDADO num canal. Ver o comentário grande logo abaixo.
+  const donosDeCanal = [];
   for (const parte of partes) {
     const palavras = parte.split(' ');
     let partiu = false;
     for (let corte = 1; corte < palavras.length && !partiu; corte++) {
       const esquerda = palavras.slice(0, corte).join(' ');
       const direita = palavras.slice(corte).join(' ');
-      if (canalDe(esquerda) && vendedorDe(direita)) { expandidas.push(esquerda, direita); partiu = true; }
+      if (canalDe(esquerda) && vendedorDe(direita)) {
+        expandidas.push(esquerda, direita);
+        donosDeCanal.push(vendedorDe(direita));
+        partiu = true;
+      }
     }
     if (!partiu) expandidas.push(parte);
   }
@@ -241,27 +247,79 @@ function parsear(bruta) {
   const vendedoresAchados = [];
   const canaisAchados = [];
   const sobras = [];
-  for (const parte of partes) {
+  // Onde cada um apareceu. A ordem importa num caso específico, explicado abaixo.
+  const posicaoDoVendedor = new Map();
+  let posicaoDoPrimeiroCanal = -1;
+
+  partes.forEach((parte, i) => {
     const v = vendedorDe(parte);
-    if (v) { if (!vendedoresAchados.includes(v)) vendedoresAchados.push(v); continue; }
+    if (v) {
+      if (!vendedoresAchados.includes(v)) { vendedoresAchados.push(v); posicaoDoVendedor.set(v, i); }
+      return;
+    }
     const c = canalDe(parte);
-    if (c) { if (!canaisAchados.includes(c)) canaisAchados.push(c); continue; }
+    if (c) {
+      if (!canaisAchados.includes(c)) canaisAchados.push(c);
+      if (posicaoDoPrimeiroCanal < 0) posicaoDoPrimeiroCanal = i;
+      return;
+    }
     sobras.push(parte);
-  }
+  });
 
   const canal = canaisAchados[0] || '';
   const obsLivre = tirarRotuloObs(sobras.join(' | '));
 
-  // Dois vendedores no mesmo pedido: escolher um seria sorteio.
-  if (vendedoresAchados.length > 1) {
+  /* NOME GRUDADO NO CANAL É DONO DO CANAL, NÃO VENDEDOR.
+   *
+   * "JOAO -- WHAST AMANDA||LUCAS FRETE" quer dizer: o João vendeu, pelo WhatsApp
+   * DA AMANDA, e o Lucas fez o frete. A venda é do João.
+   *
+   * Antes isto virava dois vendedores achados (JOÃO e AMANDA), o parser desistia,
+   * e a IA escolhia — quase sempre a Amanda, porque ela está mais perto da
+   * palavra "WHAST". Eram vendas do João indo pro nome errado, em silêncio.
+   *
+   * A regra só vale quando sobrou OUTRO vendedor. "WHAST AMANDA" sozinho continua
+   * sendo venda da Amanda pelo WhatsApp: sem mais ninguém escrito, o nome grudado
+   * é o vendedor mesmo. Conservador de propósito — só muda o caso que antes ia
+   * parar na revisão de qualquer jeito.
+   */
+  const semDonos = vendedoresAchados.filter(v => !donosDeCanal.includes(v));
+  let vendedores = semDonos.length ? semDonos : vendedoresAchados;
+
+  /* QUEM ESTÁ ANTES DO CANAL É O VENDEDOR; O QUE VEM DEPOIS É FRETEIRO.
+   *
+   * Só entra em cena quando ainda sobrou mais de um nome — ou seja, no caso que
+   * antes ia direto pra revisão.
+   *
+   * O formato é este, e os pedidos do Pedro mostram os cinco iguais:
+   *
+   *     JOAO  --  WHAST AMANDA  |||  LUCAS
+   *     quem     por onde veio       quem entrega
+   *
+   * A pessoa escreve o próprio nome primeiro, depois como a venda entrou, e por
+   * último quem leva. Sem isto, "LUCAS" (que é nome de vendedor de verdade, e
+   * também de um freteiro) empatava com o João e o pedido caía na revisão — de
+   * onde a IA tirava o nome errado.
+   *
+   * Não vale quando o canal vem primeiro ("venda presencial || LUCAS FRETE ||
+   * fernando"): ali o vendedor está DEPOIS do canal, e a regra não se aplica.
+   */
+  if (vendedores.length > 1 && posicaoDoPrimeiroCanal >= 0) {
+    const antesDoCanal = vendedores.filter(v => posicaoDoVendedor.get(v) < posicaoDoPrimeiroCanal);
+    if (antesDoCanal.length === 1) vendedores = antesDoCanal;
+  }
+
+  // Dois vendedores no mesmo pedido, e nenhum deles é dono de canal: escolher um
+  // seria sorteio.
+  if (vendedores.length > 1) {
     return { canal, vendedor: '', obsLivre, statusParse: 'nao_reconhecido' };
   }
 
-  if (vendedoresAchados.length === 1) {
+  if (vendedores.length === 1) {
     // Sem canal o pedido ainda vale: quem vendeu é a informação cara, o canal é o
     // detalhe. Melhor creditar a venda com o canal em branco (que aparece na tela) do
     // que jogar o pedido inteiro na revisão e perder o vendedor que foi encontrado.
-    return { canal, vendedor: vendedoresAchados[0], obsLivre, statusParse: 'ok' };
+    return { canal, vendedor: vendedores[0], obsLivre, statusParse: 'ok' };
   }
 
   // Só o canal, e mais nada escrito ("- INSTA"). Quem vendeu geralmente é o João, mas

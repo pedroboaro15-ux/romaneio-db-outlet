@@ -127,6 +127,12 @@ button.ok:disabled{background:#e2e2d9;color:#9a9a8e}
 /* Bolinha vermelha no sino quando chega pedido novo desde a última vez que abriu o app. */
 #btnNotif{position:relative}
 .badgeNotif{position:absolute;top:2px;right:2px;width:10px;height:10px;background:#e74c3c;border-radius:50%;border:2px solid #14140F}
+.avisohist{margin-top:10px;background:#fdf1d6;border:2px solid #efd79a;border-radius:11px;padding:11px 12px;font-size:13.5px}
+.avisohist.forte{background:#fdeaea;border-color:#eba9a9}
+.avisohist-titulo{font-weight:800;margin-bottom:7px}
+.linhahist{padding:5px 0;border-top:1px solid rgba(0,0,0,.08)}
+.linhahist:first-of-type{border-top:0}
+.linhahist.assist{opacity:.9}
 </style>
 </head>
 <body>
@@ -162,6 +168,54 @@ button.ok:disabled{background:#e2e2d9;color:#9a9a8e}
 const ESTOQUE = { nome: 'Estoque', endereco: 'R. Márcia Travassos, 660 - Jardim Jerico, Cabedelo - PB, 58103-718' };
 
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/**
+ * O AVISO DE "ESTE PEDIDO JÁ SAIU".
+ *
+ * Pôr numa rota um pedido que já foi entregue manda o caminhão de novo pro mesmo
+ * cliente. Pôr um que já está em OUTRA rota faz dois freteiros irem ao mesmo
+ * lugar. Os dois já aconteceram, e nenhum aparecia na tela: a busca mostrava o
+ * pedido da Omie como se ele fosse novo em folha.
+ *
+ * Não bloqueia. Às vezes é de propósito — o cliente devolveu, a entrega falhou e
+ * vai de novo. Quem decide é quem está olhando; o que faltava era ter o que
+ * olhar.
+ */
+function avisoDeHistorico(h){
+  if(!h) return '';
+  const linhas = [];
+
+  for(const e of (h.entregas || [])){
+    const quando = e.quandoFoi || (e.dataRota ? 'rota de ' + e.dataRota : '');
+    linhas.push(`<div class="linhahist">
+      <strong>${esc(e.situacao)}</strong> por ${esc(e.freteiro)}${quando ? ' · ' + esc(quando) : ''}
+      ${e.recebedor ? '<div class="mut">Recebeu: ' + esc(e.recebedor) + '</div>' : ''}
+      ${e.motivo ? '<div class="mut">Motivo: ' + esc(e.motivo) + '</div>' : ''}
+    </div>`);
+  }
+
+  for(const a of (h.assistencias || [])){
+    const quando = a.quandoFoi || (a.dataRota ? 'rota de ' + a.dataRota : '');
+    linhas.push(`<div class="linhahist assist">
+      <strong>Assistência</strong> — ${esc(a.situacao)} por ${esc(a.freteiro)}${quando ? ' · ' + esc(quando) : ''}
+      ${a.motivo ? '<div class="mut">Motivo: ' + esc(a.motivo) + '</div>' : ''}
+    </div>`);
+  }
+
+  if(!linhas.length) return '';
+
+  // O título diz a coisa mais grave primeiro: já entregue pesa mais que em rota,
+  // e em rota pesa mais que só ter tido assistência.
+  const titulo = h.jaEntregue ? '⚠️ Este pedido JÁ FOI ENTREGUE'
+    : h.emRota ? '⚠️ Este pedido já está em outra rota'
+    : '📋 Este pedido tem histórico';
+
+  return `<div class="avisohist ${h.jaEntregue || h.emRota ? 'forte' : ''}">
+    <div class="avisohist-titulo">${titulo}</div>
+    ${linhas.join('')}
+    <div class="mut" style="margin-top:6px">Confira antes de pôr na rota. Se for reenvio, pode seguir.</div>
+  </div>`;
+}
 
 /**
  * APAGA TUDO QUE ESTA PESSOA DEIXOU NO CELULAR.
@@ -475,6 +529,7 @@ async function buscarPedidoParaAdicionar(){
         <div style="font-weight:800;font-size:17px">Pedido ${esc(p.numero)}</div>
         <div style="font-weight:700;margin-top:6px">${esc(c.nome||'(sem cliente)')}</div>
         <div class="mut">${esc(Endereco.enderecoEmLinha(c))}</div>
+        ${avisoDeHistorico(p.historico)}
         ${itens?`<div class="itens">${itens}</div>`:''}
         <button class="ok" style="margin-top:10px" onclick="confirmarAdicionarNaRota()">✓ Acrescentar nesta rota</button>
       </div>`;
@@ -633,6 +688,7 @@ async function buscarPedidoRota(){
         <div style="font-weight:800;font-size:17px">Pedido ${esc(p.numero)}</div>
         <div style="font-weight:700;margin-top:6px">${esc(c.nome||'(sem cliente)')}</div>
         <div class="mut">${esc(Endereco.enderecoEmLinha(c))}</div>
+        ${avisoDeHistorico(p.historico)}
         ${itensHtml}
         <button class="ok" style="margin-top:10px" onclick="adicionarNaNovaRota()">✓ Adicionar essa rota</button>
       </div>`;

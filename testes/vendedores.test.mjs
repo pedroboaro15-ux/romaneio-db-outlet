@@ -135,10 +135,50 @@ checa('barras a mais no meio não atrapalham',
 checa('lixo no começo é ignorado, mas não vira suposição',
   parsear('D - INSTA||MARCOS').statusParse === 'nao_reconhecido', parsear('D - INSTA||MARCOS').statusParse);
 
-// Dois vendedores no mesmo pedido: escolher um seria sorteio.
-const doisNomes = parsear('JOAO -- WHAST AMNADA||||JHONATAN');
-checa('dois vendedores no mesmo pedido vão pra revisão',
-  doisNomes.vendedor === '' && doisNomes.statusParse === 'nao_reconhecido', JSON.stringify(doisNomes));
+/* "JOÃO -- WHAST AMANDA" = o João vendeu, pelo WhatsApp DA AMANDA.
+ *
+ * Este caso já foi exemplo de "dois nomes, não dá pra saber" — e estava errado.
+ * Ele ia pra revisão, a IA escolhia, e escolhia quase sempre a Amanda, porque
+ * ela está colada na palavra "WHAST". Eram vendas do João indo pro nome errado,
+ * em silêncio, e foi o Pedro que percebeu olhando a lista.
+ *
+ * Duas regras resolvem, e as duas só valem quando sobrou mais de um nome:
+ * nome grudado no canal é dono do canal, e quem está antes do canal é o vendedor
+ * (o que vem depois é freteiro).
+ */
+for (const obs of [
+  'JOAO -- WHAST AMANDA||LUCAS FRETE|',
+  'JOAO - WHAST AMANDA|||LUCAS',
+  'JOAO -- WHAST AMNADA||||JHONATAN',   // "AMNADA" é erro de digitação e não atrapalha
+  'JOAO - WHAST AMANDA||||MARTINS',
+  'JOAO -- WHAST AMANDA|||ZE'
+]) {
+  const r = parsear(obs);
+  checa(`"${obs}" é venda do João, pelo WhatsApp da Amanda`,
+    r.vendedor === 'JOÃO' && r.canal === 'WHATSAPP' && r.statusParse === 'ok',
+    JSON.stringify(r));
+}
+
+// Mas sozinho, sem outro nome, o grudado É o vendedor: "WhatsApp, Amanda".
+{
+  const r = parsear('WHAST AMANDA');
+  checa('"WHAST AMANDA" sozinho continua sendo venda da Amanda',
+    r.vendedor === 'AMANDA' && r.canal === 'WHATSAPP', JSON.stringify(r));
+}
+
+// E dois nomes sem canal nenhum continuam sendo sorteio — aí vai pra revisão.
+{
+  const r = parsear('AMANDA||LUCAS');
+  checa('dois vendedores sem canal continuam indo pra revisão',
+    r.vendedor === '' && r.statusParse === 'nao_reconhecido', JSON.stringify(r));
+}
+
+// O formato com o canal na FRENTE não muda: ali o vendedor vem depois.
+{
+  const r = parsear('venda presencial||LUCAS FRETE||fernando');
+  checa('canal na frente: o vendedor continua sendo o do fim',
+    r.vendedor === 'FERNANDO', JSON.stringify(r));
+}
 
 checa('"venda presencial" é reconhecido como canal',
   canalDe('venda presencial||FERNANDO') === 'PRESENCIAL', canalDe('venda presencial||FERNANDO'));

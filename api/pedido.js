@@ -6,6 +6,8 @@ const { json } = require('./lib/http');
 const { parsear } = require('./lib/observacao');
 const omie = require('./lib/omie');
 const { buscarCliente } = require('./lib/clientes');
+const { admin } = require('./lib/supabase');
+const { historicoDoPedido } = require('./lib/entregas');
 
 const pick = (...vals) => vals.find(v => v !== undefined && v !== null && v !== '');
 const num = v => (typeof v === 'number' ? v : parseFloat(String(v || '0').replace(',', '.')) || 0);
@@ -116,7 +118,17 @@ exports.handler = async event => {
     const norm = normalizarPedido(raw);
     const cliente = norm.enderecoAlternativo || await buscarCliente(norm.codigoCliente);
     delete norm.enderecoAlternativo;
-    return json(200, { ...norm, cliente });
+
+    // O que já aconteceu com este pedido: se já foi entregue, se está em outra
+    // rota, e se teve assistência. Sem isto, o mesmo pedido entrava numa rota
+    // nova sem ninguém perceber que ele já tinha saído — e o cliente recebia
+    // duas vezes, ou o freteiro ia à toa.
+    //
+    // Nunca derruba a busca. Quem chamou quer o pedido da Omie; o histórico é o
+    // extra, e historicoDoPedido devolve vazio em vez de estourar.
+    const historico = await historicoDoPedido(admin(), norm.numero);
+
+    return json(200, { ...norm, cliente, historico });
   } catch (e) {
     return json(502, { erro: e.message });
   }
